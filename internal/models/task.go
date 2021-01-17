@@ -7,7 +7,7 @@ import (
 
 type Task struct {
 	gorm.Model
-	Synopsis    string
+	Synopsis    string `gorm:"uniqueindex"`
 	Description string
 }
 

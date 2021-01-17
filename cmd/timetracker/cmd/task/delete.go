@@ -1,10 +1,12 @@
 package task
 
 import (
+	"fmt"
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/spf13/cobra"
+	"github.com/ttacon/chalk"
 	"strconv"
 )
 
@@ -21,15 +23,17 @@ func deleteTask(_ *cobra.Command, args []string) error {
 	log := logger.GetLogger("deleteTask")
 	taskid, err := strconv.Atoi(args[0])
 	if err != nil {
-		log.Printf("error converting argument (%s) into a number: %s\n", args[0], err)
+		fmt.Println(chalk.Red, "Invalid task ID:", chalk.White, chalk.Dim.TextStyle(err.Error()))
+		log.Err(err).Msg("invalid task id")
 		return err
 	}
 	task := new(models.Task)
 	err = database.DB.Delete(task, uint(taskid)).Error
 	if err != nil {
-		log.Printf("error deleting task id %d: %s\n", uint(taskid), err)
+		fmt.Println(chalk.Red, "Error deleting task ", taskid, ":", chalk.White, chalk.Dim.TextStyle(err.Error()))
+		log.Err(err).Msgf("error deleting task %d", taskid)
 		return err
 	}
-	log.Printf("task id %d deleted", uint(taskid))
+	fmt.Println(chalk.White, chalk.Dim.TextStyle("Task ID"), strconv.Itoa(taskid), chalk.Red, "deleted")
 	return nil
 }

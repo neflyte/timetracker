@@ -1,10 +1,13 @@
 package task
 
 import (
+	"fmt"
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/spf13/cobra"
+	"github.com/ttacon/chalk"
+	"strconv"
 )
 
 var (
@@ -30,9 +33,10 @@ func createTask(_ *cobra.Command, _ []string) error {
 	task.Description = taskDescription
 	err := database.DB.Create(task).Error
 	if err != nil {
-		log.Printf("error creating new task: %s\n", err)
+		fmt.Println(chalk.Red, "Error creating new task:", chalk.White, chalk.Dim.TextStyle(err.Error()))
+		log.Err(err).Msg("error creating new task")
 		return err
 	}
-	log.Printf("created task ID %d\n", task.ID)
+	fmt.Println(chalk.White, chalk.Dim.TextStyle("Task ID"), strconv.Itoa(int(task.ID)), chalk.Green, "created")
 	return nil
 }

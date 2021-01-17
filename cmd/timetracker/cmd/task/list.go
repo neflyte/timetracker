@@ -1,11 +1,14 @@
 package task
 
 import (
+	"fmt"
+	"github.com/alexeyco/simpletable"
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/spf13/cobra"
-	"gorm.io/gorm"
+	"github.com/ttacon/chalk"
+	"strconv"
 )
 
 var (
@@ -23,31 +26,46 @@ func init() {
 
 func listTasks(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("listTasks")
-	var result *gorm.DB
-	if !listDeletedTasks {
-		result = database.DB.Find(new(models.Task))
-	} else {
-		result = database.DB.Unscoped().Find(new(models.Task))
+	db := database.DB
+	if listDeletedTasks {
+		db = database.DB.Unscoped()
 	}
-	err := result.Error
+	rows, err := db.Model(new(models.Task)).Rows()
 	if err != nil {
-		log.Printf("error listing tasks: %s\n", err)
-		return err
-	}
-	rows, err := result.Rows()
-	if err != nil {
-		log.Printf("error getting result row: %s\n", err)
+		fmt.Println(chalk.Red, "Error getting result row:", chalk.White, chalk.Dim.TextStyle(err.Error()))
+		log.Err(err).Msg("error getting result row")
 		return err
 	}
 	defer database.CloseRows(rows)
+	table := simpletable.New()
+	table.Header = &simpletable.Header{
+		Cells: []*simpletable.Cell{
+			{Text: "#"},
+			{Text: "Synopsis"},
+			{Text: "Description"},
+			{Text: "Created At"},
+			{Text: "Updated At"},
+		},
+	}
+	var task models.Task
 	for rows.Next() {
-		task := new(models.Task)
-		err = result.ScanRows(rows, task)
+		err = db.ScanRows(rows, &task)
 		if err != nil {
-			log.Printf("error scanning row into &models.Task: %s\n", err)
+			fmt.Println(chalk.Red, "Error scanning result row:", chalk.White, chalk.Dim.TextStyle(err.Error()))
+			log.Err(err).Msg("error scanning row into &models.Task")
 			return err
 		}
-		log.Printf(task.String())
+		// fmt.Println(task.String())
+		rec := []*simpletable.Cell{
+			{Text: strconv.Itoa(int(task.ID))},
+			{Text: task.Synopsis},
+			{Text: task.Description},
+			{Text: task.CreatedAt.Format("2006-01-02 15:04:05 PM")},
+			{Text: task.UpdatedAt.Format("2006-01-02 15:04:05 PM")},
+		}
+		table.Body.Cells = append(table.Body.Cells, rec)
 	}
+	table.SetStyle(simpletable.StyleCompactLite)
+	fmt.Println(table.String())
 	return nil
 }
