@@ -31,7 +31,7 @@ func Close(db *gorm.DB) {
 			log.Printf("error getting sql.DB handle: %s\n", err)
 			return
 		}
-		log.Println("closing sqlite db")
+		log.Printf("closing sqlite db")
 		err = sqldb.Close()
 		if err != nil {
 			log.Printf("error closing DB handle: %s\n", err)

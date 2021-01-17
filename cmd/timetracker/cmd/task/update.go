@@ -30,7 +30,7 @@ func init() {
 func updateTask(_ *cobra.Command, args []string) error {
 	log := logger.GetLogger("updateTask")
 	if updateSynopsis == "" && updateDescription == "" && !updateUndelete {
-		log.Println("no updates specified; nothing to do")
+		log.Printf("no updates specified; nothing to do")
 		return nil
 	}
 	taskid, err := strconv.Atoi(args[0])

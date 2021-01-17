@@ -1,15 +1,24 @@
 package logger
 
 import (
-	"fmt"
-	"log"
-	"os"
+	"github.com/rs/zerolog"
 )
 
-const (
-	logFlags = log.LstdFlags | log.Lshortfile | log.Lmsgprefix
+var (
+	rootLogger        zerolog.Logger
+	loggerInitialized = false
 )
 
-func GetLogger(funcName string) *log.Logger {
-	return log.New(os.Stdout, fmt.Sprintf("[%s] ", funcName), logFlags)
+func InitLogger() {
+	if !loggerInitialized {
+		rootLogger = zerolog.New(zerolog.NewConsoleWriter()).With().Timestamp().Logger()
+		loggerInitialized = true
+	}
+}
+
+func GetLogger(funcName string) zerolog.Logger {
+	if !loggerInitialized {
+		InitLogger()
+	}
+	return rootLogger.With().Str("func", funcName).Logger()
 }

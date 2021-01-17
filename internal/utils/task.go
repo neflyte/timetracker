@@ -16,7 +16,7 @@ func StopRunningTask() error {
 	result := database.DB.Where("stop_time IS NULL").First(&timesheet)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			log.Println("no running tasks")
+			log.Printf("no running tasks")
 			return nil
 		}
 		log.Printf("error selecting running task: %s\n", result.Error)

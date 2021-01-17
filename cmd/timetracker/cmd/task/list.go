@@ -47,7 +47,7 @@ func listTasks(_ *cobra.Command, _ []string) error {
 			log.Printf("error scanning row into &models.Task: %s\n", err)
 			return err
 		}
-		log.Println(task.String())
+		log.Printf(task.String())
 	}
 	return nil
 }

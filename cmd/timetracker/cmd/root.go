@@ -50,7 +50,7 @@ func initDatabase() {
 			// Make sure this directory exists...
 			err := os.MkdirAll(userConfigDir, 0755)
 			if err != nil {
-				log.Fatalf("error creating configuration directory: %s\n", err)
+				log.Fatal().Msgf("error creating configuration directory: %s\n", err)
 			}
 		}
 		configFile = path.Join(userConfigDir, defaultDatabaseFileName)
@@ -58,16 +58,16 @@ func initDatabase() {
 	log.Printf("configFile=%s\n", configFile)
 	db, err := database.Open(configFile)
 	if err != nil {
-		log.Fatalf("error opening database at %s: %s\n", configFile, err)
+		log.Fatal().Msgf("error opening database at %s: %s\n", configFile, err)
 	}
-	log.Println("database opened")
+	log.Printf("database opened")
 	database.DB = db
 	err = db.AutoMigrate(new(models.Task), new(models.Timesheet))
 	if err != nil {
 		cleanUp(nil, nil)
-		log.Fatalf("error auto-migrating database schema: %s\n", err)
+		log.Fatal().Msgf("error auto-migrating database schema: %s\n", err)
 	}
-	log.Println("schema migrated (if necessary)")
+	log.Printf("schema migrated (if necessary)")
 }
 
 func cleanUp(_ *cobra.Command, _ []string) {

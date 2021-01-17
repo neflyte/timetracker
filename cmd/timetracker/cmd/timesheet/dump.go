@@ -37,7 +37,7 @@ func dumpTimesheets(_ *cobra.Command, _ []string) error {
 			log.Printf("error scanning result row: %s\n", err)
 			return err
 		}
-		log.Println(sheet.String())
+		log.Printf(sheet.String())
 	}
 	return nil
 }
