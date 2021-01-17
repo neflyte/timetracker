@@ -13,7 +13,7 @@ import (
 func StopRunningTask() error {
 	log := logger.GetLogger("StopRunningTask")
 	timesheet := new(models.Timesheet)
-	result := database.DB.Where("stop_time = ?", nil).First(&timesheet)
+	result := database.DB.Where("stop_time IS NULL").First(&timesheet)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			log.Println("no running tasks")

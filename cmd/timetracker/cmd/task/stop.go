@@ -27,7 +27,7 @@ func stopTask(_ *cobra.Command, args []string) error {
 		return err
 	}
 	timesheet := new(models.Timesheet)
-	result := database.DB.Where("task_id = ? AND stop_time = ?", uint(taskid), nil).First(&timesheet)
+	result := database.DB.Where("task_id = ? AND stop_time IS NULL", uint(taskid)).Find(&timesheet)
 	if result.Error != nil {
 		log.Printf("error looking for started task: %s\n", result.Error)
 		return result.Error
