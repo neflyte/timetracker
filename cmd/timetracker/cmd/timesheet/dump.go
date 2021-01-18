@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/ttacon/chalk"
 	"strconv"
+	"time"
 )
 
 var (
@@ -17,16 +18,34 @@ var (
 		Short: "Dumps all timesheets",
 		RunE:  dumpTimesheets,
 	}
+	startDate string
+	endDate   string
 )
+
+func init() {
+	DumpCmd.Flags().StringVar(&startDate, "startDate", "", "start date (YYYY-MM-DD)")
+	DumpCmd.Flags().StringVar(&endDate, "endDate", "", "end date (YYYY-MM-DD)")
+}
 
 func dumpTimesheets(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("dumpTimesheets")
 	timesheet := new(models.Timesheet)
-	rows, err := database.DB.
+	db := database.DB.
 		Model(timesheet).
 		Select("timesheets.id, tasks.id, tasks.synopsis, timesheets.start_time, timesheets.stop_time").
-		Joins("left join tasks on timesheets.task_id = tasks.id").
-		Rows()
+		Joins("left join tasks on timesheets.task_id = tasks.id")
+	if startDate != "" && endDate != "" {
+		dStart, err := time.Parse("2006-01-02", startDate)
+		if err != nil {
+			return err
+		}
+		dEnd, err := time.Parse("2006-01-02", endDate)
+		if err != nil {
+			return err
+		}
+		db = db.Where("timesheets.start_time >= ? AND timesheets.stop_time <= ?", dStart, dEnd)
+	}
+	rows, err := db.Rows()
 	if err != nil {
 		log.Printf("error getting result rows: %s\n", err)
 		return err
@@ -40,6 +59,7 @@ func dumpTimesheets(_ *cobra.Command, _ []string) error {
 			{Text: "Synopsis"},
 			{Text: "Started At"},
 			{Text: "Stopped At"},
+			{Text: "Duration"},
 		},
 	}
 	for rows.Next() {
@@ -51,17 +71,21 @@ func dumpTimesheets(_ *cobra.Command, _ []string) error {
 			log.Err(err).Msg("error scanning result row")
 			return err
 		}
-		stopTime := "(running)"
+		starttimedisplay := sheet.StartTime.Format(`2006-01-02 15:04:05 PM`)
+		stoptimedisplay := "(running)"
+		durationdisplay := "(unknown)"
 		if sheet.StopTime.Valid {
-			stopTime = sheet.StopTime.Time.Format(`2006-01-02 15:04:05 PM`)
+			stoptimedisplay = sheet.StopTime.Time.Format(`2006-01-02 15:04:05 PM`)
+			diff := sheet.StopTime.Time.Sub(sheet.StartTime)
+			durationdisplay = diff.String()
 		}
-		// log.Printf(sheet.String())
 		rec := []*simpletable.Cell{
 			{Text: strconv.Itoa(int(sheet.ID))},
 			{Text: strconv.Itoa(int(task.ID))},
 			{Text: task.Synopsis},
-			{Text: sheet.StartTime.Format(`2006-01-02 15:04:05 PM`)},
-			{Text: stopTime},
+			{Text: starttimedisplay},
+			{Text: stoptimedisplay},
+			{Text: durationdisplay},
 		}
 		table.Body.Cells = append(table.Body.Cells, rec)
 	}
@@ -69,6 +93,7 @@ func dumpTimesheets(_ *cobra.Command, _ []string) error {
 		fmt.Println(chalk.White, "There are no timesheets")
 		return nil
 	}
+	table.SetStyle(simpletable.StyleCompactLite)
 	fmt.Println(table.String())
 	return nil
 }

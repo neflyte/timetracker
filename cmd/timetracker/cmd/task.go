@@ -21,5 +21,6 @@ func init() {
 		task.DeleteCmd,
 		task.StartCmd,
 		task.StopCmd,
+		task.SearchCmd,
 	)
 }
