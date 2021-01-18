@@ -55,13 +55,12 @@ func listTasks(_ *cobra.Command, _ []string) error {
 			log.Err(err).Msg("error scanning row into &models.Task")
 			return err
 		}
-		// fmt.Println(task.String())
 		rec := []*simpletable.Cell{
 			{Text: strconv.Itoa(int(task.ID))},
 			{Text: task.Synopsis},
 			{Text: task.Description},
-			{Text: task.CreatedAt.Format("2006-01-02 15:04:05 PM")},
-			{Text: task.UpdatedAt.Format("2006-01-02 15:04:05 PM")},
+			{Text: task.CreatedAt.Format(`2006-01-02 15:04:05 PM`)},
+			{Text: task.UpdatedAt.Format(`2006-01-02 15:04:05 PM`)},
 		}
 		table.Body.Cells = append(table.Body.Cells, rec)
 	}

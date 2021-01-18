@@ -73,4 +73,5 @@ func initDatabase() {
 func cleanUp(_ *cobra.Command, _ []string) {
 	database.Close(database.DB)
 	database.DB = nil
+	logger.CleanupLogger()
 }

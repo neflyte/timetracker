@@ -3,10 +3,13 @@ package utils
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/ttacon/chalk"
 	"gorm.io/gorm"
+	"strconv"
 	"time"
 )
 
@@ -16,25 +19,44 @@ func StopRunningTask() error {
 	result := database.DB.Where("stop_time IS NULL").First(&timesheet)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			log.Printf("no running tasks")
+			log.Info().Msg("no running tasks")
 			return nil
 		}
-		log.Printf("error selecting running task: %s\n", result.Error)
+		fmt.Println(chalk.Red, "Error reading running task:", chalk.White, chalk.Dim.TextStyle(result.Error.Error()))
+		log.Err(result.Error).Msg("error selecting running task")
 		return result.Error
 	}
-	log.Printf("task id %d is running\n", timesheet.TaskID)
+	log.Debug().Msgf("task id %d is running\n", timesheet.TaskID)
 	stoptime := new(sql.NullTime)
 	err := stoptime.Scan(time.Now())
 	if err != nil {
-		log.Printf("error scanning time.Now() into sql.NullTime: %s\n", err)
+		log.Err(err).Msg("error scanning time.Now() into sql.NullTime")
 		return err
 	}
 	timesheet.StopTime = *stoptime
 	err = database.DB.Save(&timesheet).Error
 	if err != nil {
-		log.Printf("error updating timesheet id %d for task id %d: %s\n", timesheet.ID, timesheet.TaskID, err)
+		log.Err(err).Msgf("error updating timesheet id %d for task id %d", timesheet.ID, timesheet.TaskID)
 		return err
 	}
-	log.Printf("task id %d (timesheet id %d) stopped\n", timesheet.TaskID, timesheet.ID)
+	log.Info().Msgf("task id %d (timesheet id %d) stopped\n", timesheet.TaskID, timesheet.ID)
+	fmt.Println(
+		chalk.White, chalk.Dim.TextStyle("Task"), strconv.Itoa(int(timesheet.TaskID)),
+		chalk.Yellow, "stopped",
+		chalk.White, chalk.Dim.TextStyle("at"),
+		timesheet.StopTime.Time.Format(`2006-01-02 15:04:05 PM`),
+	)
 	return nil
+}
+
+func ResolveTask(arg string) (taskid int, tasksynopsis string) {
+	taskid = -1
+	if arg == "" {
+		return
+	}
+	taskid, err := strconv.Atoi(arg)
+	if err == nil {
+		return
+	}
+	return taskid, arg
 }
