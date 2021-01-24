@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
@@ -14,7 +15,9 @@ const (
 )
 
 var (
-	rootCmd = &cobra.Command{
+	AppVersion = "" // AppVersion is the application version number
+	rootCmd    = &cobra.Command{
+		Version:           AppVersion,
 		Use:               "timetracker",
 		Short:             "A simple time tracker",
 		Long:              "A simple time tracker for various tasks with basic reporting",
@@ -27,6 +30,7 @@ func init() {
 	cobra.OnInitialize(initDatabase)
 	rootCmd.PersistentFlags().StringVarP(&configFileName, "config", "c", "", "Specify the full path and filename of the database to use")
 	rootCmd.AddCommand(taskCmd, timesheetCmd)
+	rootCmd.SetVersionTemplate(fmt.Sprintf("timetracker %s", AppVersion))
 }
 
 func Execute() {
