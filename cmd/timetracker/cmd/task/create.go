@@ -12,9 +12,10 @@ import (
 
 var (
 	CreateCmd = &cobra.Command{
-		Use:   "create",
-		Short: "Create a task",
-		RunE:  createTask,
+		Use:     "create [synopsis] [description]",
+		Aliases: []string{"c"},
+		Short:   "Create a task",
+		RunE:    createTask,
 	}
 	taskSynopsis    string
 	taskDescription string

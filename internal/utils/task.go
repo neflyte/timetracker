@@ -50,13 +50,16 @@ func StopRunningTask() error {
 }
 
 func ResolveTask(arg string) (taskid int, tasksynopsis string) {
-	taskid = -1
+	log := logger.GetLogger("ResolveTask")
 	if arg == "" {
-		return
+		return -1, ""
 	}
-	taskid, err := strconv.Atoi(arg)
-	if err == nil {
-		return
+	log.Trace().Msgf("arg=%s", arg)
+	id, err := strconv.Atoi(arg)
+	if err != nil {
+		log.Trace().Msgf("error converting arg to number: %s; returning arg", err)
+		return -1, arg
 	}
-	return taskid, arg
+	log.Trace().Msgf("returning %d", id)
+	return id, ""
 }

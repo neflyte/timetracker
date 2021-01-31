@@ -7,9 +7,10 @@ import (
 
 var (
 	timesheetCmd = &cobra.Command{
-		Use:   "timesheet",
-		Short: "Timesheet operations",
-		Long:  "Report on task times",
+		Use:     "timesheet",
+		Aliases: []string{"ts"},
+		Short:   "Timesheet operations",
+		Long:    "Report on task times",
 	}
 )
 

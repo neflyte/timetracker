@@ -13,10 +13,11 @@ import (
 
 var (
 	SearchCmd = &cobra.Command{
-		Use:   "search [search terms]",
-		Short: "Search for tasks",
-		Args:  cobra.ExactArgs(1),
-		RunE:  searchTask,
+		Use:     "search [search terms]",
+		Aliases: []string{"find"},
+		Short:   "Search for tasks",
+		Args:    cobra.ExactArgs(1),
+		RunE:    searchTask,
 	}
 )
 

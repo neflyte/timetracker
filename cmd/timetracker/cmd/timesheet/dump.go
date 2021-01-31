@@ -14,9 +14,10 @@ import (
 
 var (
 	DumpCmd = &cobra.Command{
-		Use:   "dump",
-		Short: "Dumps all timesheets",
-		RunE:  dumpTimesheets,
+		Use:     "dump",
+		Aliases: []string{"d"},
+		Short:   "Dumps all timesheets",
+		RunE:    dumpTimesheets,
 	}
 	startDate string
 	endDate   string
@@ -27,30 +28,27 @@ func init() {
 	DumpCmd.Flags().StringVar(&endDate, "endDate", "", "end date (YYYY-MM-DD)")
 }
 
-func dumpTimesheets(_ *cobra.Command, _ []string) error {
+func dumpTimesheets(_ *cobra.Command, _ []string) (err error) {
 	log := logger.GetLogger("dumpTimesheets")
-	timesheet := new(models.Timesheet)
-	db := database.DB.
-		Model(timesheet).
-		Select("timesheets.id, tasks.id, tasks.synopsis, timesheets.start_time, timesheets.stop_time").
-		Joins("left join tasks on timesheets.task_id = tasks.id")
+	db := database.DB.Joins("Task")
+	sheets := make([]models.Timesheet, 0)
 	if startDate != "" && endDate != "" {
-		dStart, err := time.Parse("2006-01-02", startDate)
+		var dStart, dEnd time.Time
+		dStart, err = time.Parse("2006-01-02", startDate)
 		if err != nil {
 			return err
 		}
-		dEnd, err := time.Parse("2006-01-02", endDate)
+		dEnd, err = time.Parse("2006-01-02", endDate)
 		if err != nil {
 			return err
 		}
-		db = db.Where("timesheets.start_time >= ? AND timesheets.stop_time <= ?", dStart, dEnd)
+		db = db.Where("start_time >= ? AND stop_time <= ?", dStart, dEnd)
 	}
-	rows, err := db.Rows()
-	if err != nil {
-		log.Printf("error getting result rows: %s\n", err)
-		return err
+	db = db.Find(&sheets)
+	if db.Error != nil {
+		log.Printf("error querying for timesheets: %s\n", db.Error)
+		return db.Error
 	}
-	defer database.CloseRows(rows)
 	table := simpletable.New()
 	table.Header = &simpletable.Header{
 		Cells: []*simpletable.Cell{
@@ -62,17 +60,9 @@ func dumpTimesheets(_ *cobra.Command, _ []string) error {
 			{Text: "Duration"},
 		},
 	}
-	for rows.Next() {
-		sheet := new(models.Timesheet)
-		task := new(models.Task)
-		err = rows.Scan(&sheet.ID, &task.ID, &task.Synopsis, &sheet.StartTime, &sheet.StopTime)
-		if err != nil {
-			fmt.Println(chalk.Red, "Error scanning result row:", chalk.White, chalk.Dim.TextStyle(err.Error()))
-			log.Err(err).Msg("error scanning result row")
-			return err
-		}
+	for _, sheet := range sheets {
 		starttimedisplay := sheet.StartTime.Format(`2006-01-02 15:04:05 PM`)
-		stoptimedisplay := "(running)"
+		stoptimedisplay := "RUNNING"
 		durationdisplay := "(unknown)"
 		if sheet.StopTime.Valid {
 			stoptimedisplay = sheet.StopTime.Time.Format(`2006-01-02 15:04:05 PM`)
@@ -81,8 +71,8 @@ func dumpTimesheets(_ *cobra.Command, _ []string) error {
 		}
 		rec := []*simpletable.Cell{
 			{Text: strconv.Itoa(int(sheet.ID))},
-			{Text: strconv.Itoa(int(task.ID))},
-			{Text: task.Synopsis},
+			{Text: strconv.Itoa(int(sheet.Task.ID))},
+			{Text: sheet.Task.Synopsis},
 			{Text: starttimedisplay},
 			{Text: stoptimedisplay},
 			{Text: durationdisplay},

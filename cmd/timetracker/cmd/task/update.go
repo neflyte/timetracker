@@ -13,10 +13,11 @@ import (
 
 var (
 	UpdateCmd = &cobra.Command{
-		Use:   "update [task id]",
-		Short: "Update task details",
-		Args:  cobra.ExactArgs(1),
-		RunE:  updateTask,
+		Use:     "update [task id]",
+		Aliases: []string{"u"},
+		Short:   "Update task details",
+		Args:    cobra.ExactArgs(1),
+		RunE:    updateTask,
 	}
 	updateSynopsis    string
 	updateDescription string

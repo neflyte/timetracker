@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"bufio"
 	"fmt"
 	"github.com/rs/zerolog"
 	"os"
@@ -15,7 +14,6 @@ const (
 var (
 	rootLogger        zerolog.Logger
 	logFileHandle     *os.File
-	logFileWriter     *bufio.Writer
 	loggerInitialized = false
 )
 
@@ -42,16 +40,16 @@ func InitLogger() {
 		_ = os.MkdirAll(logPath, 0755)
 		logFilePath := path.Join(logPath, logFileName)
 		// fmt.Printf("logFilePath=%s\n", logFilePath)
-		logFileHandle, err = os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		logFileHandle, err = os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 		if err != nil {
 			logFileHandle = nil
 		}
+		// TODO: allow for different log levels
 		if logFileHandle != nil {
-			logFileWriter = bufio.NewWriter(logFileHandle)
+			rootLogger = zerolog.New(logFileHandle).With().Timestamp().Logger().Level(zerolog.DebugLevel)
 		} else {
-			logFileWriter = bufio.NewWriter(os.Stdout)
+			rootLogger = zerolog.New(&zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger().Level(zerolog.DebugLevel)
 		}
-		rootLogger = zerolog.New(logFileWriter).With().Timestamp().Logger()
 		loggerInitialized = true
 	}
 }

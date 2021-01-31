@@ -13,9 +13,10 @@ import (
 
 var (
 	ListCmd = &cobra.Command{
-		Use:   "list",
-		Short: "List tasks",
-		RunE:  listTasks,
+		Use:     "list",
+		Aliases: []string{"l", "ls"},
+		Short:   "List tasks",
+		RunE:    listTasks,
 	}
 	listDeletedTasks = false
 )
@@ -30,13 +31,13 @@ func listTasks(_ *cobra.Command, _ []string) error {
 	if listDeletedTasks {
 		db = database.DB.Unscoped()
 	}
-	rows, err := db.Model(new(models.Task)).Rows()
+	tasks := make([]models.Task, 0)
+	err := db.Find(&tasks).Error
 	if err != nil {
 		fmt.Println(chalk.Red, "Error getting result row:", chalk.White, chalk.Dim.TextStyle(err.Error()))
 		log.Err(err).Msg("error getting result row")
 		return err
 	}
-	defer database.CloseRows(rows)
 	table := simpletable.New()
 	table.Header = &simpletable.Header{
 		Cells: []*simpletable.Cell{
@@ -47,14 +48,7 @@ func listTasks(_ *cobra.Command, _ []string) error {
 			{Text: "Updated At"},
 		},
 	}
-	var task models.Task
-	for rows.Next() {
-		err = db.ScanRows(rows, &task)
-		if err != nil {
-			fmt.Println(chalk.Red, "Error scanning result row:", chalk.White, chalk.Dim.TextStyle(err.Error()))
-			log.Err(err).Msg("error scanning row into &models.Task")
-			return err
-		}
+	for _, task := range tasks {
 		rec := []*simpletable.Cell{
 			{Text: strconv.Itoa(int(task.ID))},
 			{Text: task.Synopsis},

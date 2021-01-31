@@ -6,13 +6,12 @@ import (
 	"github.com/neflyte/timetracker/internal/logger"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	gormlog "gorm.io/gorm/logger"
 )
 
 var (
 	DB         *gorm.DB
 	gormConfig = &gorm.Config{
-		Logger: gormlog.Default.LogMode(gormlog.Silent),
+		Logger: NewGormLogger(),
 	}
 )
 

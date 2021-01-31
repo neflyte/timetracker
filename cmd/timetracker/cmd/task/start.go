@@ -14,26 +14,29 @@ import (
 
 var (
 	StartCmd = &cobra.Command{
-		Use:   "start [task id/synopsis]",
-		Short: "Start a task",
-		Args:  cobra.ExactArgs(1),
-		RunE:  startTask,
+		Use:     "start [task id/synopsis]",
+		Aliases: []string{"s"},
+		Short:   "Start a task",
+		Args:    cobra.ExactArgs(1),
+		RunE:    startTask,
 	}
 )
 
 func startTask(_ *cobra.Command, args []string) error {
 	var err error
 	log := logger.GetLogger("startTask")
+	log.Debug().Msgf("args=%#v", args)
 	taskid, tasksyn := utils.ResolveTask(args[0])
 	taskdisplay := tasksyn
 	if taskid > -1 {
 		taskdisplay = strconv.Itoa(taskid)
 	}
+	log.Debug().Msgf("taskdisplay=%s", taskdisplay)
 	task := new(models.Task)
 	if taskid > -1 {
 		err = database.DB.Find(&task, uint(taskid)).Error
 	} else {
-		err = database.DB.Where("synopsis = ?", tasksyn).First(&task).Error
+		err = database.DB.Where(&models.Task{Synopsis: tasksyn}).First(&task).Error
 	}
 	if err != nil {
 		fmt.Println(chalk.Red, "Error reading task", taskdisplay, chalk.White, chalk.Dim.TextStyle(err.Error()))
@@ -46,9 +49,7 @@ func startTask(_ *cobra.Command, args []string) error {
 		log.Err(err).Msg("error stopping running task")
 		return err
 	}
-	timesheet := new(models.Timesheet)
-	timesheet.TaskID = task.ID
-	timesheet.StartTime = time.Now()
+	timesheet := &models.Timesheet{Task: *task, StartTime: time.Now()}
 	err = database.DB.Create(&timesheet).Error
 	if err != nil {
 		fmt.Println(chalk.Red, "Error creating timesheet for task", taskdisplay, chalk.White, chalk.Dim.TextStyle(err.Error()))

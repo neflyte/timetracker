@@ -29,7 +29,7 @@ var (
 func init() {
 	cobra.OnInitialize(initDatabase)
 	rootCmd.PersistentFlags().StringVarP(&configFileName, "config", "c", "", "Specify the full path and filename of the database to use")
-	rootCmd.AddCommand(taskCmd, timesheetCmd)
+	rootCmd.AddCommand(taskCmd, timesheetCmd, statusCmd)
 	rootCmd.SetVersionTemplate(fmt.Sprintf("timetracker %s", AppVersion))
 }
 

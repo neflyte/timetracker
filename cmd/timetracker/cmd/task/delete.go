@@ -12,10 +12,11 @@ import (
 
 var (
 	DeleteCmd = &cobra.Command{
-		Use:   "delete [task id]",
-		Short: "Mark a task as deleted",
-		Args:  cobra.ExactArgs(1),
-		RunE:  deleteTask,
+		Use:     "delete [task id]",
+		Aliases: []string{"d", "rm"},
+		Short:   "Mark a task as deleted",
+		Args:    cobra.ExactArgs(1),
+		RunE:    deleteTask,
 	}
 )
 

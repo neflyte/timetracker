@@ -7,9 +7,10 @@ import (
 
 var (
 	taskCmd = &cobra.Command{
-		Use:   "task",
-		Short: "Task operations",
-		Long:  "Perform various operations on a task",
+		Use:     "task",
+		Aliases: []string{"t"},
+		Short:   "Task operations",
+		Long:    "Perform various operations on a task",
 	}
 )
 
