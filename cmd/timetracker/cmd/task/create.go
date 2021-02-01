@@ -1,6 +1,7 @@
 package task
 
 import (
+	"errors"
 	"fmt"
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/logger"
@@ -15,6 +16,7 @@ var (
 		Use:     "create [synopsis] [description]",
 		Aliases: []string{"c"},
 		Short:   "Create a task",
+		Args:    cobra.MaximumNArgs(2),
 		RunE:    createTask,
 	}
 	taskSynopsis    string
@@ -24,14 +26,27 @@ var (
 func init() {
 	CreateCmd.Flags().StringVarP(&taskSynopsis, "synopsis", "s", "", "A short description of the task")
 	CreateCmd.Flags().StringVarP(&taskDescription, "description", "d", "", "A long description of the task")
-	_ = CreateCmd.MarkFlagRequired("synopsis")
 }
 
-func createTask(_ *cobra.Command, _ []string) error {
+func createTask(_ *cobra.Command, args []string) error {
 	log := logger.GetLogger("createTask")
 	task := new(models.Task)
-	task.Synopsis = taskSynopsis
-	task.Description = taskDescription
+	if len(args) == 0 && taskSynopsis == "" {
+		// Need an argument!
+		return errors.New("need at least a synopsis to create a new task")
+	}
+	if len(args) > 0 {
+		task.Synopsis = args[0]
+	}
+	if taskSynopsis != "" {
+		task.Synopsis = taskSynopsis
+	}
+	if len(args) > 1 {
+		task.Description = args[1]
+	}
+	if taskDescription != "" {
+		task.Description = taskDescription
+	}
 	err := database.DB.Create(task).Error
 	if err != nil {
 		fmt.Println(chalk.Red, "Error creating new task:", chalk.White, chalk.Dim.TextStyle(err.Error()))

@@ -3,6 +3,7 @@ package timesheet
 import (
 	"fmt"
 	"github.com/alexeyco/simpletable"
+	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
@@ -34,11 +35,11 @@ func dumpTimesheets(_ *cobra.Command, _ []string) (err error) {
 	sheets := make([]models.Timesheet, 0)
 	if startDate != "" && endDate != "" {
 		var dStart, dEnd time.Time
-		dStart, err = time.Parse("2006-01-02", startDate)
+		dStart, err = time.Parse(constants.TimestampDateLayout, startDate)
 		if err != nil {
 			return err
 		}
-		dEnd, err = time.Parse("2006-01-02", endDate)
+		dEnd, err = time.Parse(constants.TimestampDateLayout, endDate)
 		if err != nil {
 			return err
 		}
@@ -61,13 +62,12 @@ func dumpTimesheets(_ *cobra.Command, _ []string) (err error) {
 		},
 	}
 	for _, sheet := range sheets {
-		starttimedisplay := sheet.StartTime.Format(`2006-01-02 15:04:05 PM`)
+		starttimedisplay := sheet.StartTime.Format(constants.TimestampLayout)
 		stoptimedisplay := "RUNNING"
 		durationdisplay := "(unknown)"
 		if sheet.StopTime.Valid {
-			stoptimedisplay = sheet.StopTime.Time.Format(`2006-01-02 15:04:05 PM`)
-			diff := sheet.StopTime.Time.Sub(sheet.StartTime)
-			durationdisplay = diff.String()
+			stoptimedisplay = sheet.StopTime.Time.Format(constants.TimestampLayout)
+			durationdisplay = sheet.StopTime.Time.Sub(sheet.StartTime).Truncate(time.Second).String()
 		}
 		rec := []*simpletable.Cell{
 			{Text: strconv.Itoa(int(sheet.ID))},

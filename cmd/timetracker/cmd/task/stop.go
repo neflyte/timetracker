@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
@@ -89,7 +90,8 @@ func stopTask(_ *cobra.Command, args []string) error {
 		chalk.White, chalk.Dim.TextStyle("Task"), strconv.Itoa(int(timesheet.TaskID)),
 		chalk.Yellow, "stopped",
 		chalk.White, chalk.Dim.TextStyle("at"),
-		timesheet.StopTime.Time.Format(`2006-01-02 15:04:05 PM`),
+		timesheet.StopTime.Time.Format(constants.TimestampLayout),
+		chalk.Blue, timesheet.StopTime.Time.Sub(timesheet.StartTime).Truncate(time.Second).String(),
 	)
 	return nil
 }

@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
@@ -22,10 +23,8 @@ var (
 	}
 )
 
-func startTask(_ *cobra.Command, args []string) error {
-	var err error
+func startTask(_ *cobra.Command, args []string) (err error) {
 	log := logger.GetLogger("startTask")
-	log.Debug().Msgf("args=%#v", args)
 	taskid, tasksyn := utils.ResolveTask(args[0])
 	taskdisplay := tasksyn
 	if taskid > -1 {
@@ -57,10 +56,12 @@ func startTask(_ *cobra.Command, args []string) error {
 		return err
 	}
 	fmt.Println(
-		chalk.White, chalk.Dim.TextStyle("Task"), taskdisplay,
+		chalk.White, "Task", taskdisplay,
+		chalk.Cyan, task.Synopsis,
+		chalk.Magenta, chalk.Dim.TextStyle("("+task.Description+")"),
 		chalk.Blue, "started",
-		chalk.White, chalk.Dim.TextStyle("at"),
-		timesheet.StartTime.Format(`2006-01-02 15:04:05 PM`),
+		chalk.White, "at",
+		timesheet.StartTime.Format(constants.TimestampLayout),
 	)
 	return nil
 }
