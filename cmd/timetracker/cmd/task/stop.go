@@ -2,16 +2,14 @@ package task
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
+	"github.com/fatih/color"
 	"github.com/neflyte/timetracker/internal/constants"
-	"github.com/neflyte/timetracker/internal/database"
+	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/spf13/cobra"
-	"github.com/ttacon/chalk"
-	"strconv"
 	"time"
 )
 
@@ -34,10 +32,9 @@ func stopTask(_ *cobra.Command, args []string) error {
 	log := logger.GetLogger("stopTask")
 	// Stop the currently-running task (if any)
 	if stopRunningTask {
-		err := utils.StopRunningTask()
+		err := models.Task(new(models.TaskData)).StopRunningTask()
 		if err != nil {
-			fmt.Println(chalk.Red, "Error stopping running task:", chalk.White, chalk.Dim.TextStyle(err.Error()))
-			log.Err(err).Msgf("error stopping running task")
+			utils.PrintAndLogError(errors.StopRunningTaskError, err, log)
 			return err
 		}
 		return nil
@@ -47,51 +44,47 @@ func stopTask(_ *cobra.Command, args []string) error {
 		// FIXME: No arg, can't do anything
 		return nil
 	}
-	taskid, tasksyn := utils.ResolveTask(args[0])
-	timesheet := new(models.Timesheet)
-	if taskid == -1 && tasksyn != "" {
-		task := new(models.Task)
-		err := database.DB.Where(&models.Task{Synopsis: tasksyn}).Find(&task).Error
-		if err != nil {
-			fmt.Println(chalk.Red, "Error reading task", tasksyn, ":", chalk.White, chalk.Dim.TextStyle(err.Error()))
-			log.Err(err).Msgf("error reading task %s", tasksyn)
-			return err
-		}
-		taskid = int(task.ID)
-	}
-	if taskid == -1 && tasksyn == "" {
-		err := errors.New("no task id or synopsis specified")
-		fmt.Println(chalk.Red, "Unable to stop task:", chalk.White, chalk.Dim.TextStyle(err.Error()))
-		log.Err(err).Msg("unable to stop task")
+	taskData := new(models.TaskData)
+	taskData.ID, taskData.Synopsis = utils.ResolveTask(args[0])
+	err := models.Task(taskData).Load(false)
+	if err != nil {
+		utils.PrintAndLogError(errors.LoadTaskError, err, log)
 		return err
 	}
-	// TODO: Is the following line expressible in Gorm syntax?
-	result := database.DB.Where("task_id = ? AND stop_time IS NULL", uint(taskid)).Find(&timesheet)
-	if result.Error != nil {
-		fmt.Println(chalk.Red, "Error looking for started task:", chalk.White, chalk.Dim.TextStyle(result.Error.Error()))
-		log.Err(result.Error).Msg("error looking for started task")
-		return result.Error
+	timesheetData := new(models.TimesheetData)
+	// result := database.DB.Where("task_id = ? AND stop_time IS NULL",taskData.ID).Find(&timesheetData)
+	openTimesheets, err := models.Timesheet(timesheetData).SearchOpen()
+	if err != nil {
+		utils.PrintAndLogError(errors.SearchOpenTimesheetsError, err, log)
+		return err
+	}
+	// Sanity check: there should be at most one element in the openTimesheets slice
+	if len(openTimesheets) > 1 {
+		err = fmt.Errorf("%s", errors.TooManyOpenTimesheetsError)
+		utils.PrintAndLogError("", err, log)
+		return err
+	}
+	if len(openTimesheets) == 1 {
+		timesheetData = &openTimesheets[0]
 	}
 	stoptime := new(sql.NullTime)
-	err := stoptime.Scan(time.Now())
+	err = stoptime.Scan(time.Now())
 	if err != nil {
-		fmt.Println(chalk.Red, "Error scanning time.Now() into sql.NullTime:", chalk.White, chalk.Dim.TextStyle(err.Error()))
-		log.Err(err).Msg("error scanning time.Now() into sql.NullTime")
+		utils.PrintAndLogError(errors.ScanNowIntoSQLNullTimeError, err, log)
 		return err
 	}
-	timesheet.StopTime = *stoptime
-	err = database.DB.Save(&timesheet).Error
+	timesheetData.StopTime = *stoptime
+	err = models.Timesheet(timesheetData).Update()
+	// err = database.DB.Save(&timesheetData).Error
 	if err != nil {
-		fmt.Println(chalk.Red, "Error stopping task", strconv.Itoa(int(timesheet.TaskID)), chalk.White, chalk.Dim.TextStyle(err.Error()))
-		log.Err(err).Msgf("error stopping task id %d (timesheet id %d)", timesheet.TaskID, timesheet.ID)
+		utils.PrintAndLogError(errors.UpdateTimesheetError, err, log)
 		return err
 	}
 	fmt.Println(
-		chalk.White, chalk.Dim.TextStyle("Task"), strconv.Itoa(int(timesheet.TaskID)),
-		chalk.Yellow, "stopped",
-		chalk.White, chalk.Dim.TextStyle("at"),
-		timesheet.StopTime.Time.Format(constants.TimestampLayout),
-		chalk.Blue, timesheet.StopTime.Time.Sub(timesheet.StartTime).Truncate(time.Second).String(),
+		color.WhiteString("Task %d ", timesheetData.Task.ID),
+		color.YellowString("stopped"),
+		color.WhiteString(" at %s ", timesheetData.StopTime.Time.Format(constants.TimestampLayout)),
+		color.BlueString(timesheetData.StopTime.Time.Sub(timesheetData.StartTime).Truncate(time.Second).String()),
 	)
 	return nil
 }

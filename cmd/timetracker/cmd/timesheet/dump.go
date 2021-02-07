@@ -1,14 +1,16 @@
 package timesheet
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/alexeyco/simpletable"
+	"github.com/fatih/color"
 	"github.com/neflyte/timetracker/internal/constants"
-	"github.com/neflyte/timetracker/internal/database"
+	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/spf13/cobra"
-	"github.com/ttacon/chalk"
 	"strconv"
 	"time"
 )
@@ -20,19 +22,20 @@ var (
 		Short:   "Dumps all timesheets",
 		RunE:    dumpTimesheets,
 	}
-	startDate string
-	endDate   string
+	startDate   string
+	endDate     string
+	withDeleted bool
 )
 
 func init() {
 	DumpCmd.Flags().StringVar(&startDate, "startDate", "", "start date (YYYY-MM-DD)")
 	DumpCmd.Flags().StringVar(&endDate, "endDate", "", "end date (YYYY-MM-DD)")
+	DumpCmd.Flags().BoolVar(&withDeleted, "deleted", false, "include deleted timesheets")
 }
 
 func dumpTimesheets(_ *cobra.Command, _ []string) (err error) {
 	log := logger.GetLogger("dumpTimesheets")
-	db := database.DB.Joins("Task")
-	sheets := make([]models.Timesheet, 0)
+	var sheets []models.TimesheetData
 	if startDate != "" && endDate != "" {
 		var dStart, dEnd time.Time
 		dStart, err = time.Parse(constants.TimestampDateLayout, startDate)
@@ -43,12 +46,20 @@ func dumpTimesheets(_ *cobra.Command, _ []string) (err error) {
 		if err != nil {
 			return err
 		}
-		db = db.Where("start_time >= ? AND stop_time <= ?", dStart, dEnd)
+		sheets, err = models.Timesheet(&models.TimesheetData{
+			StartTime: dStart,
+			StopTime: sql.NullTime{
+				Valid: true,
+				Time:  dEnd,
+			},
+		}).SearchDateRange()
+		//db = db.Where("start_time >= ? AND stop_time <= ?", dStart, dEnd)
+	} else {
+		sheets, err = models.Timesheet(new(models.TimesheetData)).LoadAll(false)
 	}
-	db = db.Find(&sheets)
-	if db.Error != nil {
-		log.Printf("error querying for timesheets: %s\n", db.Error)
-		return db.Error
+	if err != nil {
+		utils.PrintAndLogError(errors.ListTimesheetError, err, log)
+		return err
 	}
 	table := simpletable.New()
 	table.Header = &simpletable.Header{
@@ -80,7 +91,7 @@ func dumpTimesheets(_ *cobra.Command, _ []string) (err error) {
 		table.Body.Cells = append(table.Body.Cells, rec)
 	}
 	if len(table.Body.Cells) == 0 {
-		fmt.Println(chalk.White, "There are no timesheets")
+		fmt.Println(color.WhiteString("There are no timesheets"))
 		return nil
 	}
 	table.SetStyle(simpletable.StyleCompactLite)

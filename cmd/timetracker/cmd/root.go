@@ -66,7 +66,7 @@ func initDatabase() {
 	}
 	log.Printf("database opened")
 	database.DB = db
-	err = db.AutoMigrate(new(models.Task), new(models.Timesheet))
+	err = db.AutoMigrate(new(models.TaskData), new(models.TimesheetData))
 	if err != nil {
 		cleanUp(nil, nil)
 		log.Fatal().Msgf("error auto-migrating database schema: %s\n", err)

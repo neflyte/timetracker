@@ -2,15 +2,13 @@ package task
 
 import (
 	"fmt"
+	"github.com/fatih/color"
 	"github.com/neflyte/timetracker/internal/constants"
-	"github.com/neflyte/timetracker/internal/database"
+	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/spf13/cobra"
-	"github.com/ttacon/chalk"
-	"strconv"
-	"time"
 )
 
 var (
@@ -25,43 +23,36 @@ var (
 
 func startTask(_ *cobra.Command, args []string) (err error) {
 	log := logger.GetLogger("startTask")
-	taskid, tasksyn := utils.ResolveTask(args[0])
-	taskdisplay := tasksyn
-	if taskid > -1 {
-		taskdisplay = strconv.Itoa(taskid)
+	taskData := new(models.TaskData)
+	taskData.ID, taskData.Synopsis = utils.ResolveTask(args[0])
+	taskdisplay := taskData.Synopsis
+	if taskData.ID > 0 {
+		taskdisplay = fmt.Sprintf("%d", taskData.ID)
 	}
 	log.Debug().Msgf("taskdisplay=%s", taskdisplay)
-	task := new(models.Task)
-	if taskid > -1 {
-		err = database.DB.Find(&task, uint(taskid)).Error
-	} else {
-		err = database.DB.Where(&models.Task{Synopsis: tasksyn}).First(&task).Error
-	}
+	err = models.Task(taskData).Load(false)
 	if err != nil {
-		fmt.Println(chalk.Red, "Error reading task", taskdisplay, chalk.White, chalk.Dim.TextStyle(err.Error()))
-		log.Err(err).Msgf("error reading task %s", taskdisplay)
+		utils.PrintAndLogError(errors.LoadTaskError, err, log)
 		return err
 	}
-	err = utils.StopRunningTask()
+	err = models.Task(taskData).StopRunningTask()
 	if err != nil {
-		fmt.Println(chalk.Red, "Error stopping running task:", chalk.White, chalk.Dim.TextStyle(err.Error()))
-		log.Err(err).Msg("error stopping running task")
+		utils.PrintAndLogError(errors.StopRunningTaskError, err, log)
 		return err
 	}
-	timesheet := &models.Timesheet{Task: *task, StartTime: time.Now()}
-	err = database.DB.Create(&timesheet).Error
+	timesheetData := new(models.TimesheetData)
+	timesheetData.Task = *taskData
+	err = models.Timesheet(timesheetData).Create()
 	if err != nil {
-		fmt.Println(chalk.Red, "Error creating timesheet for task", taskdisplay, chalk.White, chalk.Dim.TextStyle(err.Error()))
-		log.Err(err).Msgf("error creating timesheet for task %s", taskdisplay)
+		utils.PrintAndLogError(fmt.Sprintf("%s for task %s", errors.CreateTimesheetError, taskdisplay), err, log)
 		return err
 	}
 	fmt.Println(
-		chalk.White, "Task", taskdisplay,
-		chalk.Cyan, task.Synopsis,
-		chalk.Magenta, chalk.Dim.TextStyle("("+task.Description+")"),
-		chalk.Blue, "started",
-		chalk.White, "at",
-		timesheet.StartTime.Format(constants.TimestampLayout),
+		color.WhiteString("Task %s ", taskdisplay),
+		color.CyanString(taskData.Synopsis),
+		color.MagentaString(" (%s)", taskData.Description),
+		color.BlueString(" started "),
+		color.WhiteString("at %s", timesheetData.StartTime.Format(constants.TimestampLayout)),
 	)
 	return nil
 }

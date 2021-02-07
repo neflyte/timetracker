@@ -1,6 +1,6 @@
 # timetracker Makefile
 
-.PHONY: build clean lint dist dist7z
+.PHONY: build clean lint test dist dist7z
 
 APPVERSION=$(shell cat VERSION)
 OSES=darwin linux
@@ -16,6 +16,9 @@ clean:
 
 lint:
 	{ type -p golangci-lint >/dev/null 2>&1 && golangci-lint run; } || true
+
+test:
+	go test -v -count=1 ./...
 
 dist: lint
 	[ -d dist ] || mkdir dist

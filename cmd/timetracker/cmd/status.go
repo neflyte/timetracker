@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/fatih/color"
 	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/logger"
-	"github.com/neflyte/timetracker/internal/utils"
+	"github.com/neflyte/timetracker/internal/models"
 	"github.com/spf13/cobra"
-	"github.com/ttacon/chalk"
 	"time"
 )
 
@@ -37,26 +37,28 @@ func status(_ *cobra.Command, _ []string) error {
 			fmt.Println()
 		}
 	}()
-	timesheet, err := utils.GetRunningTimesheet()
+	timesheetData := new(models.TimesheetData)
+	timesheets, err := models.Timesheet(timesheetData).SearchOpen()
 	if err != nil {
 		log.Err(err).Msg("error getting running timesheet")
-		fmt.Print(chalk.Red, constants.UnicodeHeavyX)
+		fmt.Print(color.RedString(constants.UnicodeHeavyX))
 		if verbose {
-			fmt.Print("Error:", chalk.White, chalk.Dim.TextStyle(err.Error()))
+			fmt.Print("Error:", color.WhiteString(err.Error()))
 		}
 		return err
 	}
-	if timesheet == nil {
+	if len(timesheets) == 0 {
 		// No running task
-		fmt.Print(chalk.Green, constants.UnicodeHeavyCheckmark)
+		fmt.Print(color.GreenString(constants.UnicodeHeavyCheckmark))
 	} else {
 		// Running task...
-		fmt.Print(chalk.Yellow, constants.UnicodeClock)
+		timesheetData = &timesheets[0]
+		fmt.Print(color.YellowString(constants.UnicodeClock))
 		if synopsis || verbose {
-			fmt.Print(" ", chalk.White, timesheet.Task.Synopsis)
+			fmt.Print(" ", color.WhiteString(timesheetData.Task.Synopsis))
 		}
 		if verbose {
-			fmt.Print(" ", chalk.Blue, time.Since(timesheet.StartTime).Truncate(time.Second).String())
+			fmt.Print(" ", color.BlueString(time.Since(timesheetData.StartTime).Truncate(time.Second).String()))
 		}
 	}
 	return nil

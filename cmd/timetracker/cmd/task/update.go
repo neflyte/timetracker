@@ -1,14 +1,13 @@
 package task
 
 import (
-	"errors"
 	"fmt"
-	"github.com/neflyte/timetracker/internal/database"
+	"github.com/fatih/color"
+	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/spf13/cobra"
-	"github.com/ttacon/chalk"
-	"strconv"
 )
 
 var (
@@ -33,54 +32,46 @@ func init() {
 func updateTask(_ *cobra.Command, args []string) error {
 	log := logger.GetLogger("updateTask")
 	if updateSynopsis == "" && updateDescription == "" && !updateUndelete {
-		fmt.Println(chalk.White, chalk.Dim.TextStyle("no updates specified; nothing to do"))
+		fmt.Println(color.WhiteString("no updates specified; nothing to do"))
 		log.Info().Msg("no updates specified; nothing to do")
 		return nil
 	}
-	taskid, err := strconv.Atoi(args[0])
+	taskData := new(models.TaskData)
+	taskData.ID, _ = utils.ResolveTask(args[0])
+	err := models.Task(taskData).Load(true)
 	if err != nil {
-		fmt.Println(chalk.Red, "Error converting argument", args[0], "into a number", chalk.White, chalk.Dim.TextStyle(err.Error()))
-		log.Err(err).Msgf("error converting argument (%s) into a number", args[0])
+		utils.PrintAndLogError(errors.LoadTaskError, err, log)
 		return err
 	}
-	task := new(models.Task)
-	// We use Unscoped() here since we might be undeleting a task
-	err = database.DB.Unscoped().Find(&task, uint(taskid)).Error
-	if err != nil {
-		fmt.Println(chalk.Red, "Error reading task", strconv.Itoa(taskid), chalk.White, chalk.Dim.TextStyle(err.Error()))
-		log.Err(err).Msgf("error reading task id %d", taskid)
-		return err
-	}
-	if task.DeletedAt.Valid {
+	if taskData.DeletedAt.Valid {
 		if updateUndelete {
-			task.DeletedAt.Valid = false
-			err = database.DB.Unscoped().Save(&task).Error
+			taskData.DeletedAt.Valid = false
+			// err = database.DB.Unscoped().Save(&task).Error
+			err = models.Task(taskData).Update(true)
 			if err != nil {
-				fmt.Println(chalk.Red, "Error undeleting task", strconv.Itoa(taskid), chalk.White, chalk.Dim.TextStyle(err.Error()))
-				log.Err(err).Msgf("error undeleting task id %d", taskid)
+				utils.PrintAndLogError(errors.UndeleteTaskError, err, log)
 				return err
 			}
-			fmt.Println(chalk.White, chalk.Dim.TextStyle("Task ID"), strconv.Itoa(int(task.ID)), chalk.Green, "undeleted")
-			log.Info().Msgf("task id %d undeleted", task.ID)
+			fmt.Println(color.WhiteString("Task ID %d ", taskData.ID), color.GreenString("undeleted"))
+			log.Info().Msgf("task id %d undeleted", taskData.ID)
 			return nil
 		}
-		err = errors.New("cannot update a deleted task")
-		fmt.Println(chalk.Red, "Task ID", strconv.Itoa(int(task.ID)), "is deleted")
-		log.Err(err).Msgf("task id %d is deleted", task.ID)
+		err = fmt.Errorf("task id %d is deleted", taskData.ID)
+		utils.PrintAndLogError(errors.UpdateDeletedTaskError, err, log)
 		return err
 	}
 	if updateSynopsis != "" {
-		task.Synopsis = updateSynopsis
+		taskData.Synopsis = updateSynopsis
 	}
 	if updateDescription != "" {
-		task.Description = updateDescription
+		taskData.Description = updateDescription
 	}
-	err = database.DB.Save(&task).Error
+	// err = database.DB.Save(&task).Error
+	err = models.Task(taskData).Update(false)
 	if err != nil {
-		fmt.Println(chalk.Red, "Error updating task", strconv.Itoa(taskid), chalk.White, chalk.Dim.TextStyle(err.Error()))
-		log.Err(err).Msgf("error updating task id %d", taskid)
+		utils.PrintAndLogError(errors.UpdateTaskError, err, log)
 		return err
 	}
-	fmt.Println(chalk.White, chalk.Dim.TextStyle("Task ID"), strconv.Itoa(int(task.ID)), chalk.Green, "updated")
+	fmt.Println(color.WhiteString("Task ID %d ", taskData.ID), color.GreenString("updated"))
 	return nil
 }

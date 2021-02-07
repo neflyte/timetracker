@@ -3,11 +3,12 @@ package task
 import (
 	"fmt"
 	"github.com/alexeyco/simpletable"
-	"github.com/neflyte/timetracker/internal/database"
+	"github.com/neflyte/timetracker/internal/constants"
+	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/spf13/cobra"
-	"github.com/ttacon/chalk"
 	"strconv"
 )
 
@@ -27,21 +28,16 @@ func init() {
 
 func listTasks(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("listTasks")
-	db := database.DB
-	if listDeletedTasks {
-		db = database.DB.Unscoped()
-	}
-	tasks := make([]models.Task, 0)
-	err := db.Find(&tasks).Error
+	task := models.Task(new(models.TaskData))
+	tasks, err := task.LoadAll(listDeletedTasks)
 	if err != nil {
-		fmt.Println(chalk.Red, "Error getting result row:", chalk.White, chalk.Dim.TextStyle(err.Error()))
-		log.Err(err).Msg("error getting result row")
+		utils.PrintAndLogError(errors.ListTaskError, err, log)
 		return err
 	}
 	table := simpletable.New()
 	table.Header = &simpletable.Header{
 		Cells: []*simpletable.Cell{
-			{Text: "#"},
+			{Text: "ID"},
 			{Text: "Synopsis"},
 			{Text: "Description"},
 			{Text: "Created At"},
@@ -53,8 +49,8 @@ func listTasks(_ *cobra.Command, _ []string) error {
 			{Text: strconv.Itoa(int(task.ID))},
 			{Text: task.Synopsis},
 			{Text: task.Description},
-			{Text: task.CreatedAt.Format(`2006-01-02 15:04:05 PM`)},
-			{Text: task.UpdatedAt.Format(`2006-01-02 15:04:05 PM`)},
+			{Text: task.CreatedAt.Format(constants.TimestampLayout)},
+			{Text: task.UpdatedAt.Format(constants.TimestampLayout)},
 		}
 		table.Body.Cells = append(table.Body.Cells, rec)
 	}
