@@ -80,7 +80,7 @@ func (tsd *TimesheetData) SearchOpen() ([]TimesheetData, error) {
 	if tsd.Task.ID > 0 {
 		args["task_id"] = tsd.Task.ID
 	}
-	err := database.DB.Joins("TaskData").Model(tsd).Where(args).Find(&timesheets).Error
+	err := database.DB.Model(tsd).Joins("TaskData").Where(args).Find(&timesheets).Error
 	return timesheets, err
 }
 

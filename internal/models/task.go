@@ -27,6 +27,7 @@ type Task interface {
 	Search(text string) ([]TaskData, error)
 	Update(withDeleted bool) error
 	StopRunningTask() error
+	Clear()
 }
 
 func (td *TaskData) Create() error {
@@ -139,5 +140,24 @@ func (td *TaskData) StopRunningTask() error {
 		color.WhiteString(" at %s ", timesheetData.StopTime.Time.Format(constants.TimestampLayout)),
 		color.BlueString(timesheetData.StopTime.Time.Sub(timesheetData.StartTime).Truncate(time.Second).String()),
 	)
+	return nil
+}
+
+func (td *TaskData) Clear() {
+	td.ID = 0
+	td.Synopsis = ""
+	td.Description = ""
+	td.CreatedAt = time.Now()
+	td.DeletedAt.Time = time.Now()
+	td.DeletedAt.Valid = false
+	td.UpdatedAt = time.Now()
+}
+
+func FindTaskBySynopsis(tasks []TaskData, synopsis string) *TaskData {
+	for _, task := range tasks {
+		if task.Synopsis == synopsis {
+			return &task
+		}
+	}
 	return nil
 }
