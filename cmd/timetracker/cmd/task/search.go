@@ -3,6 +3,7 @@ package task
 import (
 	"fmt"
 	"github.com/alexeyco/simpletable"
+	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
@@ -43,8 +44,8 @@ func searchTask(_ *cobra.Command, args []string) error {
 			{Text: strconv.Itoa(int(task.ID))},
 			{Text: task.Synopsis},
 			{Text: task.Description},
-			{Text: task.CreatedAt.Format(`2006-01-02 15:04:05 PM`)},
-			{Text: task.UpdatedAt.Format(`2006-01-02 15:04:05 PM`)},
+			{Text: task.CreatedAt.Format(constants.TimestampLayout)},
+			{Text: task.UpdatedAt.Format(constants.TimestampLayout)},
 		}
 		table.Body.Cells = append(table.Body.Cells, rec)
 	}

@@ -49,7 +49,7 @@ func (td *TaskData) Create() error {
 }
 
 func (td *TaskData) Load(withDeleted bool) error {
-	if td.ID <= 0 && td.Synopsis == "" {
+	if td.ID == 0 && td.Synopsis == "" {
 		return errors.ErrInvalidTaskState{
 			Details: "cannot load a task that does not exist",
 		}
@@ -58,7 +58,10 @@ func (td *TaskData) Load(withDeleted bool) error {
 	if withDeleted {
 		db = db.Unscoped()
 	}
-	return db.First(td).Error
+	if td.ID > 0 {
+		return db.First(td, td.ID).Error
+	}
+	return db.Where("synopsis = ?", td.Synopsis).First(td).Error
 }
 
 func (td *TaskData) Delete() error {
@@ -127,7 +130,7 @@ func (td *TaskData) StopRunningTask() error {
 	stoptime := new(sql.NullTime)
 	err = stoptime.Scan(time.Now())
 	if err != nil {
-		log.Err(err).Msg("error scanning time.Now() into sql.NullTime")
+		utils.PrintAndLogError(errors.ScanNowIntoSQLNullTimeError, err, log)
 		return err
 	}
 	timesheetData.StopTime = *stoptime
@@ -138,9 +141,9 @@ func (td *TaskData) StopRunningTask() error {
 	}
 	log.Info().Msgf("task id %d (timesheet id %d) stopped\n", timesheetData.Task.ID, timesheetData.ID)
 	fmt.Println(
-		color.WhiteString("Task ID %d ", timesheetData.Task.ID),
+		color.WhiteString("Task ID %d", timesheetData.Task.ID),
 		color.YellowString("stopped"),
-		color.WhiteString(" at %s ", timesheetData.StopTime.Time.Format(constants.TimestampLayout)),
+		color.WhiteString("at %s", timesheetData.StopTime.Time.Format(constants.TimestampLayout)),
 		color.BlueString(timesheetData.StopTime.Time.Sub(timesheetData.StartTime).Truncate(time.Second).String()),
 	)
 	return nil

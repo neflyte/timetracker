@@ -46,13 +46,12 @@ func updateTask(_ *cobra.Command, args []string) error {
 	if taskData.DeletedAt.Valid {
 		if updateUndelete {
 			taskData.DeletedAt.Valid = false
-			// err = database.DB.Unscoped().Save(&task).Error
 			err = models.Task(taskData).Update(true)
 			if err != nil {
 				utils.PrintAndLogError(errors.UndeleteTaskError, err, log)
 				return err
 			}
-			fmt.Println(color.WhiteString("Task ID %d ", taskData.ID), color.GreenString("undeleted"))
+			fmt.Println(color.WhiteString("Task ID %d", taskData.ID), color.GreenString("undeleted"))
 			log.Info().Msgf("task id %d undeleted", taskData.ID)
 			return nil
 		}
@@ -66,12 +65,11 @@ func updateTask(_ *cobra.Command, args []string) error {
 	if updateDescription != "" {
 		taskData.Description = updateDescription
 	}
-	// err = database.DB.Save(&task).Error
 	err = models.Task(taskData).Update(false)
 	if err != nil {
 		utils.PrintAndLogError(errors.UpdateTaskError, err, log)
 		return err
 	}
-	fmt.Println(color.WhiteString("Task ID %d ", taskData.ID), color.GreenString("updated"))
+	fmt.Println(color.WhiteString("Task ID %d", taskData.ID), color.GreenString("updated"))
 	return nil
 }

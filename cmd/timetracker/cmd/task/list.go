@@ -28,8 +28,7 @@ func init() {
 
 func listTasks(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("listTasks")
-	task := models.Task(new(models.TaskData))
-	tasks, err := task.LoadAll(listDeletedTasks)
+	tasks, err := models.Task(new(models.TaskData)).LoadAll(listDeletedTasks)
 	if err != nil {
 		utils.PrintAndLogError(errors.ListTaskError, err, log)
 		return err

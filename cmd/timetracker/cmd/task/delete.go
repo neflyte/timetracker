@@ -24,8 +24,7 @@ func deleteTask(_ *cobra.Command, args []string) error {
 	log := logger.GetLogger("deleteTask")
 	taskData := new(models.TaskData)
 	taskData.ID, taskData.Synopsis = utils.ResolveTask(args[0])
-	task := models.Task(taskData)
-	err := task.Delete()
+	err := models.Task(taskData).Delete()
 	if err != nil {
 		utils.PrintAndLogError(fmt.Sprintf("%s; task=%#v", errors.DeleteTaskError, taskData), err, log)
 		return err

@@ -31,16 +31,19 @@ func startTask(_ *cobra.Command, args []string) (err error) {
 		taskdisplay = fmt.Sprintf("%d", taskData.ID)
 	}
 	log.Debug().Msgf("taskdisplay=%s", taskdisplay)
+	// Load the task to make sure it exists
 	err = models.Task(taskData).Load(false)
 	if err != nil {
 		utils.PrintAndLogError(errors.LoadTaskError, err, log)
 		return err
 	}
+	// Stop any running task
 	err = models.Task(taskData).StopRunningTask()
 	if err != nil {
 		utils.PrintAndLogError(errors.StopRunningTaskError, err, log)
 		return err
 	}
+	// Create a new timesheet for the task
 	timesheetData := new(models.TimesheetData)
 	timesheetData.Task = *taskData
 	timesheetData.StartTime = time.Now()
@@ -50,10 +53,10 @@ func startTask(_ *cobra.Command, args []string) (err error) {
 		return err
 	}
 	fmt.Println(
-		color.WhiteString("Task %s ", taskdisplay),
+		color.WhiteString("Task ID %d ", taskData.ID),
 		color.CyanString(taskData.Synopsis),
-		color.MagentaString(" (%s)", taskData.Description),
-		color.BlueString(" started "),
+		color.MagentaString("(%s) ", taskData.Description),
+		color.GreenString("started"),
 		color.WhiteString("at %s", timesheetData.StartTime.Format(constants.TimestampLayout)),
 	)
 	return nil

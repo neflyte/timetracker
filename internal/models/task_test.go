@@ -32,6 +32,27 @@ func TestUnit_Task_CreateAndLoad_Nominal(t *testing.T) {
 	require.Equal(t, "This is a task", td2.Description)
 }
 
+func TestUnit_Task_Load_NotFound(t *testing.T) {
+	db := MustOpenTestDB(t)
+	defer CloseTestDB(t, db)
+	database.DB = db
+
+	// Create a task
+	td := new(TaskData)
+	td.Synopsis = "Task-1"
+	td.Description = "This is a task"
+	err := Task(td).Create()
+	require.Nil(t, err)
+	require.True(t, td.ID > 0)
+
+	// Try to load a task that does not exist
+	td2 := new(TaskData)
+	td2.ID = 2
+	err = Task(td2).Load(false)
+	require.NotNil(t, err)
+	require.True(t, errors.Is(err, gorm.ErrRecordNotFound))
+}
+
 func TestUnit_Task_Create_InvalidID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
@@ -63,26 +84,54 @@ func TestUnit_Task_Create_EmptySynopsis(t *testing.T) {
 	require.True(t, ok)
 }
 
-func TestUnit_Task_Load_BySynopsis(t *testing.T) {
+func TestUnit_Task_Load_BySynopsis_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
 	database.DB = db
 
-	// Create a task
-	td := new(TaskData)
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
-	err := Task(td).Create()
-	require.Nil(t, err)
-	require.True(t, td.ID > 0)
+	// Create some tasks
+	tasks := []TaskData{
+		{Synopsis: "Task-1", Description: "Task number one"},
+		{Synopsis: "Task-2", Description: "Task number two"},
+		{Synopsis: "Task-3", Description: "Task number three"},
+	}
+	for _, task := range tasks {
+		err := Task(&task).Create()
+		require.Nil(t, err)
+	}
 
-	// Load the task we just created using the synopsis
-	td2 := new(TaskData)
-	td2.Synopsis = td.Synopsis
-	err = Task(td2).Load(false)
+	// Load the Task-2 task using its synopsis
+	td := new(TaskData)
+	td.Synopsis = "Task-2"
+	err := Task(td).Load(false)
 	require.Nil(t, err)
-	require.Equal(t, "Task-1", td2.Synopsis)
-	require.Equal(t, "This is a task", td2.Description)
+	require.NotEqual(t, 0, td.ID)
+	require.Equal(t, "Task-2", td.Synopsis)
+	require.Equal(t, "Task number two", td.Description)
+}
+
+func TestUnit_Task_Load_BySynopsis_NotFound(t *testing.T) {
+	db := MustOpenTestDB(t)
+	defer CloseTestDB(t, db)
+	database.DB = db
+
+	// Create some tasks
+	tasks := []TaskData{
+		{Synopsis: "Task-1", Description: "Task number one"},
+		{Synopsis: "Task-2", Description: "Task number two"},
+		{Synopsis: "Task-3", Description: "Task number three"},
+	}
+	for _, task := range tasks {
+		err := Task(&task).Create()
+		require.Nil(t, err)
+	}
+
+	// Try loading Task-4 which does not exist
+	td := new(TaskData)
+	td.Synopsis = "Task-4"
+	err := Task(td).Load(false)
+	require.NotNil(t, err)
+	require.True(t, errors.Is(err, gorm.ErrRecordNotFound))
 }
 
 func TestUnit_Task_Load_WithDeleted(t *testing.T) {

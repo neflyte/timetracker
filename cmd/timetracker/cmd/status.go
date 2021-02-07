@@ -54,7 +54,7 @@ func status(_ *cobra.Command, _ []string) error {
 		timesheet := timesheets[0]
 		fmt.Print(color.YellowString(constants.UnicodeClock))
 		if synopsis || verbose {
-			fmt.Print(" ", color.WhiteString(timesheet.Task.Synopsis))
+			fmt.Print(" ", color.HiWhiteString(timesheet.Task.Synopsis))
 		}
 		if verbose {
 			fmt.Print(" ", color.HiBlueString(time.Since(timesheet.StartTime).Truncate(time.Second).String()))
