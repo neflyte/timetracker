@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 
 func MustOpenTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(TestDSN), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Error),
+		Logger: logger.Default.LogMode(logger.Warn),
 	})
 	if err != nil {
 		t.Fatalf("error opening test db: %s", err)

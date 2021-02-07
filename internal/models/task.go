@@ -19,6 +19,10 @@ type TaskData struct {
 	Description string
 }
 
+func (td *TaskData) TableName() string {
+	return "task"
+}
+
 type Task interface {
 	Create() error
 	Load(withDeleted bool) error
@@ -127,7 +131,6 @@ func (td *TaskData) StopRunningTask() error {
 		return err
 	}
 	timesheetData.StopTime = *stoptime
-	// err = database.DB.Save(&timesheet).Error
 	err = Timesheet(timesheetData).Update()
 	if err != nil {
 		utils.PrintAndLogError(errors.StopRunningTaskError, err, log)
