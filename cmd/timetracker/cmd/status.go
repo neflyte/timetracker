@@ -37,8 +37,7 @@ func status(_ *cobra.Command, _ []string) error {
 			fmt.Println()
 		}
 	}()
-	timesheetData := new(models.TimesheetData)
-	timesheets, err := models.Timesheet(timesheetData).SearchOpen()
+	timesheets, err := models.Timesheet(new(models.TimesheetData)).SearchOpen()
 	if err != nil {
 		log.Err(err).Msg("error getting running timesheet")
 		fmt.Print(color.RedString(constants.UnicodeHeavyX))
@@ -52,13 +51,13 @@ func status(_ *cobra.Command, _ []string) error {
 		fmt.Print(color.GreenString(constants.UnicodeHeavyCheckmark))
 	} else {
 		// Running task...
-		timesheetData = &timesheets[0]
+		timesheet := timesheets[0]
 		fmt.Print(color.YellowString(constants.UnicodeClock))
 		if synopsis || verbose {
-			fmt.Print(" ", color.WhiteString(timesheetData.Task.Synopsis))
+			fmt.Print(" ", color.WhiteString(timesheet.Task.Synopsis))
 		}
 		if verbose {
-			fmt.Print(" ", color.BlueString(time.Since(timesheetData.StartTime).Truncate(time.Second).String()))
+			fmt.Print(" ", color.HiBlueString(time.Since(timesheet.StartTime).Truncate(time.Second).String()))
 		}
 	}
 	return nil

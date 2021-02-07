@@ -9,6 +9,7 @@ import (
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/spf13/cobra"
+	"time"
 )
 
 var (
@@ -42,6 +43,7 @@ func startTask(_ *cobra.Command, args []string) (err error) {
 	}
 	timesheetData := new(models.TimesheetData)
 	timesheetData.Task = *taskData
+	timesheetData.StartTime = time.Now()
 	err = models.Timesheet(timesheetData).Create()
 	if err != nil {
 		utils.PrintAndLogError(fmt.Sprintf("%s for task %s", errors.CreateTimesheetError, taskdisplay), err, log)
