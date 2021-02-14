@@ -25,16 +25,12 @@ func (gl *gormLogger) LogMode(level gormLog.LogLevel) gormLog.Interface {
 	switch level {
 	case gormLog.Silent:
 		g.log = g.log.Level(zerolog.NoLevel)
-		break
 	case gormLog.Info:
 		g.log = g.log.Level(zerolog.InfoLevel)
-		break
 	case gormLog.Warn:
 		g.log = g.log.Level(zerolog.WarnLevel)
-		break
 	case gormLog.Error:
 		g.log = g.log.Level(zerolog.ErrorLevel)
-		break
 	}
 	return &g
 }

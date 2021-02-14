@@ -13,12 +13,16 @@ import (
 	"time"
 )
 
+const (
+	createCmdMaxNumberArgs = 2
+)
+
 var (
 	CreateCmd = &cobra.Command{
 		Use:     "create [synopsis] [description]",
 		Aliases: []string{"c"},
 		Short:   "Create a task",
-		Args:    cobra.MaximumNArgs(2),
+		Args:    cobra.MaximumNArgs(createCmdMaxNumberArgs),
 		RunE:    createTask,
 	}
 	taskSynopsis         string

@@ -95,8 +95,8 @@ func TestUnit_Task_Load_BySynopsis_Nominal(t *testing.T) {
 		{Synopsis: "Task-2", Description: "Task number two"},
 		{Synopsis: "Task-3", Description: "Task number three"},
 	}
-	for _, task := range tasks {
-		err := Task(&task).Create()
+	for idx := range tasks {
+		err := Task(&tasks[idx]).Create()
 		require.Nil(t, err)
 	}
 
@@ -121,8 +121,8 @@ func TestUnit_Task_Load_BySynopsis_NotFound(t *testing.T) {
 		{Synopsis: "Task-2", Description: "Task number two"},
 		{Synopsis: "Task-3", Description: "Task number three"},
 	}
-	for _, task := range tasks {
-		err := Task(&task).Create()
+	for idx := range tasks {
+		err := Task(&tasks[idx]).Create()
 		require.Nil(t, err)
 	}
 
@@ -225,8 +225,8 @@ func TestUnit_Task_LoadAll_Nominal(t *testing.T) {
 		{Synopsis: "Task-2", Description: "Task number two"},
 		{Synopsis: "Task-3", Description: "Task number three"},
 	}
-	for _, task := range tasks {
-		err := Task(&task).Create()
+	for idx := range tasks {
+		err := Task(&tasks[idx]).Create()
 		require.Nil(t, err)
 	}
 
@@ -251,8 +251,8 @@ func TestUnit_Task_LoadAll_WithDeleted(t *testing.T) {
 		{Synopsis: "Task-2", Description: "Task number two"},
 		{Synopsis: "Task-3", Description: "Task number three"},
 	}
-	for _, task := range tasks {
-		err := Task(&task).Create()
+	for idx := range tasks {
+		err := Task(&tasks[idx]).Create()
 		require.Nil(t, err)
 	}
 
