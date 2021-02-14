@@ -13,6 +13,7 @@ require (
 	github.com/rs/zerolog v1.20.0
 	github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify v1.3.0
+	github.com/visualfc/atk v1.2.2
 	gorm.io/driver/sqlite v1.1.4
 	gorm.io/gorm v1.20.9
 )
