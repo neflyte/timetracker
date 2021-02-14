@@ -8,25 +8,25 @@ GO_LDFLAGS=-ldflags "-X cmd.root.AppVersion=$(APPVERSION)"
 BINPREFIX=timetracker-$(APPVERSION)_
 
 build:
-	go build -i -installsuffix $(shell go env GOOS) -pkgdir $(shell go env GOPATH)/pkg $(GO_LDFLAGS) -o timetracker ./cmd/timetracker
+	if [ ! -d dist ]; then mkdir dist; fi
+	go build -i -installsuffix $(shell go env GOOS) -pkgdir $(shell go env GOPATH)/pkg $(GO_LDFLAGS) -o dist/timetracker ./cmd/timetracker
 
 clean-coverage:
-	{ [ -f cover.out ] && rm -f cover.out; } || true
-	{ [ -f coverage.html ] && rm -f coverage.html; } || true
+	if [ -d coverage ]; then rm -Rf coverage; fi
 
 clean: clean-coverage
-	{ [ -f timetracker ] && rm -f timetracker; } || true
-	{ [ -d dist ] && rm -Rf dist; } || true
+	if [ -d dist ]; then rm -Rf dist; fi
 
 lint:
-	{ type -p golangci-lint >/dev/null 2>&1 && golangci-lint run; } || true
+	golangci-lint run
 
 test: clean-coverage
-	go test -covermode=count -coverprofile=cover.out ./...
-	go tool cover -html=cover.out -o coverage.html
+	if [ ! -d coverage ]; then mkdir coverage; fi
+	go test -covermode=count -coverprofile=coverage/cover.out ./...
+	go tool cover -html=coverage/cover.out -o coverage/coverage.html
 
 dist: lint
-	[ -d dist ] || mkdir dist
+	@if [ ! -d dist ]; then mkdir dist; fi
 	@for os in $(OSES); do \
 		echo "Building for $$os" && \
   		GOARCH=amd64 GOOS=$$os go build -i -installsuffix $$os -pkgdir $(shell go env GOPATH)/pkg -o dist/$(BINPREFIX)$$os-amd64 ./cmd/timetracker && \

@@ -4,7 +4,6 @@
 *.dll
 *.so
 *.dylib
-./timetracker
 dist/
 
 # Test binary, built with `go test -c`
@@ -18,4 +17,4 @@ coverage.html
 # vendor/
 
 # IntelliJ
-.idea
+.idea/
