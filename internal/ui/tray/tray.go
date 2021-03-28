@@ -124,54 +124,64 @@ func onExit() {
 
 func mainLoop(quitChan chan bool, app fyne.App) {
 	log := logger.GetLogger("tray.mainLoop")
+	statusLoopQuitChan := make(chan bool, 1)
 	// Start the status loop in a goroutine
-	go statusLoop()
+	go statusLoop(statusLoopQuitChan)
 	// Start main loop
 	log.Debug().Msg("starting main loop")
 	for {
 		select {
 		case <-mStatus.ClickedCh:
 			log.Debug().Msg("status menu item selected")
-			if statusError != nil {
-				gui.NewErrorDialogWindow(app, "Task Status Error", statusError, nil, nil).Show()
-			} else {
-				switch lastState {
-				case TimesheetStatusRunning:
-					gui.NewConfirmDialogWindow(
-						app,
-						"Stop running task?",
-						fmt.Sprintf(
-							"Stop task %s (%s)",
-							runningTimesheet.Task.Synopsis,
-							time.Since(runningTimesheet.StartTime).Truncate(time.Second).String(),
-						),
-						nil,
-						func(b bool) {
-							if b {
-								// Stop the running task
-								log.Debug().Msgf("stopping task %s", runningTimesheet.Task.Synopsis)
-								err := models.Task(new(models.TaskData)).StopRunningTask()
-								if err != nil {
-									log.Err(err).Msg(errors.StopRunningTaskError)
-								}
+			switch lastState {
+			case TimesheetStatusRunning:
+				gui.NewConfirmDialogWindow(
+					app,
+					"Stop running task?",
+					fmt.Sprintf(
+						"Stop task %s (%s)",
+						runningTimesheet.Task.Synopsis,
+						time.Since(runningTimesheet.StartTime).Truncate(time.Second).String(),
+					),
+					nil,
+					func(b bool) {
+						if b {
+							// Stop the running task
+							log.Debug().Msgf("stopping task %s", runningTimesheet.Task.Synopsis)
+							err := models.Task(new(models.TaskData)).StopRunningTask()
+							if err != nil {
+								log.Err(err).Msg(errors.StopRunningTaskError)
 							}
-						},
-					).Show()
-				}
+						}
+					},
+				).Show()
+			case TimesheetStatusError:
+				gui.NewErrorDialogWindow(
+					app,
+					"timetracker Error",
+					statusError,
+					nil,
+					nil,
+				).Show()
+			case TimesheetStatusIdle:
+				// TODO: Show the main GUI window or give it focus if it is already showing
 			}
 		case <-mAbout.ClickedCh:
 			log.Debug().Msg("about menu item selected")
 		case <-mQuit.ClickedCh:
 			log.Debug().Msg("quit menu item selected; quitting app")
+			statusLoopQuitChan <- true
 			app.Quit()
 			return
 		case <-quitChan:
+			log.Debug().Msg("quit channel fired; exiting function")
+			statusLoopQuitChan <- true
 			return
 		}
 	}
 }
 
-func statusLoop() {
+func statusLoop(quitChan chan bool) {
 	var err error
 	var timesheets []models.TimesheetData
 
@@ -227,6 +237,12 @@ func statusLoop() {
 		}
 		// Delay
 		log.Debug().Msgf("delaying %d seconds until next timesheet check", statusLoopDelaySeconds)
-		<-time.After(statusLoopDelaySeconds * time.Second)
+		select {
+		case <-quitChan:
+			log.Debug().Msg("quit channel fired; exiting function")
+			return
+		case <-time.After(statusLoopDelaySeconds * time.Second):
+			break
+		}
 	}
 }
