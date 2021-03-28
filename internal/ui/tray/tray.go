@@ -2,12 +2,15 @@ package tray
 
 import (
 	"fmt"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
 	"github.com/getlantern/systray"
+	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/neflyte/timetracker/internal/ui/gui"
 	"github.com/neflyte/timetracker/internal/ui/icons"
 	"github.com/nightlyone/lockfile"
-	"github.com/visualfc/atk/tk"
 	"os"
 	"path"
 	"sync"
@@ -33,6 +36,9 @@ var (
 	lastState        int
 	runningTimesheet *models.TimesheetData
 	wg               sync.WaitGroup
+	a                fyne.App
+	mw               fyne.Window
+	trayQuitChan     chan bool
 )
 
 func Run() (err error) {
@@ -52,6 +58,10 @@ func Run() (err error) {
 		}
 	}
 	pidPath = path.Join(userConfigDir, trayPidfile)
+	// Set up fyne
+	a = app.New()
+	mw = a.NewWindow("timetracker")
+	mw.SetMaster()
 	// Start the systray in a goroutine
 	wg = sync.WaitGroup{}
 	wg.Add(1)
@@ -60,8 +70,15 @@ func Run() (err error) {
 	log.Debug().Msg("waiting for systray")
 	wg.Wait()
 	log.Debug().Msg("systray initialized")
-	// Start the Tk main loop
-	err = tk.MainLoop(mainLoop)
+	// Start mainLoop
+	trayQuitChan = make(chan bool, 1)
+	go mainLoop(trayQuitChan, a)
+	// Start fyne
+	a.Run()
+	// Shut down mainLoop
+	trayQuitChan <- true
+	// Shut down systray
+	systray.Quit()
 	return
 }
 
@@ -103,10 +120,9 @@ func onExit() {
 		return
 	}
 	log.Debug().Msg("unlocked pidfile")
-	tk.Quit()
 }
 
-func mainLoop() {
+func mainLoop(quitChan chan bool, app fyne.App) {
 	log := logger.GetLogger("tray.mainLoop")
 	// Start the status loop in a goroutine
 	go statusLoop()
@@ -117,51 +133,39 @@ func mainLoop() {
 		case <-mStatus.ClickedCh:
 			log.Debug().Msg("status menu item selected")
 			if statusError != nil {
-				_, err := tk.MessageBox(
-					tk.RootWindow(),
-					"Task Status Error",
-					"Task Status Error",
-					statusError.Error(),
-					"ok",
-					tk.MessageBoxIconNone,
-					tk.MessageBoxTypeOk,
-				)
-				if err != nil {
-					log.Err(err).Msg("error from error message box")
-				}
-				_ = tk.RootWindow().SetVisible(false)
+				gui.NewErrorDialogWindow(app, "Task Status Error", statusError, nil, nil).Show()
 			} else {
 				switch lastState {
 				case TimesheetStatusRunning:
-					result, err := tk.MessageBox(
-						tk.RootWindow(),
+					gui.NewConfirmDialogWindow(
+						app,
 						"Stop running task?",
 						fmt.Sprintf(
 							"Stop task %s (%s)",
 							runningTimesheet.Task.Synopsis,
 							time.Since(runningTimesheet.StartTime).Truncate(time.Second).String(),
 						),
-						fmt.Sprintf("Do you want to stop task %s?", runningTimesheet.Task.Synopsis),
-						"no",
-						tk.MessageBoxIconNone,
-						tk.MessageBoxTypeYesNo,
-					)
-					if err != nil {
-						log.Err(err).Msg("error from yes/no msgbox")
-						// TODO: handle error
-					}
-					_ = tk.RootWindow().SetVisible(false)
-					if result == "yes" {
-						log.Debug().Msgf("stopping task %s", runningTimesheet.Task.Synopsis)
-						// TODO: stop task
-					}
+						nil,
+						func(b bool) {
+							if b {
+								// Stop the running task
+								log.Debug().Msgf("stopping task %s", runningTimesheet.Task.Synopsis)
+								err := models.Task(new(models.TaskData)).StopRunningTask()
+								if err != nil {
+									log.Err(err).Msg(errors.StopRunningTaskError)
+								}
+							}
+						},
+					).Show()
 				}
 			}
 		case <-mAbout.ClickedCh:
 			log.Debug().Msg("about menu item selected")
 		case <-mQuit.ClickedCh:
-			log.Debug().Msg("quit menu item selected; quitting systray")
-			systray.Quit()
+			log.Debug().Msg("quit menu item selected; quitting app")
+			app.Quit()
+			return
+		case <-quitChan:
 			return
 		}
 	}
