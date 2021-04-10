@@ -32,6 +32,12 @@ type Task interface {
 	Update(withDeleted bool) error
 	StopRunningTask() error
 	Clear()
+	String() string
+}
+
+// String implements Stringer
+func (td *TaskData) String() string {
+	return fmt.Sprintf("[%d] %s: %s", td.ID, td.Synopsis, td.Description)
 }
 
 func (td *TaskData) Create() error {

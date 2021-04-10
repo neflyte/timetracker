@@ -3,6 +3,7 @@ package logger
 import (
 	"fmt"
 	"github.com/rs/zerolog"
+	"io"
 	"os"
 	"path"
 )
@@ -12,44 +13,57 @@ const (
 )
 
 var (
-	rootLogger        zerolog.Logger
+	RootLogger        zerolog.Logger // RootLogger is the application root logger instance
 	logFileHandle     *os.File
+	logFilePath       string
+	logPath           string
 	loggerInitialized = false
 )
 
-func InitLogger() {
+func InitLogger(logLevel string, console bool) {
+	var err error
+
 	if !loggerInitialized {
-		// Look for XDG_CONFIG_HOME
-		configHome, err := os.UserConfigDir()
-		if err != nil {
-			configHome = ""
-		}
-		// Look for HOME
-		if configHome == "" {
-			configHome, err = os.UserHomeDir()
-			if err != nil {
-				configHome = ""
-			}
-		}
-		// Use CWD
-		if configHome == "" {
-			configHome = "."
-		}
-		logPath := path.Join(configHome, "timetracker")
-		// fmt.Printf("logPath=%s\n", logPath)
+		configHome := GetConfigHome()
+		logPath = path.Join(configHome, "timetracker")
 		_ = os.MkdirAll(logPath, 0755)
-		logFilePath := path.Join(logPath, logFileName)
-		// fmt.Printf("logFilePath=%s\n", logFilePath)
+		logFilePath = path.Join(logPath, logFileName)
 		logFileHandle, err = os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 		if err != nil {
 			logFileHandle = nil
 		}
-		// TODO: allow for different log levels
+		// Set up the log writers
+		logWriters := make([]io.Writer, 0)
 		if logFileHandle != nil {
-			rootLogger = zerolog.New(logFileHandle).With().Timestamp().Logger().Level(zerolog.DebugLevel)
-		} else {
-			rootLogger = zerolog.New(&zerolog.ConsoleWriter{Out: os.Stderr}).With().Timestamp().Logger().Level(zerolog.DebugLevel)
+			logWriters = append(logWriters, logFileHandle)
 		}
+		if console || logFileHandle == nil {
+			logWriters = append(logWriters, zerolog.ConsoleWriter{Out: os.Stderr})
+		}
+		// Create a new root logger
+		if len(logWriters) > 1 {
+			multi := zerolog.MultiLevelWriter(logWriters...)
+			RootLogger = zerolog.New(multi).With().Timestamp().Logger()
+		} else {
+			RootLogger = zerolog.New(logWriters[0]).With().Timestamp().Logger()
+		}
+		// Set global logger message level
+		lvl := zerolog.InfoLevel
+		switch logLevel {
+		case "fatal":
+			lvl = zerolog.FatalLevel
+		case "error":
+			lvl = zerolog.ErrorLevel
+		case "warn":
+			lvl = zerolog.WarnLevel
+		case "info":
+			lvl = zerolog.InfoLevel
+		case "debug":
+			lvl = zerolog.DebugLevel
+		case "trace":
+			lvl = zerolog.TraceLevel
+		}
+		zerolog.SetGlobalLevel(lvl)
 		loggerInitialized = true
 	}
 }
@@ -69,7 +83,29 @@ func CleanupLogger() {
 
 func GetLogger(funcName string) zerolog.Logger {
 	if !loggerInitialized {
-		InitLogger()
+		return zerolog.New(&zerolog.ConsoleWriter{Out: os.Stderr}).
+			With().Timestamp().Str("func", funcName).Logger().
+			Level(zerolog.TraceLevel)
 	}
-	return rootLogger.With().Str("func", funcName).Logger()
+	return RootLogger.With().Str("func", funcName).Logger()
+}
+
+func GetConfigHome() string {
+	// Look for XDG_CONFIG_HOME
+	configHome, err := os.UserConfigDir()
+	if err != nil {
+		configHome = ""
+	}
+	// Look for HOME
+	if configHome == "" {
+		configHome, err = os.UserHomeDir()
+		if err != nil {
+			configHome = ""
+		}
+	}
+	// Use CWD
+	if configHome == "" {
+		configHome = "."
+	}
+	return configHome
 }

@@ -84,5 +84,6 @@ func (e *errorDialogWindow) Callback() {
 	if e.cb != nil {
 		e.cb()
 	}
-	e.w.Close()
+	e.w.Hide()
+	CloseWindow(e.w)
 }

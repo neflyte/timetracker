@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	gormLog "gorm.io/gorm/logger"
 	"strconv"
 	"time"
@@ -61,7 +60,7 @@ func (gl *gormLogger) Trace(_ context.Context, begin time.Time, fc func() (strin
 	if rows > -1 {
 		rowsStr = strconv.Itoa(int(rows))
 	}
-	log.Trace().
+	gl.log.Trace().
 		Str("elapsed", elapsed.String()).
 		Str("err", errStr).
 		Str("rows", rowsStr).

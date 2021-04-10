@@ -5,6 +5,8 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"github.com/getlantern/systray"
+	"github.com/neflyte/timetracker/internal/appstate"
+	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
@@ -18,27 +20,19 @@ import (
 )
 
 const (
-	TimesheetStatusIdle = iota
-	TimesheetStatusRunning
-	TimesheetStatusError
-
 	trayPidfile            = "timetracker-tray.pid"
 	statusLoopDelaySeconds = 5
 )
 
 var (
-	mStatus          *systray.MenuItem
-	mAbout           *systray.MenuItem
-	mQuit            *systray.MenuItem
-	lockFile         lockfile.Lockfile
-	pidPath          string
-	statusError      error
-	lastState        int
-	runningTimesheet *models.TimesheetData
-	wg               sync.WaitGroup
-	a                fyne.App
-	mw               fyne.Window
-	trayQuitChan     chan bool
+	mStatus      *systray.MenuItem
+	mAbout       *systray.MenuItem
+	mQuit        *systray.MenuItem
+	lockFile     lockfile.Lockfile
+	pidPath      string
+	wg           sync.WaitGroup
+	FyneApp      fyne.App
+	trayQuitChan chan bool
 )
 
 func Run() (err error) {
@@ -58,13 +52,23 @@ func Run() (err error) {
 		}
 	}
 	pidPath = path.Join(userConfigDir, trayPidfile)
+	log.Trace().Msgf("pidPath=%s", pidPath)
 	// Set up fyne
-	a = app.New()
-	mw = a.NewWindow("timetracker")
-	mw.SetMaster()
+	log.Trace().Msg("setting up FyneApp")
+	FyneApp = app.New()
+	// Create the main timetracker window
+	log.Trace().Msg("creating timetracker window")
+	ttw := gui.TimetrackerWindow(&FyneApp)
+	if ttw != nil {
+		log.Trace().Msg("set ttw as master, then hide it")
+		// Set the window as the master and hide it
+		(*ttw).SetMaster()
+		(*ttw).Hide()
+	}
 	// Start the systray in a goroutine
 	wg = sync.WaitGroup{}
 	wg.Add(1)
+	log.Trace().Msg("go systray.Run(...)")
 	go systray.Run(onReady, onExit)
 	// Wait for the systray to finish initializing
 	log.Debug().Msg("waiting for systray")
@@ -72,9 +76,23 @@ func Run() (err error) {
 	log.Debug().Msg("systray initialized")
 	// Start mainLoop
 	trayQuitChan = make(chan bool, 1)
-	go mainLoop(trayQuitChan, a)
+	log.Trace().Msg("go mainLoop(...)")
+	go mainLoop(trayQuitChan, FyneApp)
+	// Start window closer
+	log.Trace().Msg("starting window closer")
+	err = gui.StartWindowCloser()
+	if err != nil {
+		log.Err(err).Msg("error starting window closer")
+	}
 	// Start fyne
-	a.Run()
+	log.Trace().Msg("FyneApp.Run()")
+	FyneApp.Run()
+	log.Trace().Msg("FyneApp finished")
+	// Stop window closer
+	err = gui.StopWindowCloser()
+	if err != nil {
+		log.Err(err).Msg("error stopping window closer")
+	}
 	// Shut down mainLoop
 	trayQuitChan <- true
 	// Shut down systray
@@ -86,6 +104,7 @@ func onReady() {
 	var err error
 
 	log := logger.GetLogger("tray.onReady")
+	log.Trace().Msg("starting")
 	defer func() {
 		// Signal that we're initialized
 		log.Debug().Msg("signalling true")
@@ -110,31 +129,36 @@ func onReady() {
 	systray.AddSeparator()
 	mAbout = systray.AddMenuItem("About Timetracker", "About the Timetracker app")
 	mQuit = systray.AddMenuItem("Quit", "Quit the Timetracker tray app")
+	log.Trace().Msg("done")
 }
 
 func onExit() {
 	log := logger.GetLogger("tray.onExit")
+	log.Trace().Msg("started")
 	err := lockFile.Unlock()
 	if err != nil {
 		log.Err(err).Msgf("error releasing pidfile")
 		return
 	}
 	log.Debug().Msg("unlocked pidfile")
+	log.Trace().Msg("done")
 }
 
 func mainLoop(quitChan chan bool, app fyne.App) {
 	log := logger.GetLogger("tray.mainLoop")
+	log.Trace().Msg("starting")
 	statusLoopQuitChan := make(chan bool, 1)
 	// Start the status loop in a goroutine
+	log.Trace().Msg("go statusLoop(...)")
 	go statusLoop(statusLoopQuitChan)
 	// Start main loop
-	log.Debug().Msg("starting main loop")
 	for {
 		select {
 		case <-mStatus.ClickedCh:
 			log.Debug().Msg("status menu item selected")
-			switch lastState {
-			case TimesheetStatusRunning:
+			switch appstate.GetLastState() {
+			case constants.TimesheetStatusRunning:
+				runningTimesheet := appstate.GetRunningTimesheet()
 				gui.NewConfirmDialogWindow(
 					app,
 					"Stop running task?",
@@ -155,19 +179,27 @@ func mainLoop(quitChan chan bool, app fyne.App) {
 						}
 					},
 				).Show()
-			case TimesheetStatusError:
+			case constants.TimesheetStatusError:
 				gui.NewErrorDialogWindow(
 					app,
 					"timetracker Error",
-					statusError,
+					appstate.GetStatusError(),
 					nil,
 					nil,
 				).Show()
-			case TimesheetStatusIdle:
-				// TODO: Show the main GUI window or give it focus if it is already showing
+			case constants.TimesheetStatusIdle:
+				// Show the main GUI window
+				gui.ShowTimetrackerWindow(nil)
 			}
 		case <-mAbout.ClickedCh:
 			log.Debug().Msg("about menu item selected")
+			gui.NewErrorDialogWindow(
+				app,
+				"About Box",
+				fmt.Errorf("this is actually an about box"),
+				nil,
+				nil,
+			).Show()
 		case <-mQuit.ClickedCh:
 			log.Debug().Msg("quit menu item selected; quitting app")
 			statusLoopQuitChan <- true
@@ -186,41 +218,42 @@ func statusLoop(quitChan chan bool) {
 	var timesheets []models.TimesheetData
 
 	log := logger.GetLogger("tray.statusLoop")
-	log.Debug().Msg("starting status loop")
-	statusError = nil
-	lastState = TimesheetStatusIdle // Start with idle state
-	runningTimesheet = nil          // Start with no running timesheet
+	log.Trace().Msg("starting")
+	appstate.SetStatusError(nil)
+	appstate.SetLastState(constants.TimesheetStatusIdle) // Start with idle state
+	appstate.SetRunningTimesheet(nil)                    // Start with no running timesheet
 	tsd := new(models.TimesheetData)
 	for {
-		log.Debug().Msg("getting running timesheet")
+		// log.Debug().Msg("getting running timesheet")
 		timesheets, err = models.Timesheet(tsd).SearchOpen()
-		statusError = err
+		appstate.SetStatusError(err)
 		if err != nil {
-			runningTimesheet = nil // Reset running timesheet
+			// log.Trace().Msg("set nil running timesheet")
+			appstate.SetRunningTimesheet(nil) // Reset running timesheet
 			log.Err(err).Msg("error getting running timesheet")
-			if lastState != TimesheetStatusError {
+			if appstate.GetLastState() != constants.TimesheetStatusError {
 				// Show error icon
 				systray.SetTemplateIcon(icons.Error, icons.Error)
 				// Update status menu to show `[error]`
 				mStatus.SetTitle("[error]")
-				lastState = TimesheetStatusError
+				appstate.SetLastState(constants.TimesheetStatusError)
 			}
 		} else {
 			if len(timesheets) == 0 {
 				// No running task
-				log.Debug().Msg("no running task")
-				if lastState != TimesheetStatusIdle {
-					runningTimesheet = nil // Reset running timesheet
+				// log.Debug().Msg("no running task")
+				if appstate.GetLastState() != constants.TimesheetStatusIdle {
+					appstate.SetRunningTimesheet(nil) // Reset running timesheet
 					// Show check icon
 					systray.SetTemplateIcon(icons.Check, icons.Check)
 					// Update status menu to show `(idle)`
 					mStatus.SetTitle("(idle)")
-					lastState = TimesheetStatusIdle
+					appstate.SetLastState(constants.TimesheetStatusIdle)
 				}
 			} else {
 				// Running task...
-				log.Debug().Msgf("running task: %#v", timesheets[0])
-				runningTimesheet = &timesheets[0]
+				// log.Debug().Msgf("running task: %#v", timesheets[0])
+				appstate.SetRunningTimesheet(&timesheets[0])
 				// Update status menu item to show task ID and duration
 				statusText := fmt.Sprintf(
 					"%s %s",
@@ -228,15 +261,15 @@ func statusLoop(quitChan chan bool) {
 					time.Since(timesheets[0].StartTime).Truncate(time.Second).String(),
 				)
 				mStatus.SetTitle(statusText)
-				if lastState != TimesheetStatusRunning {
+				if appstate.GetLastState() != constants.TimesheetStatusRunning {
 					// Show running icon
 					systray.SetTemplateIcon(icons.Running, icons.Running)
-					lastState = TimesheetStatusRunning
+					appstate.SetLastState(constants.TimesheetStatusRunning)
 				}
 			}
 		}
 		// Delay
-		log.Debug().Msgf("delaying %d seconds until next timesheet check", statusLoopDelaySeconds)
+		// log.Debug().Msgf("delaying %d seconds until next timesheet check", statusLoopDelaySeconds)
 		select {
 		case <-quitChan:
 			log.Debug().Msg("quit channel fired; exiting function")

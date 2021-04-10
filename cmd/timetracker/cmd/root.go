@@ -24,11 +24,15 @@ var (
 		PersistentPostRun: cleanUp,
 	}
 	configFileName string
+	logLevel       string
+	consoleLogging bool
 )
 
 func init() {
-	cobra.OnInitialize(initDatabase)
+	cobra.OnInitialize(initLogger, initDatabase)
 	rootCmd.PersistentFlags().StringVarP(&configFileName, "config", "c", "", "Specify the full path and filename of the database to use")
+	rootCmd.PersistentFlags().StringVarP(&logLevel, "logLevel", "l", "info", "Specify the logging level")
+	rootCmd.PersistentFlags().BoolVar(&consoleLogging, "console", false, "Log messages to the console as well as the log file")
 	rootCmd.AddCommand(taskCmd, timesheetCmd, statusCmd, trayCmd)
 	rootCmd.SetVersionTemplate(fmt.Sprintf("timetracker %s", AppVersion))
 }
@@ -72,6 +76,10 @@ func initDatabase() {
 		log.Fatal().Msgf("error auto-migrating database schema: %s\n", err)
 	}
 	log.Printf("schema migrated (if necessary)")
+}
+
+func initLogger() {
+	logger.InitLogger(logLevel, consoleLogging)
 }
 
 func cleanUp(_ *cobra.Command, _ []string) {

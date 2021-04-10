@@ -7,3 +7,9 @@ const (
 	UnicodeHeavyCheckmark = "✔"
 	UnicodeHeavyX         = "✘"
 )
+
+const (
+	TimesheetStatusIdle = iota
+	TimesheetStatusRunning
+	TimesheetStatusError
+)

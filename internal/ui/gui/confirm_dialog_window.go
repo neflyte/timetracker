@@ -86,4 +86,5 @@ func (d *confirmDialogWindow) Callback(b bool) {
 	d.result = b
 	d.cb(b)
 	d.w.Hide()
+	CloseWindow(d.w)
 }
