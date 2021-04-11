@@ -10,95 +10,96 @@ import (
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
 	"github.com/neflyte/timetracker/internal/ui/icons"
+	"github.com/rs/zerolog"
 	"regexp"
 	"strconv"
 	"time"
 )
 
-// ttw is the singleton instance of the Timetracker Window
 var (
-	ttw        = TTWindow{}
 	taskNameRE = regexp.MustCompile(`^\[([0-9]+)].*$`)
 )
 
-type TTWindow struct {
-	App               *fyne.App
-	Window            *fyne.Window
-	Container         *fyne.Container
-	TaskList          *widgets.Tasklist
-	BtnStartTask      *widget.Button
-	BtnStopTask       *widget.Button
-	BtnManageTasks    *widget.Button
-	EventLoopQuitChan chan bool
+type TTWindow interface {
+	Show()
+	Hide()
+	Close()
+	Get() ttWindow
 }
 
-func TimetrackerWindow(app *fyne.App) *fyne.Window {
-	if ttw.Window == nil && app != nil {
-		ttw.App = app
-		ttwin := (*app).NewWindow("Timetracker")
-		initTimetrackerWindow(ttwin)
-		go initWindowData() // Load data in a goroutine
-		ttw.Window = &ttwin
+type ttWindow struct {
+	App                  *fyne.App
+	Window               fyne.Window
+	Container            *fyne.Container
+	TaskList             *widgets.Tasklist
+	BtnStartTask         *widget.Button
+	BtnStopTask          *widget.Button
+	BtnManageTasks       *widget.Button
+	EventLoopStartedChan chan bool
+	EventLoopQuitChan    chan bool
+	Log                  zerolog.Logger
+}
+
+func NewTimetrackerWindow(app fyne.App) TTWindow {
+	ttw := &ttWindow{
+		App:               &app,
+		Window:            app.NewWindow("Timetracker"),
+		EventLoopQuitChan: make(chan bool),
+		Log:               logger.GetStructLogger("TTWindow"),
 	}
-	return ttw.Window
+	ttw.Init()
+	return ttw
 }
 
-func ShowTimetrackerWindow(app *fyne.App) {
-	ttwin := TimetrackerWindow(app)
-	if ttwin != nil {
-		if !appstate.GetTTWindowEventLoopRunning() {
-			appstate.SetTTWindowEventLoopRunning(true)
-			go eventLoop(ttw.EventLoopQuitChan)
-		}
-		(*ttwin).Show()
-	}
-}
-
-func initTimetrackerWindow(w fyne.Window) {
-	ttw.TaskList = widgets.NewTasklist(func(s string) {
+func (t *ttWindow) Init() {
+	t.TaskList = widgets.NewTasklist(func(s string) {
 		appstate.SetSelectedTask(s)
 		if s == "" {
-			ttw.BtnStartTask.Disable()
+			t.BtnStartTask.Disable()
 		} else {
-			ttw.BtnStartTask.Enable()
+			t.BtnStartTask.Enable()
 		}
 	})
-	ttw.BtnStartTask = widget.NewButtonWithIcon("START", icons.ResourcePlayCircleOutlineWhitePng, doStartTask)
-	ttw.BtnStartTask.Disable() // Disable the start button by default
-	ttw.BtnStopTask = widget.NewButtonWithIcon("STOP", icons.ResourceStopCircleOutlineWhitePng, doStopTask)
-	ttw.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", icons.ResourceDotsHorizontalCircleOutlineWhitePng, doManageTasks)
-	ttw.Container = container.NewVBox(
-		ttw.TaskList,
-		ttw.BtnStartTask,
-		ttw.BtnStopTask,
-		ttw.BtnManageTasks,
+	t.BtnStartTask = widget.NewButtonWithIcon("START", icons.ResourcePlayCircleOutlineWhitePng, t.doStartTask)
+	t.BtnStartTask.Disable() // Disable the start button by default
+	t.BtnStopTask = widget.NewButtonWithIcon("STOP", icons.ResourceStopCircleOutlineWhitePng, t.doStopTask)
+	t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", icons.ResourceDotsHorizontalCircleOutlineWhitePng, t.doManageTasks)
+	t.Container = container.NewVBox(
+		t.TaskList,
+		t.BtnStartTask,
+		t.BtnStopTask,
+		t.BtnManageTasks,
 	)
-	ttw.EventLoopQuitChan = make(chan bool, 1)
-	w.SetContent(ttw.Container)
-	w.SetFixedSize(true)
-	w.SetCloseIntercept(func() {
-		ttw.EventLoopQuitChan <- true
-		w.Hide()
-	})
+	t.Window.SetContent(t.Container)
+	t.Window.SetFixedSize(true)
+	/*t.Window.SetCloseIntercept(func() {
+		CloseTimetrackerWindow(nil)
+		// FIXME: Track the show/hide state of the window in appstate and add a listener to it for stopping the event loop
+	})*/
+	// spawn a goroutine to load the window's data
+	go t.InitWindowData()
 }
 
-func initWindowData() {
-	log := logger.GetLogger("initWindowData")
+func (t *ttWindow) InitWindowData() {
+	log := t.Log.With().Str("func", "InitWindowData").Logger()
 	log.Trace().Msg("started")
 	// Load the running task
 	runningTS := appstate.GetRunningTimesheet()
 	if runningTS != nil {
 		newSelectedTask := (*runningTS).Task.String()
 		if newSelectedTask != "" {
-			ttw.TaskList.SetSelected(newSelectedTask)
+			t.TaskList.SetSelected(newSelectedTask)
 			log.Debug().Msgf("ttwSelectedTask=%s", newSelectedTask)
 		}
 	}
 	log.Debug().Msg("done")
 }
 
-func eventLoop(quitChan chan bool) {
-	log := logger.GetLogger("eventLoop")
+func (t *ttWindow) eventLoop() {
+	log := t.Log.With().Str("func", "eventLoop").Logger()
+	t.EventLoopStartedChan <- true
+	appstate.SetTTWindowEventLoopRunning(true)
+	defer appstate.SetTTWindowEventLoopRunning(false)
 	log.Debug().Msg("getting observables")
 	chanRunningTimesheet := appstate.ObsRunningTimesheet.Observe()
 	log.Trace().Msg("starting event loop")
@@ -108,13 +109,13 @@ func eventLoop(quitChan chan bool) {
 			runningTS := runningTSItem.V.(*models.TimesheetData)
 			if runningTS == nil {
 				log.Debug().Msg("runningTimesheet is NIL")
-				ttw.BtnStopTask.Disable()
+				t.BtnStopTask.Disable()
 			} else {
 				log.Debug().Msgf("runningTS=%s", (*runningTS).Task.String())
-				ttw.BtnStopTask.Enable()
+				t.BtnStopTask.Enable()
 			}
 			break
-		case <-quitChan:
+		case <-t.EventLoopQuitChan:
 			log.Debug().Msg("received quit signal; ending event loop")
 			appstate.SetTTWindowEventLoopRunning(false)
 			return
@@ -122,13 +123,13 @@ func eventLoop(quitChan chan bool) {
 	}
 }
 
-func doStartTask() {
-	log := logger.GetLogger("doStartTask")
+func (t *ttWindow) doStartTask() {
+	log := t.Log.With().Str("func", "doStartTask").Logger()
 	log.Trace().Msg("started")
 	selectedTask := appstate.GetSelectedTask()
 	if selectedTask == "" {
 		NewErrorDialogWindow(
-			*ttw.App,
+			*t.App,
 			"no task selected",
 			fmt.Errorf("please select a task to start"),
 			nil,
@@ -142,7 +143,7 @@ func doStartTask() {
 		taskIdInt, err := strconv.Atoi(taskIdString)
 		if err != nil {
 			NewErrorDialogWindow(
-				*ttw.App,
+				*t.App,
 				"invalid task id",
 				err,
 				nil,
@@ -154,7 +155,7 @@ func doStartTask() {
 		err = models.Task(taskData).Load(false)
 		if err != nil {
 			NewErrorDialogWindow(
-				*ttw.App,
+				*t.App,
 				"error loading task",
 				err,
 				nil,
@@ -167,22 +168,45 @@ func doStartTask() {
 		err = models.Timesheet(timesheetData).Create()
 		if err != nil {
 			NewErrorDialogWindow(
-				*ttw.App,
+				*t.App,
 				"error starting task",
 				err,
 				nil,
 				nil).Show()
 			return
 		}
-		ttw.BtnStopTask.Enable()
+		t.BtnStopTask.Enable()
 	}
 	log.Trace().Msg("done")
 }
 
-func doStopTask() {
+func (t *ttWindow) doStopTask() {
 	// TODO: Implementation...
 }
 
-func doManageTasks() {
+func (t *ttWindow) doManageTasks() {
 	// TODO: Show manage tasks modal
+}
+
+func (t *ttWindow) Show() {
+	log := t.Log.With().Str("func", "Show").Logger()
+	if !appstate.GetTTWindowEventLoopRunning() {
+		log.Trace().Msg("event loop is not running; starting it")
+		go t.eventLoop()
+		<-t.EventLoopStartedChan
+		appstate.SetTTWindowEventLoopRunning(true)
+	}
+	t.Window.Show()
+}
+
+func (t *ttWindow) Hide() {
+	t.Window.Hide()
+}
+
+func (t *ttWindow) Close() {
+	t.Window.Close()
+}
+
+func (t *ttWindow) Get() ttWindow {
+	return *t
 }

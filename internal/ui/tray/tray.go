@@ -2,8 +2,7 @@ package tray
 
 import (
 	"fmt"
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
+	"github.com/gen2brain/dlgs"
 	"github.com/getlantern/systray"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/constants"
@@ -31,7 +30,6 @@ var (
 	lockFile     lockfile.Lockfile
 	pidPath      string
 	wg           sync.WaitGroup
-	FyneApp      fyne.App
 	trayQuitChan chan bool
 )
 
@@ -53,18 +51,7 @@ func Run() (err error) {
 	}
 	pidPath = path.Join(userConfigDir, trayPidfile)
 	log.Trace().Msgf("pidPath=%s", pidPath)
-	// Set up fyne
-	log.Trace().Msg("setting up FyneApp")
-	FyneApp = app.New()
-	// Create the main timetracker window
-	log.Trace().Msg("creating timetracker window")
-	ttw := gui.TimetrackerWindow(&FyneApp)
-	if ttw != nil {
-		log.Trace().Msg("set ttw as master, then hide it")
-		// Set the window as the master and hide it
-		(*ttw).SetMaster()
-		(*ttw).Hide()
-	}
+
 	// Start the systray in a goroutine
 	wg = sync.WaitGroup{}
 	wg.Add(1)
@@ -76,23 +63,8 @@ func Run() (err error) {
 	log.Debug().Msg("systray initialized")
 	// Start mainLoop
 	trayQuitChan = make(chan bool, 1)
-	log.Trace().Msg("go mainLoop(...)")
-	go mainLoop(trayQuitChan, FyneApp)
-	// Start window closer
-	log.Trace().Msg("starting window closer")
-	err = gui.StartWindowCloser()
-	if err != nil {
-		log.Err(err).Msg("error starting window closer")
-	}
-	// Start fyne
-	log.Trace().Msg("FyneApp.Run()")
-	FyneApp.Run()
-	log.Trace().Msg("FyneApp finished")
-	// Stop window closer
-	err = gui.StopWindowCloser()
-	if err != nil {
-		log.Err(err).Msg("error stopping window closer")
-	}
+	log.Trace().Msg("mainLoop(...)")
+	mainLoop(trayQuitChan /*, FyneApp*/)
 	// Shut down mainLoop
 	trayQuitChan <- true
 	// Shut down systray
@@ -144,10 +116,11 @@ func onExit() {
 	log.Trace().Msg("done")
 }
 
-func mainLoop(quitChan chan bool, app fyne.App) {
+func mainLoop(quitChan chan bool) {
 	log := logger.GetLogger("tray.mainLoop")
 	log.Trace().Msg("starting")
 	statusLoopQuitChan := make(chan bool, 1)
+	defer gui.StopGUI() // in case it was started...
 	// Start the status loop in a goroutine
 	log.Trace().Msg("go statusLoop(...)")
 	go statusLoop(statusLoopQuitChan)
@@ -159,51 +132,41 @@ func mainLoop(quitChan chan bool, app fyne.App) {
 			switch appstate.GetLastState() {
 			case constants.TimesheetStatusRunning:
 				runningTimesheet := appstate.GetRunningTimesheet()
-				gui.NewConfirmDialogWindow(
-					app,
-					"Stop running task?",
-					fmt.Sprintf(
-						"Stop task %s (%s)",
-						runningTimesheet.Task.Synopsis,
-						time.Since(runningTimesheet.StartTime).Truncate(time.Second).String(),
-					),
-					nil,
-					func(b bool) {
-						if b {
-							// Stop the running task
-							log.Debug().Msgf("stopping task %s", runningTimesheet.Task.Synopsis)
-							err := models.Task(new(models.TaskData)).StopRunningTask()
-							if err != nil {
-								log.Err(err).Msg(errors.StopRunningTaskError)
-							}
-						}
-					},
-				).Show()
+				res, err := dlgs.Question("Stop running task?", fmt.Sprintf(
+					"Stop task %s (%s) ?",
+					runningTimesheet.Task.Synopsis,
+					time.Since(runningTimesheet.StartTime).Truncate(time.Second).String(),
+				), true)
+				if err != nil {
+					log.Err(err).Msg("error from question dialog")
+				}
+				if res {
+					// Stop the running task
+					log.Debug().Msgf("stopping task %s", runningTimesheet.Task.Synopsis)
+					err := models.Task(new(models.TaskData)).StopRunningTask()
+					if err != nil {
+						log.Err(err).Msg(errors.StopRunningTaskError)
+					}
+				}
 			case constants.TimesheetStatusError:
-				gui.NewErrorDialogWindow(
-					app,
-					"timetracker Error",
-					appstate.GetStatusError(),
-					nil,
-					nil,
-				).Show()
+				_, err := dlgs.Error("timetracker Error", appstate.GetStatusError().Error())
+				if err != nil {
+					log.Err(err).Msg("error from error dialog")
+				}
 			case constants.TimesheetStatusIdle:
-				// Show the main GUI window
-				gui.ShowTimetrackerWindow(nil)
+				/*gui.StartGUI()
+				gui.ShowTimetrackerWindow()*/
+				log.Debug().Msg("implementation missing")
 			}
 		case <-mAbout.ClickedCh:
 			log.Debug().Msg("about menu item selected")
-			gui.NewErrorDialogWindow(
-				app,
-				"About Box",
-				fmt.Errorf("this is actually an about box"),
-				nil,
-				nil,
-			).Show()
+			_, err := dlgs.Info("About Timetracker", "Timetracker vx.xx\nhttps://github.com/neflyte/timetracker")
+			if err != nil {
+				log.Err(err).Msg("error from about box")
+			}
 		case <-mQuit.ClickedCh:
 			log.Debug().Msg("quit menu item selected; quitting app")
 			statusLoopQuitChan <- true
-			app.Quit()
 			return
 		case <-quitChan:
 			log.Debug().Msg("quit channel fired; exiting function")

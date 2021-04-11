@@ -90,6 +90,15 @@ func GetLogger(funcName string) zerolog.Logger {
 	return RootLogger.With().Str("func", funcName).Logger()
 }
 
+func GetStructLogger(structName string) zerolog.Logger {
+	if !loggerInitialized {
+		return zerolog.New(&zerolog.ConsoleWriter{Out: os.Stderr}).
+			With().Timestamp().Str("struct", structName).Logger().
+			Level(zerolog.TraceLevel)
+	}
+	return RootLogger.With().Str("struct", structName).Logger()
+}
+
 func GetConfigHome() string {
 	// Look for XDG_CONFIG_HOME
 	configHome, err := os.UserConfigDir()

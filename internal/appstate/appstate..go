@@ -14,6 +14,7 @@ const (
 	KeyRunningTimesheet         = "running_timesheet"
 	KeySelectedTask             = "selected_task"
 	KeyTTWindowEventLoopRunning = "ttwindow_eventloop_running"
+	KeyGUIStarted               = "gui_started"
 )
 
 var (
@@ -144,4 +145,25 @@ func SetTTWindowEventLoopRunning(isRunning bool) {
 		Str("key", KeyTTWindowEventLoopRunning).
 		Msgf("storing %#v", isRunning)
 	syncMap.Store(KeyTTWindowEventLoopRunning, isRunning)
+}
+
+func GetGUIStarted() bool {
+	started, ok := syncMap.LoadOrStore(KeyGUIStarted, false)
+	if !ok {
+		appstateLog.Trace().
+			Str("key", KeyGUIStarted).
+			Msg("key not found; storing + loading default")
+		return false
+	}
+	appstateLog.Trace().
+		Str("key", KeyGUIStarted).
+		Msgf("loading %#v", started)
+	return started.(bool)
+}
+
+func SetGUIStarted(isStarted bool) {
+	appstateLog.Trace().
+		Str("key", KeyGUIStarted).
+		Msgf("storing %#v", isStarted)
+	syncMap.Store(KeyGUIStarted, isStarted)
 }
