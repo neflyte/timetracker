@@ -9,28 +9,35 @@ import (
 )
 
 const (
-	KeyStatusError              = "status_error"
-	KeyLastState                = "last_state"
-	KeyRunningTimesheet         = "running_timesheet"
-	KeySelectedTask             = "selected_task"
-	KeyTTWindowEventLoopRunning = "ttwindow_eventloop_running"
-	KeyGUIStarted               = "gui_started"
+	KeyActionLoopStarted = "action_loop_started"
+	KeyStatusError       = "status_error"
+	KeyLastState         = "last_state"
+	KeyRunningTimesheet  = "running_timesheet"
+	KeySelectedTask      = "selected_task"
+	KeyGUIStarted        = "gui_started"
+
+	ChannelBufferSize = 5
 )
 
 var (
-	// chanStatusError      = make(chan rxgo.Item, 1)
+	// chanStatusError      = make(chan rxgo.Item, ChannelBufferSize)
 	// ObsStatusError       = rxgo.FromEventSource(chanStatusError)
-	// chanLastState        = make(chan rxgo.Item, 1)
+	// chanLastState        = make(chan rxgo.Item, ChannelBufferSize)
 	// ObsLastState         = rxgo.FromEventSource(chanLastState)
-	chanRunningTimesheet = make(chan rxgo.Item, 1)
+	chanRunningTimesheet = make(chan rxgo.Item, ChannelBufferSize)
 	ObsRunningTimesheet  = rxgo.FromEventSource(chanRunningTimesheet)
-	// chanSelectedTask     = make(chan rxgo.Item, 1)
-	// ObsSelectedTask = rxgo.FromEventSource(chanSelectedTask)
-	appstateLog = logger.GetLogger("appstate")
+	chanSelectedTask     = make(chan rxgo.Item, ChannelBufferSize)
+	ObsSelectedTask      = rxgo.FromEventSource(chanSelectedTask)
+	appstateLog          = logger.GetLogger("appstate")
 )
 
 // syncMap is a synchronized map[interface{}]interface{} which holds the application state
 var syncMap = sync.Map{}
+
+// Map allows direct access to the synchronized map
+func Map() *sync.Map {
+	return &syncMap
+}
 
 func GetStatusError() error {
 	err, ok := syncMap.LoadOrStore(KeyStatusError, nil)
@@ -84,6 +91,12 @@ func GetRunningTimesheet() *models.TimesheetData {
 			Msg("key not found; storing + loading default")
 		return nil
 	}
+	if tsd == nil {
+		appstateLog.Trace().
+			Str("key", KeyRunningTimesheet).
+			Msg("loading nil")
+		return nil
+	}
 	appstateLog.Trace().
 		Str("key", KeyRunningTimesheet).
 		Msgf("loading %#v", tsd)
@@ -123,28 +136,7 @@ func SetSelectedTask(newTask string) {
 		Str("key", KeySelectedTask).
 		Msgf("storing %#v", newTask)
 	syncMap.Store(KeySelectedTask, newTask)
-	// chanSelectedTask<- rxgo.Of(newTask)
-}
-
-func GetTTWindowEventLoopRunning() bool {
-	running, ok := syncMap.LoadOrStore(KeyTTWindowEventLoopRunning, false)
-	if !ok {
-		appstateLog.Trace().
-			Str("key", KeyTTWindowEventLoopRunning).
-			Msg("key not found; storing + loading default")
-		return false
-	}
-	appstateLog.Trace().
-		Str("key", KeyTTWindowEventLoopRunning).
-		Msgf("loading %#v", running)
-	return running.(bool)
-}
-
-func SetTTWindowEventLoopRunning(isRunning bool) {
-	appstateLog.Trace().
-		Str("key", KeyTTWindowEventLoopRunning).
-		Msgf("storing %#v", isRunning)
-	syncMap.Store(KeyTTWindowEventLoopRunning, isRunning)
+	chanSelectedTask <- rxgo.Of(newTask)
 }
 
 func GetGUIStarted() bool {

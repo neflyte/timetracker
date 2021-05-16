@@ -53,11 +53,6 @@ func NewTimetrackerWindow(app fyne.App) TTWindow {
 func (t *ttWindow) Init() {
 	t.TaskList = widgets.NewTasklist(func(s string) {
 		appstate.SetSelectedTask(s)
-		if s == "" {
-			t.BtnStartTask.Disable()
-		} else {
-			t.BtnStartTask.Enable()
-		}
 	})
 	t.BtnStartTask = widget.NewButtonWithIcon("START", icons.ResourcePlayCircleOutlineWhitePng, t.doStartTask)
 	t.BtnStartTask.Disable() // Disable the start button by default
@@ -88,26 +83,44 @@ func (t *ttWindow) InitWindowData() {
 	// Load the running task
 	runningTS := appstate.GetRunningTimesheet()
 	if runningTS != nil {
+		// Task is running
+		t.BtnStopTask.Enable()
 		newSelectedTask := (*runningTS).Task.String()
 		if newSelectedTask != "" {
 			t.TaskList.SetSelected(newSelectedTask)
-			funcLogger.Debug().Msgf("ttwSelectedTask=%s", newSelectedTask)
+			t.BtnStartTask.Disable()
+		} else {
+			t.BtnStartTask.Enable()
 		}
+	} else {
+		// Task is not running
+		t.BtnStopTask.Disable()
 	}
 	funcLogger.Debug().Msg("done")
 }
 
 func (t *ttWindow) setupObservables() {
 	log := t.Log.With().Str("func", "setupObservables").Logger()
+	log.Trace().Msg("ObsRunningTimesheet")
 	appstate.ObsRunningTimesheet.ForEach(
 		func(item interface{}) {
 			runningTS, ok := item.(*models.TimesheetData)
 			if ok {
 				if runningTS == nil {
+					// No task is running
 					t.BtnStopTask.Disable()
-				} else {
-					t.BtnStopTask.Enable()
+					if appstate.GetSelectedTask() != "" {
+						// A task is selected
+						t.BtnStartTask.Enable()
+					} else {
+						// No task is selected
+						t.BtnStartTask.Disable()
+					}
+					return
 				}
+				// A task is running
+				t.BtnStopTask.Enable()
+				t.BtnStartTask.Disable()
 			}
 		},
 		func(err error) {
@@ -115,6 +128,29 @@ func (t *ttWindow) setupObservables() {
 		},
 		func() {
 			log.Trace().Msg("running timesheet observable is done")
+		},
+	)
+	log.Trace().Msg("ObsSelectedTask")
+	appstate.ObsSelectedTask.ForEach(
+		func(item interface{}) {
+			selectedTask, ok := item.(string)
+			if ok {
+				if selectedTask != "" {
+					if appstate.GetRunningTimesheet() == nil {
+						t.BtnStartTask.Enable()
+					} else {
+						t.BtnStartTask.Disable()
+					}
+					return
+				}
+				t.BtnStartTask.Disable()
+			}
+		},
+		func(err error) {
+			log.Err(err).Msg("error getting selected task from rxgo observable")
+		},
+		func() {
+			log.Trace().Msg("selected task observable is done")
 		},
 	)
 }
@@ -155,7 +191,8 @@ func (t *ttWindow) doStartTask() {
 			return
 		}
 		t.BtnStopTask.Enable()
-
+		t.BtnStartTask.Disable()
+		appstate.UpdateRunningTimesheet()
 	}
 	log.Trace().Msg("done")
 }

@@ -18,19 +18,18 @@ import (
 )
 
 const (
-	trayPidfile            = "timetracker-tray.pid"
-	statusLoopDelaySeconds = 5
+	trayPidfile = "timetracker-tray.pid"
 )
 
 var (
-	mStatus       *systray.MenuItem
-	mAbout        *systray.MenuItem
-	mQuit         *systray.MenuItem
-	lockFile      lockfile.Lockfile
-	pidPath       string
-	wg            sync.WaitGroup
-	trayQuitChan  chan bool
-	updateTSMutex = sync.Mutex{}
+	mStatus            *systray.MenuItem
+	mAbout             *systray.MenuItem
+	mQuit              *systray.MenuItem
+	lockFile           lockfile.Lockfile
+	pidPath            string
+	wg                 sync.WaitGroup
+	trayQuitChan       chan bool
+	actionLoopQuitChan chan bool
 )
 
 func Run() (err error) {
@@ -52,6 +51,9 @@ func Run() (err error) {
 	pidPath = path.Join(userConfigDir, trayPidfile)
 	funcLog.Trace().Msgf("pidPath=%s", pidPath)
 
+	// Start the ActionLoop
+	actionLoopQuitChan = make(chan bool, 1)
+	go appstate.ActionLoop(actionLoopQuitChan)
 	// Start the systray in a goroutine
 	wg = sync.WaitGroup{}
 	wg.Add(1)
@@ -71,6 +73,8 @@ func Run() (err error) {
 	funcLog.Trace().Msg("gui has finished")
 	// Shut down mainLoop
 	trayQuitChan <- true
+	// Shut down ActionLoop
+	actionLoopQuitChan <- true
 	// Shut down systray
 	systray.Quit()
 	return
@@ -79,25 +83,25 @@ func Run() (err error) {
 func onReady() {
 	var err error
 
-	funcLog := logger.GetLogger("tray.onReady")
-	funcLog.Trace().Msg("starting")
+	log := logger.GetLogger("tray.onReady")
+	log.Trace().Msg("starting")
 	defer func() {
 		// Signal that we're initialized
-		funcLog.Debug().Msg("signalling true")
+		log.Debug().Msg("signalling true")
 		wg.Done()
 	}()
 	lockFile, err = lockfile.New(pidPath)
 	if err != nil {
-		funcLog.Err(err).Msgf("error creating pidfile; pidPath=%s", pidPath)
+		log.Err(err).Msgf("error creating pidfile; pidPath=%s", pidPath)
 		return
 	}
 	err = lockFile.TryLock()
 	if err != nil {
-		funcLog.Err(err).Msgf("error locking pidfile; pidPath=%s", pidPath)
+		log.Err(err).Msgf("error locking pidfile; pidPath=%s", pidPath)
 		systray.Quit()
 		return
 	}
-	funcLog.Debug().Msgf("locked pidfile %s", pidPath)
+	log.Debug().Msgf("locked pidfile %s", pidPath)
 	systray.SetTitle("Timetracker")
 	systray.SetTooltip("Timetracker")
 	systray.SetTemplateIcon(icons.Check, icons.Check)
@@ -105,7 +109,37 @@ func onReady() {
 	systray.AddSeparator()
 	mAbout = systray.AddMenuItem("About Timetracker", "About the Timetracker app")
 	mQuit = systray.AddMenuItem("Quit", "Quit the Timetracker tray app")
-	funcLog.Trace().Msg("done")
+	log.Trace().Msg("setting up observables")
+	appstate.ObsRunningTimesheet.ForEach(
+		func(item interface{}) {
+			tsd, ok := item.(*models.TimesheetData)
+			if ok {
+				if tsd == nil {
+					// No running timesheet
+					log.Trace().Msg("got nil running timesheet item")
+					systray.SetTemplateIcon(icons.Check, icons.Check)
+					mStatus.SetTitle("(idle)")
+					return
+				}
+				log.Trace().Msg("got non-running timesheet object")
+				systray.SetTemplateIcon(icons.Running, icons.Running)
+				statusText := fmt.Sprintf(
+					"%s %s",
+					tsd.Task.Synopsis,
+					time.Since(tsd.StartTime).Truncate(time.Second).String(),
+				)
+				mStatus.SetTitle(statusText)
+			}
+		},
+		func(err error) {
+			systray.SetTemplateIcon(icons.Error, icons.Error)
+			mStatus.SetTitle("[error]")
+		},
+		func() {
+			log.Trace().Msg("running timesheet observable is done")
+		},
+	)
+	log.Trace().Msg("done")
 }
 
 func onExit() {
@@ -122,10 +156,6 @@ func onExit() {
 
 func mainLoop(quitChan chan bool) {
 	funcLog := logger.GetLogger("tray.mainLoop")
-	statusLoopQuitChan := make(chan bool, 1)
-	// Start the status loop in a goroutine
-	funcLog.Trace().Msg("go statusLoop(...)")
-	go statusLoop(statusLoopQuitChan)
 	// Start main loop
 	funcLog.Trace().Msg("starting")
 	for {
@@ -151,7 +181,7 @@ func mainLoop(quitChan chan bool) {
 								funcLog.Err(err).Msg(errors.StopRunningTaskError)
 							}
 							// Get a new timesheet and update the appstate
-							UpdateRunningTimesheet()
+							appstate.UpdateRunningTimesheet()
 						}
 					},
 					false,
@@ -166,80 +196,11 @@ func mainLoop(quitChan chan bool) {
 			gui.ShowTimetrackerWindow()
 		case <-mQuit.ClickedCh:
 			funcLog.Debug().Msg("quit menu item selected; quitting app")
-			statusLoopQuitChan <- true
 			gui.StopGUI()
 			return
 		case <-quitChan:
 			funcLog.Debug().Msg("quit channel fired; exiting function")
-			statusLoopQuitChan <- true
 			return
-		}
-	}
-}
-
-func UpdateRunningTimesheet() {
-	log := logger.GetLogger("tray.UpdateRunningTimesheet")
-	updateTSMutex.Lock()
-	defer updateTSMutex.Unlock()
-	timesheets, err := models.Timesheet(new(models.TimesheetData)).SearchOpen()
-	appstate.SetStatusError(err)
-	if err != nil {
-		// log.Trace().Msg("set nil running timesheet")
-		appstate.SetRunningTimesheet(nil) // Reset running timesheet
-		log.Err(err).Msg("error getting running timesheet")
-		if appstate.GetLastState() != constants.TimesheetStatusError {
-			// Show error icon
-			systray.SetTemplateIcon(icons.Error, icons.Error)
-			// Update status menu to show `[error]`
-			mStatus.SetTitle("[error]")
-			appstate.SetLastState(constants.TimesheetStatusError)
-		}
-	} else {
-		if len(timesheets) == 0 {
-			// No running task
-			// log.Debug().Msg("no running task")
-			if appstate.GetLastState() != constants.TimesheetStatusIdle {
-				appstate.SetRunningTimesheet(nil) // Reset running timesheet
-				// Show check icon
-				systray.SetTemplateIcon(icons.Check, icons.Check)
-				// Update status menu to show `(idle)`
-				mStatus.SetTitle("(idle)")
-				appstate.SetLastState(constants.TimesheetStatusIdle)
-			}
-		} else {
-			// Running task...
-			// log.Debug().Msgf("running task: %#v", timesheets[0])
-			appstate.SetRunningTimesheet(&timesheets[0])
-			// Update status menu item to show task ID and duration
-			statusText := fmt.Sprintf(
-				"%s %s",
-				timesheets[0].Task.Synopsis,
-				time.Since(timesheets[0].StartTime).Truncate(time.Second).String(),
-			)
-			mStatus.SetTitle(statusText)
-			if appstate.GetLastState() != constants.TimesheetStatusRunning {
-				// Show running icon
-				systray.SetTemplateIcon(icons.Running, icons.Running)
-				appstate.SetLastState(constants.TimesheetStatusRunning)
-			}
-		}
-	}
-}
-
-func statusLoop(quitChan chan bool) {
-	log := logger.GetLogger("tray.statusLoop")
-	log.Trace().Msg("starting")
-	for {
-		// log.Debug().Msg("getting running timesheet")
-		UpdateRunningTimesheet()
-		// Delay
-		// log.Debug().Msgf("delaying %d seconds until next timesheet check", statusLoopDelaySeconds)
-		select {
-		case <-quitChan:
-			log.Debug().Msg("quit channel fired; exiting function")
-			return
-		case <-time.After(statusLoopDelaySeconds * time.Second):
-			break
 		}
 	}
 }
