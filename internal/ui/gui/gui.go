@@ -63,21 +63,34 @@ func ShowTimetrackerWindowWithError(err error) {
 	ttWin.ShowWithError(err)
 }
 
-func ShowTimetrackerWindowWithConfirm(title string, message string, cb func(bool)) {
+func ShowTimetrackerWindowWithConfirm(title string, message string, cb func(bool), hideAfterConfirm bool) {
 	if !appstate.GetGUIStarted() {
 		return
 	}
 	ttWin.Show()
-	dialog.NewConfirm(title, message, cb, ttWin.Get().Window).Show()
+	dialog.NewConfirm(
+		title,
+		message,
+		func(res bool) {
+			// Call the callback
+			cb(res)
+			// Hide the window if we were asked to
+			if hideAfterConfirm {
+				ttWin.Hide()
+			}
+		},
+		ttWin.Get().Window,
+	).Show()
 }
 
-func guiFunc(app *fyne.App) {
+func guiFunc(appPtr *fyne.App) {
 	log := logger.GetLogger("guiFunc")
-	appstate.SetGUIStarted(true)
-	defer appstate.SetGUIStarted(false)
-	if app != nil {
+	if appPtr != nil {
+		fyneApp := *appPtr
+		appstate.SetGUIStarted(true)
+		defer appstate.SetGUIStarted(false)
 		log.Trace().Msg("calling app.Run()")
-		(*app).Run()
+		fyneApp.Run()
 		log.Trace().Msg("fyne exited")
 	}
 	log.Trace().Msg("done")

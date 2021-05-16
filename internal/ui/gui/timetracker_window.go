@@ -30,25 +30,21 @@ type TTWindow interface {
 }
 
 type ttWindow struct {
-	App                  *fyne.App
-	Window               fyne.Window
-	Container            *fyne.Container
-	TaskList             *widgets.Tasklist
-	BtnStartTask         *widget.Button
-	BtnStopTask          *widget.Button
-	BtnManageTasks       *widget.Button
-	EventLoopStartedChan chan bool
-	EventLoopQuitChan    chan bool
-	Log                  zerolog.Logger
+	App            *fyne.App
+	Window         fyne.Window
+	Container      *fyne.Container
+	TaskList       *widgets.Tasklist
+	BtnStartTask   *widget.Button
+	BtnStopTask    *widget.Button
+	BtnManageTasks *widget.Button
+	Log            zerolog.Logger
 }
 
 func NewTimetrackerWindow(app fyne.App) TTWindow {
 	ttw := &ttWindow{
-		App:                  &app,
-		Window:               app.NewWindow("Timetracker"),
-		EventLoopStartedChan: make(chan bool),
-		EventLoopQuitChan:    make(chan bool, 1),
-		Log:                  logger.GetStructLogger("TTWindow"),
+		App:    &app,
+		Window: app.NewWindow("Timetracker"),
+		Log:    logger.GetStructLogger("TTWindow"),
 	}
 	ttw.Init()
 	return ttw
@@ -75,84 +71,52 @@ func (t *ttWindow) Init() {
 	)
 	t.Window.SetContent(t.Container)
 	t.Window.SetFixedSize(true)
-	t.Window.Resize(fyne.NewSize(MinimumWindowWidth, MinimumWindowHeight))
+	t.Window.Resize(MinimumWindowSize)
 	// Make sure we hide the window instead of closing it, otherwise the app will exit
 	t.Window.SetCloseIntercept(func() {
 		t.Window.Hide()
 	})
+	// Set up our observables
+	t.setupObservables()
 	// Spawn a goroutine to load the window's data
 	go t.InitWindowData()
 }
 
 func (t *ttWindow) InitWindowData() {
-	log := t.Log.With().Str("func", "InitWindowData").Logger()
-	log.Trace().Msg("started")
+	funcLogger := t.Log.With().Str("func", "InitWindowData").Logger()
+	funcLogger.Trace().Msg("started")
 	// Load the running task
 	runningTS := appstate.GetRunningTimesheet()
 	if runningTS != nil {
 		newSelectedTask := (*runningTS).Task.String()
 		if newSelectedTask != "" {
 			t.TaskList.SetSelected(newSelectedTask)
-			log.Debug().Msgf("ttwSelectedTask=%s", newSelectedTask)
+			funcLogger.Debug().Msgf("ttwSelectedTask=%s", newSelectedTask)
 		}
 	}
-	log.Debug().Msg("done")
+	funcLogger.Debug().Msg("done")
 }
 
-func (t *ttWindow) startEventLoop() {
-	log := t.Log.With().Str("func", "startEventLoop").Logger()
-	if appstate.GetTTWindowEventLoopRunning() {
-		log.Warn().Msg("eventLoop is already running")
-		return
-	}
-	log.Debug().Msg("starting eventLoop")
-	t.EventLoopStartedChan = make(chan bool)
-	t.EventLoopQuitChan = make(chan bool, 1)
-	go t.eventLoop()
-	log.Debug().Msg("waiting for loop to start")
-	<-t.EventLoopStartedChan
-	log.Debug().Msg("eventLoop started")
-}
-
-func (t *ttWindow) stopEventLoop() {
-	log := t.Log.With().Str("func", "stopEventLoop").Logger()
-	if !appstate.GetTTWindowEventLoopRunning() {
-		log.Warn().Msg("eventLoop is not running")
-		return
-	}
-	log.Debug().Msg("stopping eventLoop")
-	t.EventLoopQuitChan <- true
-}
-
-func (t *ttWindow) eventLoop() {
-	log := t.Log.With().Str("func", "eventLoop").Logger()
-	t.EventLoopStartedChan <- true
-	appstate.SetTTWindowEventLoopRunning(true)
-	defer appstate.SetTTWindowEventLoopRunning(false)
-	log.Debug().Msg("getting observables")
-	chanRunningTimesheet := appstate.ObsRunningTimesheet.Observe()
-	log.Trace().Msg("starting event loop")
-	for {
-		select {
-		case runningTSItem := <-chanRunningTimesheet:
-			if runningTSItem.Error() {
-				log.Err(runningTSItem.E).Msg("error getting running timesheet from rxgo observable")
-				break
+func (t *ttWindow) setupObservables() {
+	log := t.Log.With().Str("func", "setupObservables").Logger()
+	appstate.ObsRunningTimesheet.ForEach(
+		func(item interface{}) {
+			runningTS, ok := item.(*models.TimesheetData)
+			if ok {
+				if runningTS == nil {
+					t.BtnStopTask.Disable()
+				} else {
+					t.BtnStopTask.Enable()
+				}
 			}
-			runningTS := runningTSItem.V.(*models.TimesheetData)
-			if runningTS == nil {
-				log.Debug().Msg("runningTimesheet is NIL")
-				t.BtnStopTask.Disable()
-			} else {
-				log.Debug().Msgf("runningTS=%s", (*runningTS).Task.String())
-				t.BtnStopTask.Enable()
-			}
-			break
-		case <-t.EventLoopQuitChan:
-			log.Debug().Msg("received quit signal; ending event loop")
-			return
-		}
-	}
+		},
+		func(err error) {
+			log.Err(err).Msg("error getting running timesheet from rxgo observable")
+		},
+		func() {
+			log.Trace().Msg("running timesheet observable is done")
+		},
+	)
 }
 
 func (t *ttWindow) doStartTask() {
@@ -191,6 +155,7 @@ func (t *ttWindow) doStartTask() {
 			return
 		}
 		t.BtnStopTask.Enable()
+
 	}
 	log.Trace().Msg("done")
 }
@@ -205,7 +170,6 @@ func (t *ttWindow) doManageTasks() {
 
 func (t *ttWindow) Show() {
 	t.Window.Show()
-	t.startEventLoop()
 }
 
 func (t *ttWindow) ShowWithError(err error) {
@@ -214,12 +178,10 @@ func (t *ttWindow) ShowWithError(err error) {
 }
 
 func (t *ttWindow) Hide() {
-	t.stopEventLoop()
 	t.Window.Hide()
 }
 
 func (t *ttWindow) Close() {
-	t.stopEventLoop()
 	t.Window.Close()
 }
 
