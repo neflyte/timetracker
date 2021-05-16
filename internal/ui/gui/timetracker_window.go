@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/appstate"
@@ -35,6 +36,8 @@ type ttWindow struct {
 	App            *fyne.App
 	Window         fyne.Window
 	Container      *fyne.Container
+	StatusBox      *fyne.Container
+	SubStatusBox   *fyne.Container
 	ButtonBox      *fyne.Container
 	TaskList       *widgets.Tasklist
 	BtnStartTask   *widget.Button
@@ -42,6 +45,17 @@ type ttWindow struct {
 	BtnManageTasks *widget.Button
 	BtnQuit        *widget.Button
 	Log            zerolog.Logger
+	LblStatus      *widget.Label
+	LblStartTime   *widget.Label
+	LblElapsedTime *widget.Label
+
+	BindRunningTask binding.ExternalString
+	BindStartTime   binding.ExternalString
+	BindElapsedTime binding.ExternalString
+
+	runningTask string
+	startTime   string
+	elapsedTime string
 }
 
 func NewTimetrackerWindow(app fyne.App) TTWindow {
@@ -70,12 +84,53 @@ func (t *ttWindow) Init() {
 			t.BtnQuit,
 		),
 	)
+	t.runningTask = "none"
+	t.BindRunningTask = binding.BindString(&t.runningTask)
+	t.LblStatus = widget.NewLabelWithData(t.BindRunningTask)
+	t.LblStatus.TextStyle = fyne.TextStyle{
+		Monospace: true,
+	}
+	t.startTime = ""
+	t.BindStartTime = binding.BindString(&t.startTime)
+	t.LblStartTime = widget.NewLabelWithData(t.BindStartTime)
+	t.elapsedTime = ""
+	t.BindElapsedTime = binding.BindString(&t.elapsedTime)
+	t.LblElapsedTime = widget.NewLabelWithData(t.BindElapsedTime)
+	t.SubStatusBox = container.NewVBox(
+		container.NewHBox(
+			widget.NewLabel("Start time:"),
+			t.LblStartTime,
+		),
+		container.NewHBox(
+			widget.NewLabel("Elapsed time:"),
+			t.LblElapsedTime,
+		),
+	)
+	t.SubStatusBox.Hide()
+	t.StatusBox = container.NewVBox(
+		container.NewHBox(
+			widget.NewLabelWithStyle(
+				"Running Task:",
+				fyne.TextAlignLeading,
+				fyne.TextStyle{
+					Bold: true,
+				},
+			),
+			t.LblStatus,
+		),
+		t.SubStatusBox,
+	)
 	t.Container = container.NewPadded(
 		widget.NewCard(
 			"Timetracker",
 			"",
 			container.NewPadded(container.NewVBox(
-				t.TaskList,
+				t.StatusBox,
+				widget.NewSeparator(),
+				container.NewHBox(
+					widget.NewLabel("Task:"),
+					t.TaskList,
+				),
 				t.ButtonBox,
 			)),
 		),
@@ -124,6 +179,11 @@ func (t *ttWindow) setupObservables() {
 			if ok {
 				if runningTS == nil {
 					// No task is running
+					err := t.BindRunningTask.Set("none")
+					if err != nil {
+						log.Err(err).Msg("error setting running task to none")
+					}
+					t.SubStatusBox.Hide()
 					t.BtnStopTask.Disable()
 					if appstate.GetSelectedTask() != "" {
 						// A task is selected
@@ -137,6 +197,15 @@ func (t *ttWindow) setupObservables() {
 				// A task is running
 				t.BtnStopTask.Enable()
 				t.BtnStartTask.Disable()
+				err := t.BindRunningTask.Set(runningTS.Task.String())
+				if err != nil {
+					log.Err(err).Msgf("error setting running task to %s", runningTS.Task.String())
+				}
+				err = t.BindStartTime.Set(runningTS.StartTime.String())
+				if err != nil {
+					log.Err(err).Msgf("error setting start time to %s", runningTS.StartTime.String())
+				}
+				t.SubStatusBox.Show()
 			}
 		},
 		func(err error) {
