@@ -23,6 +23,7 @@ var (
 
 type TTWindow interface {
 	Show()
+	ShowAbout()
 	ShowWithError(err error)
 	Hide()
 	Close()
@@ -212,6 +213,23 @@ func (t *ttWindow) Show() {
 func (t *ttWindow) ShowWithError(err error) {
 	t.Show()
 	dialog.NewError(err, t.Window).Show()
+}
+
+func (t *ttWindow) ShowAbout() {
+	t.Show()
+	appVersion := "??"
+	appVersionIntf, ok := appstate.Map().Load(appstate.KeyAppVersion)
+	if ok {
+		appVersionStr := appVersionIntf.(string)
+		if appVersionStr != "" {
+			appVersion = appVersionStr
+		}
+	}
+	dialog.NewInformation(
+		"About Timetracker",
+		fmt.Sprintf("Timetracker v%s\n\nhttps://github.com/neflyte/timetracker", appVersion),
+		t.Window,
+	).Show()
 }
 
 func (t *ttWindow) Hide() {

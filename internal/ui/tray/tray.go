@@ -33,7 +33,7 @@ var (
 )
 
 func Run() (err error) {
-	funcLog := logger.GetLogger("tray.Run")
+	log := logger.GetLogger("tray.Run")
 	userConfigDir, err := os.UserConfigDir()
 	if err != nil {
 		userConfigDir = "."
@@ -44,12 +44,12 @@ func Run() (err error) {
 	if userConfigDir != "." {
 		err = os.MkdirAll(userConfigDir, 0755)
 		if err != nil {
-			funcLog.Err(err).Msgf("error creating directories for pidfile; userConfigDir=%s", userConfigDir)
+			log.Err(err).Msgf("error creating directories for pidfile; userConfigDir=%s", userConfigDir)
 			return
 		}
 	}
 	pidPath = path.Join(userConfigDir, trayPidfile)
-	funcLog.Trace().Msgf("pidPath=%s", pidPath)
+	log.Trace().Msgf("pidPath=%s", pidPath)
 
 	// Start the ActionLoop
 	actionLoopQuitChan = make(chan bool, 1)
@@ -57,20 +57,20 @@ func Run() (err error) {
 	// Start the systray in a goroutine
 	wg = sync.WaitGroup{}
 	wg.Add(1)
-	funcLog.Trace().Msg("go systray.Run(...)")
+	log.Trace().Msg("go systray.Run(...)")
 	go systray.Run(onReady, onExit)
 	// Wait for the systray to finish initializing
-	funcLog.Debug().Msg("waiting for systray")
+	log.Debug().Msg("waiting for systray")
 	wg.Wait()
-	funcLog.Debug().Msg("systray initialized")
+	log.Debug().Msg("systray initialized")
 	// Start mainLoop
 	trayQuitChan = make(chan bool, 1)
-	funcLog.Trace().Msg("go mainLoop(...)")
+	log.Trace().Msg("go mainLoop(...)")
 	go mainLoop(trayQuitChan)
 	// Start GUI
-	funcLog.Trace().Msg("gui.StartGUI()")
+	log.Trace().Msg("gui.StartGUI()")
 	gui.StartGUI()
-	funcLog.Trace().Msg("gui has finished")
+	log.Trace().Msg("gui has finished")
 	// Shut down mainLoop
 	trayQuitChan <- true
 	// Shut down ActionLoop
@@ -192,8 +192,8 @@ func mainLoop(quitChan chan bool) {
 				gui.ShowTimetrackerWindow()
 			}
 		case <-mAbout.ClickedCh:
-			funcLog.Debug().Msg("about menu item selected; showing main window temporarily")
-			gui.ShowTimetrackerWindow()
+			funcLog.Debug().Msg("about menu item selected; showing about dialog")
+			gui.ShowTimetrackerWindowWithAbout()
 		case <-mQuit.ClickedCh:
 			funcLog.Debug().Msg("quit menu item selected; quitting app")
 			gui.StopGUI()

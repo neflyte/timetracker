@@ -56,6 +56,13 @@ func ShowTimetrackerWindow() {
 	ttWin.Show()
 }
 
+func ShowTimetrackerWindowWithAbout() {
+	if !appstate.GetGUIStarted() {
+		return
+	}
+	ttWin.ShowAbout()
+}
+
 func ShowTimetrackerWindowWithError(err error) {
 	if !appstate.GetGUIStarted() {
 		return

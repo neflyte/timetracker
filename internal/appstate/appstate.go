@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	KeyAppVersion        = "app_version"
 	KeyActionLoopStarted = "action_loop_started"
 	KeyStatusError       = "status_error"
 	KeyLastState         = "last_state"
