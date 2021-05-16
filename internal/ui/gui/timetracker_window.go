@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/appstate"
+	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
@@ -34,10 +35,12 @@ type ttWindow struct {
 	App            *fyne.App
 	Window         fyne.Window
 	Container      *fyne.Container
+	ButtonBox      *fyne.Container
 	TaskList       *widgets.Tasklist
 	BtnStartTask   *widget.Button
 	BtnStopTask    *widget.Button
 	BtnManageTasks *widget.Button
+	BtnQuit        *widget.Button
 	Log            zerolog.Logger
 }
 
@@ -56,14 +59,26 @@ func (t *ttWindow) Init() {
 		appstate.SetSelectedTask(s)
 	})
 	t.BtnStartTask = widget.NewButtonWithIcon("START", icons.ResourcePlayCircleOutlineWhitePng, t.doStartTask)
-	t.BtnStartTask.Disable() // Disable the start button by default
 	t.BtnStopTask = widget.NewButtonWithIcon("STOP", icons.ResourceStopCircleOutlineWhitePng, t.doStopTask)
 	t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", icons.ResourceDotsHorizontalCircleOutlineWhitePng, t.doManageTasks)
-	t.Container = container.NewVBox(
-		t.TaskList,
-		t.BtnStartTask,
-		t.BtnStopTask,
-		t.BtnManageTasks,
+	t.BtnQuit = widget.NewButton("QUIT", t.doQuit)
+	t.ButtonBox = container.NewCenter(
+		container.NewHBox(
+			t.BtnStartTask,
+			t.BtnStopTask,
+			t.BtnManageTasks,
+			t.BtnQuit,
+		),
+	)
+	t.Container = container.NewPadded(
+		widget.NewCard(
+			"Timetracker",
+			"",
+			container.NewPadded(container.NewVBox(
+				t.TaskList,
+				t.ButtonBox,
+			)),
+		),
 	)
 	t.Window.SetContent(t.Container)
 	t.Window.SetFixedSize(true)
@@ -199,11 +214,34 @@ func (t *ttWindow) doStartTask() {
 }
 
 func (t *ttWindow) doStopTask() {
-	// TODO: Implementation...
+	log := t.Log.With().Str("func", "doStopTask").Logger()
+	log.Trace().Msg("started")
+	runningTS := appstate.GetRunningTimesheet()
+	if runningTS == nil {
+		log.Warn().Msg("no timesheet is running")
+		return
+	}
+	// Stop the running task
+	log.Debug().Msgf("stopping task %s", runningTS.Task.Synopsis)
+	err := models.Task(new(models.TaskData)).StopRunningTask()
+	if err != nil {
+		log.Err(err).Msg(errors.StopRunningTaskError)
+		dialog.NewError(err, t.Window).Show()
+	}
+	// Get a new timesheet and update the appstate
+	appstate.UpdateRunningTimesheet()
+	log.Trace().Msg("done")
 }
 
 func (t *ttWindow) doManageTasks() {
 	// TODO: Show manage tasks modal
+}
+
+func (t *ttWindow) doQuit() {
+	if t.App != nil {
+		app := *t.App
+		app.Quit()
+	}
 }
 
 func (t *ttWindow) Show() {

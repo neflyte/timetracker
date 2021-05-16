@@ -114,21 +114,7 @@ func onReady() {
 		func(item interface{}) {
 			tsd, ok := item.(*models.TimesheetData)
 			if ok {
-				if tsd == nil {
-					// No running timesheet
-					log.Trace().Msg("got nil running timesheet item")
-					systray.SetTemplateIcon(icons.Check, icons.Check)
-					mStatus.SetTitle("(idle)")
-					return
-				}
-				log.Trace().Msg("got non-running timesheet object")
-				systray.SetTemplateIcon(icons.Running, icons.Running)
-				statusText := fmt.Sprintf(
-					"%s %s",
-					tsd.Task.Synopsis,
-					time.Since(tsd.StartTime).Truncate(time.Second).String(),
-				)
-				mStatus.SetTitle(statusText)
+				updateStatus(tsd)
 			}
 		},
 		func(err error) {
@@ -136,32 +122,54 @@ func onReady() {
 			mStatus.SetTitle("[error]")
 		},
 		func() {
-			log.Trace().Msg("running timesheet observable is done")
+			log.Debug().Msg("running timesheet observable is done")
 		},
 	)
+	log.Trace().Msg("priming status")
+	updateStatus(appstate.GetRunningTimesheet())
 	log.Trace().Msg("done")
 }
 
 func onExit() {
-	funcLog := logger.GetLogger("tray.onExit")
-	funcLog.Trace().Msg("started")
+	log := logger.GetLogger("tray.onExit")
+	log.Trace().Msg("started")
 	err := lockFile.Unlock()
 	if err != nil {
-		funcLog.Err(err).Msgf("error releasing pidfile")
+		log.Err(err).Msgf("error releasing pidfile")
 		return
 	}
-	funcLog.Debug().Msg("unlocked pidfile")
-	funcLog.Trace().Msg("done")
+	log.Debug().Msg("unlocked pidfile")
+	log.Trace().Msg("done")
+}
+
+func updateStatus(tsd *models.TimesheetData) {
+	log := logger.GetLogger("tray.updateStatus")
+	log.Debug().Msg("called")
+	if tsd == nil {
+		// No running timesheet
+		log.Debug().Msg("got nil running timesheet item")
+		systray.SetTemplateIcon(icons.Check, icons.Check)
+		mStatus.SetTitle("(idle)")
+		return
+	}
+	log.Debug().Msgf("got running timesheet object: %s", tsd.String())
+	systray.SetTemplateIcon(icons.Running, icons.Running)
+	statusText := fmt.Sprintf(
+		"%s %s",
+		tsd.Task.Synopsis,
+		time.Since(tsd.StartTime).Truncate(time.Second).String(),
+	)
+	mStatus.SetTitle(statusText)
 }
 
 func mainLoop(quitChan chan bool) {
-	funcLog := logger.GetLogger("tray.mainLoop")
+	log := logger.GetLogger("tray.mainLoop")
 	// Start main loop
-	funcLog.Trace().Msg("starting")
+	log.Trace().Msg("starting")
 	for {
 		select {
 		case <-mStatus.ClickedCh:
-			funcLog.Debug().Msg("status menu item selected")
+			log.Debug().Msg("status menu item selected")
 			switch appstate.GetLastState() {
 			case constants.TimesheetStatusRunning:
 				runningTimesheet := appstate.GetRunningTimesheet()
@@ -175,10 +183,10 @@ func mainLoop(quitChan chan bool) {
 					func(res bool) {
 						if res {
 							// Stop the running task
-							funcLog.Debug().Msgf("stopping task %s", runningTimesheet.Task.Synopsis)
+							log.Debug().Msgf("stopping task %s", runningTimesheet.Task.Synopsis)
 							err := models.Task(new(models.TaskData)).StopRunningTask()
 							if err != nil {
-								funcLog.Err(err).Msg(errors.StopRunningTaskError)
+								log.Err(err).Msg(errors.StopRunningTaskError)
 							}
 							// Get a new timesheet and update the appstate
 							appstate.UpdateRunningTimesheet()
@@ -192,14 +200,14 @@ func mainLoop(quitChan chan bool) {
 				gui.ShowTimetrackerWindow()
 			}
 		case <-mAbout.ClickedCh:
-			funcLog.Debug().Msg("about menu item selected; showing about dialog")
+			log.Debug().Msg("about menu item selected; showing about dialog")
 			gui.ShowTimetrackerWindowWithAbout()
 		case <-mQuit.ClickedCh:
-			funcLog.Debug().Msg("quit menu item selected; quitting app")
+			log.Debug().Msg("quit menu item selected; quitting app")
 			gui.StopGUI()
 			return
 		case <-quitChan:
-			funcLog.Debug().Msg("quit channel fired; exiting function")
+			log.Debug().Msg("quit channel fired; exiting function")
 			return
 		}
 	}

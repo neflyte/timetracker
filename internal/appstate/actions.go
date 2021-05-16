@@ -14,11 +14,7 @@ var (
 
 func ActionLoop(quitChannel chan bool) {
 	log := logger.GetLogger("appstate.ActionLoop")
-	runningIntf, ok := Map().LoadOrStore(KeyActionLoopStarted, false)
-	if !ok {
-		log.Error().Msgf("error loading key %s", KeyActionLoopStarted)
-		return
-	}
+	runningIntf, _ := Map().LoadOrStore(KeyActionLoopStarted, false)
 	running := runningIntf.(bool)
 	if running {
 		log.Warn().Msg("action loop is already running")
@@ -29,7 +25,7 @@ func ActionLoop(quitChannel chan bool) {
 	defer Map().Store(KeyActionLoopStarted, false)
 	for {
 		UpdateRunningTimesheet()
-		log.Debug().Msgf("delaying %d seconds until next action loop", constants.ActionLoopDelaySeconds)
+		log.Trace().Msgf("delaying %d seconds until next action loop", constants.ActionLoopDelaySeconds)
 		select {
 		case <-quitChannel:
 			log.Debug().Msg("quit channel fired; exiting function")
@@ -42,8 +38,14 @@ func ActionLoop(quitChannel chan bool) {
 
 func UpdateRunningTimesheet() {
 	log := logger.GetLogger("appstate.UpdateRunningTimesheet")
+	log.Trace().Msg("acquiring lock")
 	updateTSMutex.Lock()
-	defer updateTSMutex.Unlock()
+	log.Trace().Msg("lock acquired successfully")
+	defer func() {
+		log.Trace().Msg("releasing lock")
+		updateTSMutex.Unlock()
+		log.Trace().Msg("lock released successfully")
+	}()
 	timesheets, err := models.Timesheet(new(models.TimesheetData)).SearchOpen()
 	SetStatusError(err)
 	if err != nil {
@@ -55,12 +57,14 @@ func UpdateRunningTimesheet() {
 	} else {
 		if len(timesheets) == 0 {
 			// No running task
+			log.Trace().Msg("there are no running tasks")
 			if GetLastState() != constants.TimesheetStatusIdle {
 				SetRunningTimesheet(nil) // Reset running timesheet
 				SetLastState(constants.TimesheetStatusIdle)
 			}
 		} else {
 			// Running task...
+			log.Trace().Msgf("there are %d running tasks", len(timesheets))
 			SetRunningTimesheet(&timesheets[0])
 			if GetLastState() != constants.TimesheetStatusRunning {
 				SetLastState(constants.TimesheetStatusRunning)

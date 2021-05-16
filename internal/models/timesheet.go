@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/errors"
 	"gorm.io/gorm"
@@ -28,6 +29,19 @@ type Timesheet interface {
 	SearchOpen() ([]TimesheetData, error)
 	SearchDateRange() ([]TimesheetData, error)
 	Update() error
+	String() string
+}
+
+func (tsd *TimesheetData) String() string {
+	startTime := tsd.StartTime.String()
+	stopTime := "(running)"
+	if tsd.StopTime.Valid {
+		stopTime = tsd.StopTime.Time.String()
+	}
+	return fmt.Sprintf(
+		"TimesheetData[ Task=%s, StartTime=%s, StopTime=%s ]",
+		tsd.Task.String(), startTime, stopTime,
+	)
 }
 
 func (tsd *TimesheetData) Create() error {
