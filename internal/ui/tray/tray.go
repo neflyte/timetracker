@@ -2,7 +2,6 @@ package tray
 
 import (
 	"fmt"
-	"github.com/gen2brain/dlgs"
 	"github.com/getlantern/systray"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/constants"
@@ -122,12 +121,12 @@ func onExit() {
 
 func mainLoop(quitChan chan bool) {
 	log := logger.GetLogger("tray.mainLoop")
-	log.Trace().Msg("starting")
 	statusLoopQuitChan := make(chan bool, 1)
 	// Start the status loop in a goroutine
 	log.Trace().Msg("go statusLoop(...)")
 	go statusLoop(statusLoopQuitChan)
 	// Start main loop
+	log.Trace().Msg("starting")
 	for {
 		select {
 		case <-mStatus.ClickedCh:
@@ -135,29 +134,32 @@ func mainLoop(quitChan chan bool) {
 			switch appstate.GetLastState() {
 			case constants.TimesheetStatusRunning:
 				runningTimesheet := appstate.GetRunningTimesheet()
-				res, err := dlgs.Question("Stop running task?", fmt.Sprintf(
-					"Stop task %s (%s) ?",
-					runningTimesheet.Task.Synopsis,
-					time.Since(runningTimesheet.StartTime).Truncate(time.Second).String(),
-				), true)
-				if err != nil {
-					log.Err(err).Msg("error from question dialog")
-				}
-				if res {
-					// Stop the running task
-					log.Debug().Msgf("stopping task %s", runningTimesheet.Task.Synopsis)
-					err = models.Task(new(models.TaskData)).StopRunningTask()
-					if err != nil {
-						log.Err(err).Msg(errors.StopRunningTaskError)
-					}
-				}
+				gui.ShowTimetrackerWindowWithConfirm(
+					"Stop running task?",
+					fmt.Sprintf(
+						"Stop task %s (%s) ?",
+						runningTimesheet.Task.Synopsis,
+						time.Since(runningTimesheet.StartTime).Truncate(time.Second).String(),
+					),
+					func(res bool) {
+						if res {
+							// Stop the running task
+							log.Debug().Msgf("stopping task %s", runningTimesheet.Task.Synopsis)
+							err := models.Task(new(models.TaskData)).StopRunningTask()
+							if err != nil {
+								log.Err(err).Msg(errors.StopRunningTaskError)
+							}
+						}
+					},
+				)
 			case constants.TimesheetStatusError:
 				gui.ShowTimetrackerWindowWithError(appstate.GetStatusError())
 			case constants.TimesheetStatusIdle:
 				gui.ShowTimetrackerWindow()
 			}
 		case <-mAbout.ClickedCh:
-			log.Debug().Msg("about menu item selected; IMPLEMENTATION MISSING")
+			log.Debug().Msg("about menu item selected; showing main window temporarily")
+			gui.ShowTimetrackerWindow()
 		case <-mQuit.ClickedCh:
 			log.Debug().Msg("quit menu item selected; quitting app")
 			statusLoopQuitChan <- true
@@ -177,13 +179,9 @@ func statusLoop(quitChan chan bool) {
 
 	log := logger.GetLogger("tray.statusLoop")
 	log.Trace().Msg("starting")
-	appstate.SetStatusError(nil)
-	appstate.SetLastState(constants.TimesheetStatusIdle) // Start with idle state
-	appstate.SetRunningTimesheet(nil)                    // Start with no running timesheet
-	tsd := new(models.TimesheetData)
 	for {
 		// log.Debug().Msg("getting running timesheet")
-		timesheets, err = models.Timesheet(tsd).SearchOpen()
+		timesheets, err = models.Timesheet(new(models.TimesheetData)).SearchOpen()
 		appstate.SetStatusError(err)
 		if err != nil {
 			// log.Trace().Msg("set nil running timesheet")

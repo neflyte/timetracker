@@ -44,10 +44,11 @@ type ttWindow struct {
 
 func NewTimetrackerWindow(app fyne.App) TTWindow {
 	ttw := &ttWindow{
-		App:               &app,
-		Window:            app.NewWindow("Timetracker"),
-		EventLoopQuitChan: make(chan bool),
-		Log:               logger.GetStructLogger("TTWindow"),
+		App:                  &app,
+		Window:               app.NewWindow("Timetracker"),
+		EventLoopStartedChan: make(chan bool),
+		EventLoopQuitChan:    make(chan bool, 1),
+		Log:                  logger.GetStructLogger("TTWindow"),
 	}
 	ttw.Init()
 	return ttw
@@ -106,7 +107,7 @@ func (t *ttWindow) startEventLoop() {
 	}
 	log.Debug().Msg("starting eventLoop")
 	t.EventLoopStartedChan = make(chan bool)
-	t.EventLoopQuitChan = make(chan bool)
+	t.EventLoopQuitChan = make(chan bool, 1)
 	go t.eventLoop()
 	log.Debug().Msg("waiting for loop to start")
 	<-t.EventLoopStartedChan
@@ -134,6 +135,10 @@ func (t *ttWindow) eventLoop() {
 	for {
 		select {
 		case runningTSItem := <-chanRunningTimesheet:
+			if runningTSItem.Error() {
+				log.Err(runningTSItem.E).Msg("error getting running timesheet from rxgo observable")
+				break
+			}
 			runningTS := runningTSItem.V.(*models.TimesheetData)
 			if runningTS == nil {
 				log.Debug().Msg("runningTimesheet is NIL")
@@ -145,7 +150,6 @@ func (t *ttWindow) eventLoop() {
 			break
 		case <-t.EventLoopQuitChan:
 			log.Debug().Msg("received quit signal; ending event loop")
-			appstate.SetTTWindowEventLoopRunning(false)
 			return
 		}
 	}

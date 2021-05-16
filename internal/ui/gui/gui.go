@@ -3,6 +3,7 @@ package gui
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/dialog"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
 )
@@ -59,7 +60,15 @@ func ShowTimetrackerWindowWithError(err error) {
 	if !appstate.GetGUIStarted() {
 		return
 	}
+	ttWin.ShowWithError(err)
+}
+
+func ShowTimetrackerWindowWithConfirm(title string, message string, cb func(bool)) {
+	if !appstate.GetGUIStarted() {
+		return
+	}
 	ttWin.Show()
+	dialog.NewConfirm(title, message, cb, ttWin.Get().Window).Show()
 }
 
 func guiFunc(app *fyne.App) {

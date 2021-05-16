@@ -18,14 +18,14 @@ const (
 )
 
 var (
-	// chanStatusError      = make(chan rxgo.Item)
-	// ObsStatusError       = rxgo.FromChannel(chanStatusError)
-	// chanLastState        = make(chan rxgo.Item)
-	// ObsLastState         = rxgo.FromChannel(chanLastState)
-	chanRunningTimesheet = make(chan rxgo.Item)
-	ObsRunningTimesheet  = rxgo.FromChannel(chanRunningTimesheet)
-	// chanSelectedTask     = make(chan rxgo.Item)
-	// ObsSelectedTask = rxgo.FromChannel(chanSelectedTask)
+	// chanStatusError      = make(chan rxgo.Item, 1)
+	// ObsStatusError       = rxgo.FromEventSource(chanStatusError)
+	// chanLastState        = make(chan rxgo.Item, 1)
+	// ObsLastState         = rxgo.FromEventSource(chanLastState)
+	chanRunningTimesheet = make(chan rxgo.Item, 1)
+	ObsRunningTimesheet  = rxgo.FromEventSource(chanRunningTimesheet)
+	// chanSelectedTask     = make(chan rxgo.Item, 1)
+	// ObsSelectedTask = rxgo.FromEventSource(chanSelectedTask)
 	appstateLog = logger.GetLogger("appstate")
 )
 
