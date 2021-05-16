@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
@@ -22,6 +23,7 @@ var (
 
 type TTWindow interface {
 	Show()
+	ShowWithError(err error)
 	Hide()
 	Close()
 	Get() ttWindow
@@ -72,11 +74,12 @@ func (t *ttWindow) Init() {
 	)
 	t.Window.SetContent(t.Container)
 	t.Window.SetFixedSize(true)
-	/*t.Window.SetCloseIntercept(func() {
-		CloseTimetrackerWindow(nil)
-		// FIXME: Track the show/hide state of the window in appstate and add a listener to it for stopping the event loop
-	})*/
-	// spawn a goroutine to load the window's data
+	t.Window.Resize(fyne.NewSize(MinimumWindowWidth, MinimumWindowHeight))
+	// Make sure we hide the window instead of closing it, otherwise the app will exit
+	t.Window.SetCloseIntercept(func() {
+		t.Window.Hide()
+	})
+	// Spawn a goroutine to load the window's data
 	go t.InitWindowData()
 }
 
@@ -93,6 +96,31 @@ func (t *ttWindow) InitWindowData() {
 		}
 	}
 	log.Debug().Msg("done")
+}
+
+func (t *ttWindow) startEventLoop() {
+	log := t.Log.With().Str("func", "startEventLoop").Logger()
+	if appstate.GetTTWindowEventLoopRunning() {
+		log.Warn().Msg("eventLoop is already running")
+		return
+	}
+	log.Debug().Msg("starting eventLoop")
+	t.EventLoopStartedChan = make(chan bool)
+	t.EventLoopQuitChan = make(chan bool)
+	go t.eventLoop()
+	log.Debug().Msg("waiting for loop to start")
+	<-t.EventLoopStartedChan
+	log.Debug().Msg("eventLoop started")
+}
+
+func (t *ttWindow) stopEventLoop() {
+	log := t.Log.With().Str("func", "stopEventLoop").Logger()
+	if !appstate.GetTTWindowEventLoopRunning() {
+		log.Warn().Msg("eventLoop is not running")
+		return
+	}
+	log.Debug().Msg("stopping eventLoop")
+	t.EventLoopQuitChan <- true
 }
 
 func (t *ttWindow) eventLoop() {
@@ -128,12 +156,10 @@ func (t *ttWindow) doStartTask() {
 	log.Trace().Msg("started")
 	selectedTask := appstate.GetSelectedTask()
 	if selectedTask == "" {
-		NewErrorDialogWindow(
-			*t.App,
-			"no task selected",
+		dialog.NewError(
 			fmt.Errorf("please select a task to start"),
-			nil,
-			nil).Show()
+			t.Window,
+		).Show()
 		return
 	}
 	// TODO: convert from selectedTask string to task ID so we can start a new timesheet
@@ -142,24 +168,14 @@ func (t *ttWindow) doStartTask() {
 		taskIdString := matches[1]
 		taskIdInt, err := strconv.Atoi(taskIdString)
 		if err != nil {
-			NewErrorDialogWindow(
-				*t.App,
-				"invalid task id",
-				err,
-				nil,
-				nil).Show()
+			dialog.NewError(err, t.Window).Show()
 			return
 		}
 		taskData := new(models.TaskData)
 		taskData.ID = uint(taskIdInt)
 		err = models.Task(taskData).Load(false)
 		if err != nil {
-			NewErrorDialogWindow(
-				*t.App,
-				"error loading task",
-				err,
-				nil,
-				nil).Show()
+			dialog.NewError(err, t.Window).Show()
 			return
 		}
 		timesheetData := new(models.TimesheetData)
@@ -167,12 +183,7 @@ func (t *ttWindow) doStartTask() {
 		timesheetData.StartTime = time.Now()
 		err = models.Timesheet(timesheetData).Create()
 		if err != nil {
-			NewErrorDialogWindow(
-				*t.App,
-				"error starting task",
-				err,
-				nil,
-				nil).Show()
+			dialog.NewError(err, t.Window).Show()
 			return
 		}
 		t.BtnStopTask.Enable()
@@ -189,21 +200,22 @@ func (t *ttWindow) doManageTasks() {
 }
 
 func (t *ttWindow) Show() {
-	log := t.Log.With().Str("func", "Show").Logger()
-	if !appstate.GetTTWindowEventLoopRunning() {
-		log.Trace().Msg("event loop is not running; starting it")
-		go t.eventLoop()
-		<-t.EventLoopStartedChan
-		appstate.SetTTWindowEventLoopRunning(true)
-	}
 	t.Window.Show()
+	t.startEventLoop()
+}
+
+func (t *ttWindow) ShowWithError(err error) {
+	t.Show()
+	dialog.NewError(err, t.Window).Show()
 }
 
 func (t *ttWindow) Hide() {
+	t.stopEventLoop()
 	t.Window.Hide()
 }
 
 func (t *ttWindow) Close() {
+	t.stopEventLoop()
 	t.Window.Close()
 }
 

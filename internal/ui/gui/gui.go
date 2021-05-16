@@ -13,17 +13,12 @@ var (
 	ttWin          TTWindow
 )
 
-func Run() error {
-	StartGUI()
-	ttWin.Get().Window.ShowAndRun()
-	return nil
-}
-
 func StartGUI() {
 	if appstate.GetGUIStarted() {
 		return
 	}
 	initGUI()
+	guiFunc(&FyneApp)
 }
 
 func StopGUI() {
@@ -60,11 +55,11 @@ func ShowTimetrackerWindow() {
 	ttWin.Show()
 }
 
-func CloseTimetrackerWindow() {
+func ShowTimetrackerWindowWithError(err error) {
 	if !appstate.GetGUIStarted() {
 		return
 	}
-	ttWin.Close()
+	ttWin.Show()
 }
 
 func guiFunc(app *fyne.App) {

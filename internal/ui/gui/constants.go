@@ -3,8 +3,8 @@ package gui
 import "fyne.io/fyne/v2"
 
 const (
-	MinimumWindowWidth  = 600.0
-	MinimumWindowHeight = 250.0
+	MinimumWindowWidth  = 800.0
+	MinimumWindowHeight = 600.0
 )
 
 var (

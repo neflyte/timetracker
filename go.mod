@@ -3,7 +3,7 @@ module github.com/neflyte/timetracker
 go 1.15
 
 require (
-	fyne.io/fyne/v2 v2.0.2
+	fyne.io/fyne/v2 v2.0.3
 	github.com/alexeyco/simpletable v0.0.0-20200730140406-5bb24159ccfb
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
 	github.com/fatih/color v1.10.0
@@ -16,7 +16,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/mattn/go-sqlite3 v1.14.6 // indirect
 	github.com/nightlyone/lockfile v1.0.0
-	github.com/phf/go-queue v0.0.0-20170504031614-9abe38d0371d
 	github.com/reactivex/rxgo/v2 v2.4.0
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/zerolog v1.21.0

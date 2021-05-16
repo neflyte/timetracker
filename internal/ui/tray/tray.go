@@ -63,8 +63,12 @@ func Run() (err error) {
 	log.Debug().Msg("systray initialized")
 	// Start mainLoop
 	trayQuitChan = make(chan bool, 1)
-	log.Trace().Msg("mainLoop(...)")
-	mainLoop(trayQuitChan /*, FyneApp*/)
+	log.Trace().Msg("go mainLoop(...)")
+	go mainLoop(trayQuitChan)
+	// Start GUI
+	log.Trace().Msg("gui.StartGUI()")
+	gui.StartGUI()
+	log.Trace().Msg("gui has finished")
 	// Shut down mainLoop
 	trayQuitChan <- true
 	// Shut down systray
@@ -120,7 +124,6 @@ func mainLoop(quitChan chan bool) {
 	log := logger.GetLogger("tray.mainLoop")
 	log.Trace().Msg("starting")
 	statusLoopQuitChan := make(chan bool, 1)
-	defer gui.StopGUI() // in case it was started...
 	// Start the status loop in a goroutine
 	log.Trace().Msg("go statusLoop(...)")
 	go statusLoop(statusLoopQuitChan)
@@ -143,30 +146,22 @@ func mainLoop(quitChan chan bool) {
 				if res {
 					// Stop the running task
 					log.Debug().Msgf("stopping task %s", runningTimesheet.Task.Synopsis)
-					err := models.Task(new(models.TaskData)).StopRunningTask()
+					err = models.Task(new(models.TaskData)).StopRunningTask()
 					if err != nil {
 						log.Err(err).Msg(errors.StopRunningTaskError)
 					}
 				}
 			case constants.TimesheetStatusError:
-				_, err := dlgs.Error("timetracker Error", appstate.GetStatusError().Error())
-				if err != nil {
-					log.Err(err).Msg("error from error dialog")
-				}
+				gui.ShowTimetrackerWindowWithError(appstate.GetStatusError())
 			case constants.TimesheetStatusIdle:
-				/*gui.StartGUI()
-				gui.ShowTimetrackerWindow()*/
-				log.Debug().Msg("implementation missing")
+				gui.ShowTimetrackerWindow()
 			}
 		case <-mAbout.ClickedCh:
-			log.Debug().Msg("about menu item selected")
-			_, err := dlgs.Info("About Timetracker", "Timetracker vx.xx\nhttps://github.com/neflyte/timetracker")
-			if err != nil {
-				log.Err(err).Msg("error from about box")
-			}
+			log.Debug().Msg("about menu item selected; IMPLEMENTATION MISSING")
 		case <-mQuit.ClickedCh:
 			log.Debug().Msg("quit menu item selected; quitting app")
 			statusLoopQuitChan <- true
+			gui.StopGUI()
 			return
 		case <-quitChan:
 			log.Debug().Msg("quit channel fired; exiting function")
