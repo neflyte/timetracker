@@ -6,13 +6,13 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
-	"github.com/neflyte/timetracker/internal/ui/icons"
 	"github.com/rs/zerolog"
 	"regexp"
 	"strconv"
@@ -43,6 +43,7 @@ type ttWindow struct {
 	BtnStartTask   *widget.Button
 	BtnStopTask    *widget.Button
 	BtnManageTasks *widget.Button
+	BtnAbout       *widget.Button
 	BtnQuit        *widget.Button
 	Log            zerolog.Logger
 	LblStatus      *widget.Label
@@ -72,15 +73,17 @@ func (t *ttWindow) Init() {
 	t.TaskList = widgets.NewTasklist(func(s string) {
 		appstate.SetSelectedTask(s)
 	})
-	t.BtnStartTask = widget.NewButtonWithIcon("START", icons.ResourcePlayCircleOutlineWhitePng, t.doStartTask)
-	t.BtnStopTask = widget.NewButtonWithIcon("STOP", icons.ResourceStopCircleOutlineWhitePng, t.doStopTask)
-	t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", icons.ResourceDotsHorizontalCircleOutlineWhitePng, t.doManageTasks)
+	t.BtnStartTask = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), t.doStartTask)
+	t.BtnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)
+	t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), t.doManageTasks)
+	t.BtnAbout = widget.NewButton("ABOUT", t.doAbout)
 	t.BtnQuit = widget.NewButton("QUIT", t.doQuit)
 	t.ButtonBox = container.NewCenter(
 		container.NewHBox(
 			t.BtnStartTask,
 			t.BtnStopTask,
 			t.BtnManageTasks,
+			t.BtnAbout,
 			t.BtnQuit,
 		),
 	)
@@ -245,6 +248,7 @@ func (t *ttWindow) doStartTask() {
 	log.Trace().Msg("started")
 	selectedTask := appstate.GetSelectedTask()
 	if selectedTask == "" {
+		log.Error().Msg("no task was selected")
 		dialog.NewError(
 			fmt.Errorf("please select a task to start"),
 			t.Window,
@@ -257,6 +261,7 @@ func (t *ttWindow) doStartTask() {
 		taskIdString := matches[1]
 		taskIdInt, err := strconv.Atoi(taskIdString)
 		if err != nil {
+			log.Err(err).Msgf("err converting taskIdString '%s' to int", taskIdString)
 			dialog.NewError(err, t.Window).Show()
 			return
 		}
@@ -264,6 +269,7 @@ func (t *ttWindow) doStartTask() {
 		taskData.ID = uint(taskIdInt)
 		err = models.Task(taskData).Load(false)
 		if err != nil {
+			log.Err(err).Msgf("error loading task id %d", taskData.ID)
 			dialog.NewError(err, t.Window).Show()
 			return
 		}
@@ -272,6 +278,7 @@ func (t *ttWindow) doStartTask() {
 		timesheetData.StartTime = time.Now()
 		err = models.Timesheet(timesheetData).Create()
 		if err != nil {
+			log.Err(err).Msg("error creating new timesheet")
 			dialog.NewError(err, t.Window).Show()
 			return
 		}
@@ -313,17 +320,7 @@ func (t *ttWindow) doQuit() {
 	}
 }
 
-func (t *ttWindow) Show() {
-	t.Window.Show()
-}
-
-func (t *ttWindow) ShowWithError(err error) {
-	t.Show()
-	dialog.NewError(err, t.Window).Show()
-}
-
-func (t *ttWindow) ShowAbout() {
-	t.Show()
+func (t *ttWindow) doAbout() {
 	appVersion := "??"
 	appVersionIntf, ok := appstate.Map().Load(appstate.KeyAppVersion)
 	if ok {
@@ -337,6 +334,20 @@ func (t *ttWindow) ShowAbout() {
 		fmt.Sprintf("Timetracker v%s\n\nhttps://github.com/neflyte/timetracker", appVersion),
 		t.Window,
 	).Show()
+}
+
+func (t *ttWindow) Show() {
+	t.Window.Show()
+}
+
+func (t *ttWindow) ShowWithError(err error) {
+	t.Show()
+	dialog.NewError(err, t.Window).Show()
+}
+
+func (t *ttWindow) ShowAbout() {
+	t.Show()
+	t.doAbout()
 }
 
 func (t *ttWindow) Hide() {
