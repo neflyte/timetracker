@@ -50,6 +50,8 @@ type manageWindow struct {
 	taskEditDescription string
 }
 
+// TODO: Make the task editor a first-class widget
+
 func NewManageWindow(app fyne.App) ManageWindow {
 	mw := &manageWindow{
 		App:            &app,
@@ -304,8 +306,10 @@ func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
 	m.BtnEditSave.Disable()
 }
 
+// TODO: Make a first-class widget for the task list item
+
 func (m *manageWindow) listTasksCreateItem() fyne.CanvasObject {
-	return widget.NewCard("", "", container.NewPadded())
+	return widget.NewCard("", "", widget.NewLabel(""))
 }
 
 func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject fyne.CanvasObject) {
@@ -332,7 +336,7 @@ func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject f
 	log.Trace().Msgf("setting title=%s, subtitle=%s", td.Synopsis, td.Description)
 	taskCard.SetTitle(td.Synopsis)
 	// TODO: trim subtitle to 64 chars; use ellipsis if >64 chars
-	taskCard.SetSubTitle(td.Description)
+	taskCard.Content.(*widget.Label).SetText(td.Description)
 }
 
 func (m *manageWindow) toggleEditWidgets(show bool) {
