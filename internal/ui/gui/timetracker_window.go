@@ -72,9 +72,7 @@ func NewTimetrackerWindow(app fyne.App) TTWindow {
 }
 
 func (t *ttWindow) Init() {
-	t.TaskList = widgets.NewTasklist(func(s string) {
-		appstate.SetSelectedTask(s)
-	})
+	t.TaskList = widgets.NewTasklist(appstate.SetSelectedTask)
 	t.BtnStartTask = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), t.doStartTask)
 	t.BtnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)
 	t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), t.doManageTasks)
@@ -144,9 +142,7 @@ func (t *ttWindow) Init() {
 	t.Window.SetFixedSize(true)
 	t.Window.Resize(MinimumWindowSize)
 	// Make sure we hide the window instead of closing it, otherwise the app will exit
-	t.Window.SetCloseIntercept(func() {
-		t.Hide()
-	})
+	t.Window.SetCloseIntercept(t.Hide)
 	// Set up our observables
 	t.setupObservables()
 	// Spawn a goroutine to load the window's data

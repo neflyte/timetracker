@@ -25,13 +25,18 @@ type ManageWindow interface {
 }
 
 type manageWindow struct {
-	App           *fyne.App
-	Window        fyne.Window
-	Container     *fyne.Container
-	ListTasks     *widget.List
-	Log           zerolog.Logger
-	BtnEditSave   *widget.Button
-	BtnEditCancel *widget.Button
+	Log zerolog.Logger
+
+	App              *fyne.App
+	Window           fyne.Window
+	Container        *fyne.Container
+	ListTasks        *widget.List
+	BtnEditSave      *widget.Button
+	BtnEditCancel    *widget.Button
+	LabelSynopsis    *widget.Label
+	LabelDescription *widget.Label
+	EntrySynopsis    *widget.Entry
+	EntryDescription *widget.Entry
 
 	BindTaskList            binding.ExternalStringList
 	BindTaskEditSynopsis    binding.ExternalString
@@ -65,24 +70,35 @@ func (m *manageWindow) Init() {
 	// setup widgets
 	m.ListTasks = widget.NewListWithData(m.BindTaskList, m.listTasksCreateItem, m.listTasksUpdateItem)
 	m.ListTasks.OnSelected = m.taskWasSelected
+	m.LabelSynopsis = widget.NewLabel("Synopsis:")
+	m.EntrySynopsis = widget.NewEntryWithData(m.BindTaskEditSynopsis)
+	m.EntrySynopsis.SetPlaceHolder("enter the task synopsis here")
+	m.LabelDescription = widget.NewLabel("Description:")
+	m.EntryDescription = widget.NewEntryWithData(m.BindTaskEditDescription)
+	m.EntryDescription.MultiLine = true
+	m.EntryDescription.SetPlaceHolder("enter the task description here")
 	m.BtnEditSave = widget.NewButtonWithIcon("Save", theme.ConfirmIcon(), m.doEditSave)
 	m.BtnEditCancel = widget.NewButtonWithIcon("Cancel", theme.CancelIcon(), m.doEditCancel)
 	// setup layout
-	m.Container = container.NewPadded(
-		container.NewHSplit(
-			m.ListTasks,
-			container.NewPadded(container.NewVBox(
-				// TODO: entry components
-				container.NewHBox(m.BtnEditCancel, m.BtnEditSave),
-			)),
-		),
-	)
+	m.Container = container.NewPadded(container.NewHSplit(
+		container.NewPadded(container.NewMax(m.ListTasks)),
+		container.NewPadded(container.NewBorder(
+			nil,
+			container.NewHBox(m.BtnEditCancel, m.BtnEditSave),
+			nil,
+			nil,
+			container.NewVBox(
+				m.LabelSynopsis, m.EntrySynopsis,
+				m.LabelDescription, m.EntryDescription,
+			),
+		)),
+	))
 	m.Window.SetCloseIntercept(m.Hide)
 	m.Window.SetContent(m.Container)
-	m.Window.SetFixedSize(false)
+	m.Window.SetFixedSize(true)
 	m.Window.Resize(MinimumWindowSize)
 	// Load window data in a goroutine
-	go m.InitWindowData()
+	// go m.InitWindowData()
 }
 
 func (m *manageWindow) InitWindowData() {
@@ -109,15 +125,41 @@ func (m *manageWindow) Get() manageWindow {
 }
 
 func (m *manageWindow) Show() {
+	// Hide editor widgets by default
+	m.toggleEditWidgets(false)
+	m.refreshTasks()
 	m.Window.Show()
 }
 
 func (m *manageWindow) Hide() {
+	log := m.Log.With().Str("func", "Hide").Logger()
+	err := m.BindTaskList.Set(make([]string, 0))
+	if err != nil {
+		log.Err(err).Msg("error resetting task list")
+	}
 	m.Window.Hide()
 }
 
 func (m *manageWindow) Close() {
 	m.Window.Close()
+}
+
+func (m *manageWindow) refreshTasks() {
+	log := m.Log.With().Str("func", "refreshTasks").Logger()
+	tasks, err := models.Task(new(models.TaskData)).LoadAll(false)
+	if err != nil {
+		log.Err(err).Msg("error reading all tasks")
+		return
+	}
+	log.Debug().Msgf("read %d tasks", len(tasks))
+	for _, task := range tasks {
+		log.Debug().Msgf("task=%s", task.String())
+		err = m.BindTaskList.Append(task.Synopsis)
+		if err != nil {
+			log.Err(err).Msgf("error appending task %s", task.String())
+		}
+		m.ListTasks.Refresh()
+	}
 }
 
 func (m *manageWindow) doEditSave() {
@@ -144,6 +186,7 @@ func (m *manageWindow) doEditCancel() {
 				if saveChanges {
 					err := m.saveChanges()
 					if err != nil {
+						// TODO: show error dialog
 						log.Err(err).Msg("error saving changes to task")
 						return
 					}
@@ -219,6 +262,7 @@ func (m *manageWindow) doneEditing() {
 	}
 	m.BtnEditSave.Disable()
 	m.BtnEditCancel.Disable()
+	m.toggleEditWidgets(false)
 }
 
 func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
@@ -232,12 +276,13 @@ func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
 			"You have unsaved changes\nSave them or cancel editing before selecting a different task",
 			m.Window,
 		).Show()
-		m.ListTasks.Unselect(id) // FIXME: do we need this?
+		m.ListTasks.Unselect(id)
 		return
 	}
 	m.selectedTaskID = id
 	m.isEditing = true
 	m.isDirty = false
+	m.toggleEditWidgets(true)
 	taskSyn := m.taskList[id]
 	td := new(models.TaskData)
 	td.Synopsis = taskSyn
@@ -260,8 +305,9 @@ func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
 }
 
 func (m *manageWindow) listTasksCreateItem() fyne.CanvasObject {
-	return widget.NewCard("new task", "task description", nil)
+	return widget.NewCard("", "", container.NewPadded())
 }
+
 func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject fyne.CanvasObject) {
 	log := m.Log.With().Str("function", "listTasksUpdateItem").Logger()
 	taskSynopsisBinding := item.(binding.String)
@@ -270,6 +316,7 @@ func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject f
 		log.Err(err).Msg("error getting task synopsis from binding")
 		return
 	}
+	log = log.With().Str("taskSyn", taskSyn).Logger()
 	taskCard, ok := canvasObject.(*widget.Card)
 	if !ok {
 		log.Error().Msg("error getting card widget")
@@ -282,7 +329,26 @@ func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject f
 		log.Err(err).Msgf("error loading task with synopsis %s", taskSyn)
 		return
 	}
+	log.Trace().Msgf("setting title=%s, subtitle=%s", td.Synopsis, td.Description)
 	taskCard.SetTitle(td.Synopsis)
 	// TODO: trim subtitle to 64 chars; use ellipsis if >64 chars
 	taskCard.SetSubTitle(td.Description)
+}
+
+func (m *manageWindow) toggleEditWidgets(show bool) {
+	if show {
+		m.LabelSynopsis.Show()
+		m.LabelDescription.Show()
+		m.EntrySynopsis.Show()
+		m.EntryDescription.Show()
+		m.BtnEditSave.Show()
+		m.BtnEditCancel.Show()
+		return
+	}
+	m.LabelSynopsis.Hide()
+	m.LabelDescription.Hide()
+	m.EntrySynopsis.Hide()
+	m.EntryDescription.Hide()
+	m.BtnEditSave.Hide()
+	m.BtnEditCancel.Hide()
 }
