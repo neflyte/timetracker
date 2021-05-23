@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"time"
 )
 
 const (
@@ -38,7 +39,7 @@ func InitLogger(logLevel string, console bool) {
 			logWriters = append(logWriters, logFileHandle)
 		}
 		if console || logFileHandle == nil {
-			logWriters = append(logWriters, zerolog.ConsoleWriter{Out: os.Stderr})
+			logWriters = append(logWriters, zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.Stamp})
 		}
 		// Create a new root logger
 		if len(logWriters) > 1 {

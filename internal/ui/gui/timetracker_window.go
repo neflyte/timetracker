@@ -46,6 +46,8 @@ type ttWindow struct {
 	BtnAbout       *widget.Button
 	BtnQuit        *widget.Button
 	Log            zerolog.Logger
+	mngWindow      ManageWindow
+
 	LblStatus      *widget.Label
 	LblStartTime   *widget.Label
 	LblElapsedTime *widget.Label
@@ -143,7 +145,7 @@ func (t *ttWindow) Init() {
 	t.Window.Resize(MinimumWindowSize)
 	// Make sure we hide the window instead of closing it, otherwise the app will exit
 	t.Window.SetCloseIntercept(func() {
-		t.Window.Hide()
+		t.Hide()
 	})
 	// Set up our observables
 	t.setupObservables()
@@ -310,7 +312,10 @@ func (t *ttWindow) doStopTask() {
 }
 
 func (t *ttWindow) doManageTasks() {
-	// TODO: Show manage tasks modal
+	if t.mngWindow == nil {
+		t.mngWindow = NewManageWindow(*t.App)
+	}
+	t.mngWindow.Show()
 }
 
 func (t *ttWindow) doQuit() {
@@ -351,6 +356,9 @@ func (t *ttWindow) ShowAbout() {
 }
 
 func (t *ttWindow) Hide() {
+	if t.mngWindow != nil {
+		t.mngWindow.Hide()
+	}
 	t.Window.Hide()
 }
 

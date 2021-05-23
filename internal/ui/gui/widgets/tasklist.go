@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	minWidth = 350 // minWidth is the minimum width of the widget in pixels
+	tasklistMinWidth = 350 // tasklistMinWidth is the minimum width of the widget in pixels
 )
 
 type Tasklist struct {
@@ -46,8 +46,8 @@ func (t *Tasklist) Init() {
 
 func (t *Tasklist) MinSize() fyne.Size {
 	minsize := t.Select.MinSize()
-	if minsize.Width < minWidth {
-		minsize.Width = minWidth
+	if minsize.Width < tasklistMinWidth {
+		minsize.Width = tasklistMinWidth
 	}
 	return minsize
 }
