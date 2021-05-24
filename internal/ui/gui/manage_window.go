@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	noSelectionIndex = widget.ListItemID(-1)
+	noSelectionIndex              = widget.ListItemID(-1)
+	manageWindowContainerRowsCols = 2
 )
 
 type ManageWindow interface {
@@ -35,11 +36,11 @@ type manageWindow struct {
 	TaskEditor *widgets.TaskEditor
 
 	BindTaskList binding.ExternalStringList
+	taskList     []string
 
 	isEditing      bool
 	isDirty        bool
 	selectedTaskID widget.ListItemID
-	taskList       []string
 }
 
 func NewManageWindow(app fyne.App) ManageWindow {
@@ -83,7 +84,7 @@ func (m *manageWindow) Init() {
 	// setup layout
 	m.Container = container.NewPadded(
 		container.NewAdaptiveGrid(
-			2,
+			manageWindowContainerRowsCols,
 			container.NewVScroll(m.ListTasks),
 			m.TaskEditor,
 		),
@@ -237,7 +238,7 @@ func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
 		Str("func", "taskWasSelected").
 		Int("listItemID", id).
 		Logger()
-	if m.isEditing && m.isDirty {
+	if m.isEditing && m.TaskEditor.IsDirty() {
 		dialog.NewInformation(
 			"Unsaved Changes",
 			"You have unsaved changes\nSave them or cancel editing before selecting a different task",
@@ -265,10 +266,8 @@ func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
 	}
 }
 
-// TODO: Make a first-class widget for the task list item
-
 func (m *manageWindow) listTasksCreateItem() fyne.CanvasObject {
-	return widget.NewCard("", "", container.NewPadded(widget.NewLabel("")))
+	return widgets.NewTasklistItem()
 }
 
 func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject fyne.CanvasObject) {
@@ -287,15 +286,15 @@ func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject f
 		log.Err(err).Msgf("error loading task with synopsis %s", taskSyn)
 		return
 	}
-	taskCard, ok := canvasObject.(*widget.Card)
+	tasklistItem, ok := canvasObject.(*widgets.TasklistItem)
 	if !ok {
-		log.Error().Msgf("error getting card widget; got %s", reflect.TypeOf(canvasObject).String())
+		log.Error().Msgf("error getting tasklistItem widget; got %s", reflect.TypeOf(canvasObject).String())
 		return
 	}
-	log.Trace().Msgf("setting title=%s, subtitle=%s", td.Synopsis, td.Description)
-	taskCard.SetTitle(td.Synopsis)
+	log.Trace().Msgf("setting task=%s", td.String())
 	// TODO: trim subtitle to 64 chars; use ellipsis if >64 chars
-	taskCard.SetSubTitle(td.Description)
-	taskCard.Refresh()
-	//taskCard.Content.(*fyne.Container).Objects[0].(*widget.Label).SetText(td.Description)
+	err = tasklistItem.SetTask(td)
+	if err != nil {
+		log.Err(err).Msg("error setting task on tasklistItem")
+	}
 }

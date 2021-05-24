@@ -27,6 +27,8 @@ type TaskEditor struct {
 	taskDescriptionBinding binding.ExternalString
 	taskData               *models.TaskData
 
+	// TODO: Remove the split synopsis/descripting bindings and replace with a taskData binding instead
+
 	taskSavedChannel     chan rxgo.Item
 	editCancelledChannel chan rxgo.Item
 
