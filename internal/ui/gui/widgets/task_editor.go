@@ -26,6 +26,7 @@ type TaskEditor struct {
 	taskDescription        string
 	taskDescriptionBinding binding.ExternalString
 	taskData               *models.TaskData
+	taskDataChannel        chan rxgo.Item
 
 	// TODO: Remove the split synopsis/descripting bindings and replace with a taskData binding instead
 
@@ -51,6 +52,7 @@ func NewTaskEditor() *TaskEditor {
 	te.taskSynopsisBinding = binding.BindString(&te.taskSynopsis)
 	te.taskDescriptionBinding = binding.BindString(&te.taskDescription)
 	te.taskData = new(models.TaskData)
+	te.taskDataChannel = make(chan rxgo.Item, TaskEditorEventChannelBufferSize)
 	te.observerablesMap = map[string]rxgo.Observable{
 		TaskEditorTaskSavedEventKey:     te.taskSavedObservable,
 		TaskEditorEditCancelledEventKey: te.editCancelledObservable,
@@ -78,6 +80,7 @@ func (te *TaskEditor) SetTask(task *models.TaskData) error {
 			return err
 		}
 	}
+	te.taskDataChannel <- rxgo.Of(task)
 	return nil
 }
 
@@ -93,6 +96,9 @@ func (te *TaskEditor) GetDirtyTask() *models.TaskData {
 
 func (te *TaskEditor) IsDirty() bool {
 	log := te.log.With().Str("func", "IsDirty").Logger()
+	if te.taskData == nil {
+		return false
+	}
 	editSynopsis, err := te.taskSynopsisBinding.Get()
 	if err != nil {
 		log.Err(err).Msg("error getting synopsis from binding")
@@ -115,8 +121,10 @@ func (te *TaskEditor) IsDirty() bool {
 func (te *TaskEditor) CreateRenderer() fyne.WidgetRenderer {
 	te.ExtendBaseWidget(te)
 	r := &taskEditorRenderer{
+		log:                  logger.GetStructLogger("TaskEditor.taskEditorRenderer"),
 		taskEditor:           te,
 		taskData:             te.taskData,
+		taskDataObservable:   rxgo.FromEventSource(te.taskDataChannel),
 		synopsisLabel:        widget.NewLabel("Synopsis:"),
 		synopsisEntry:        widget.NewEntryWithData(te.taskSynopsisBinding),
 		descriptionLabel:     widget.NewLabel("Description:"),
@@ -124,6 +132,21 @@ func (te *TaskEditor) CreateRenderer() fyne.WidgetRenderer {
 		taskSavedChannel:     te.taskSavedChannel,
 		editCancelledChannel: te.editCancelledChannel,
 	}
+	r.taskDataObservable.ForEach(
+		func(item interface{}) {
+			newTaskData, ok := item.(*models.TaskData)
+			if ok {
+				r.log.Debug().Msgf("setting taskData from observable; taskData=%s", newTaskData.String())
+				r.taskData = newTaskData
+			}
+		},
+		func(err error) {
+			r.log.Err(err).Msg("error from taskData observable")
+		},
+		func() {
+			r.log.Debug().Msg("taskData observable is finished")
+		},
+	)
 	r.synopsisEntry.SetPlaceHolder("enter the task synopsis here")
 	r.synopsisEntry.OnChanged = func(_ string) { r.updateButtonStates() }
 	r.descriptionEntry.SetPlaceHolder("enter the task description here")
@@ -149,6 +172,7 @@ func (te *TaskEditor) CreateRenderer() fyne.WidgetRenderer {
 }
 
 type taskEditorRenderer struct {
+	log                  zerolog.Logger
 	taskEditor           *TaskEditor
 	canvasObjects        []fyne.CanvasObject
 	layout               fyne.Layout
@@ -161,6 +185,7 @@ type taskEditorRenderer struct {
 	fieldContainer       *fyne.Container
 	buttonContainer      *fyne.Container
 	taskData             *models.TaskData
+	taskDataObservable   rxgo.Observable
 	taskSavedChannel     chan rxgo.Item
 	editCancelledChannel chan rxgo.Item
 }
