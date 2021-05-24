@@ -7,48 +7,57 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/reactivex/rxgo/v2"
+	"github.com/rs/zerolog"
+)
+
+const (
+	TaskEditorEventChannelBufferSize = 2
+	TaskEditorTaskSavedEventKey      = "task-saved"
+	TaskEditorEditCancelledEventKey  = "edit-cancelled"
 )
 
 type TaskEditor struct {
-	widget.BaseWidget
+	widget.DisableableWidget
 	taskSynopsis           string
 	taskSynopsisBinding    binding.ExternalString
 	taskDescription        string
 	taskDescriptionBinding binding.ExternalString
 	taskData               *models.TaskData
-	isDirtyBinding         binding.ExternalBool
-	isDirty                bool
-	saveCB                 func()
-	closeCB                func()
+
+	taskSavedChannel     chan rxgo.Item
+	editCancelledChannel chan rxgo.Item
+
+	taskSavedObservable     rxgo.Observable
+	editCancelledObservable rxgo.Observable
+
+	observerablesMap map[string]rxgo.Observable
+
+	log zerolog.Logger
 }
 
-func NewTaskEditor(saveCallback func(), closeCallback func()) *TaskEditor {
+func NewTaskEditor() *TaskEditor {
 	te := new(TaskEditor)
 	te.ExtendBaseWidget(te)
-	te.saveCB = saveCallback
-	te.closeCB = closeCallback
-	te.isDirtyBinding = binding.BindBool(&te.isDirty)
+	te.log = logger.GetStructLogger("TaskEditor")
+	te.taskSavedChannel = make(chan rxgo.Item, TaskEditorEventChannelBufferSize)
+	te.editCancelledChannel = make(chan rxgo.Item, TaskEditorEventChannelBufferSize)
+	te.taskSavedObservable = rxgo.FromEventSource(te.taskSavedChannel)
+	te.editCancelledObservable = rxgo.FromEventSource(te.editCancelledChannel)
 	te.taskSynopsisBinding = binding.BindString(&te.taskSynopsis)
-	te.taskSynopsisBinding.AddListener(binding.NewDataListener(func() {
-		newSyn, err := te.taskSynopsisBinding.Get()
-		if err == nil {
-			if te.taskData != nil {
-				te.isDirty = te.taskData.Synopsis != newSyn
-			}
-		}
-	}))
 	te.taskDescriptionBinding = binding.BindString(&te.taskDescription)
-	te.taskDescriptionBinding.AddListener(binding.NewDataListener(func() {
-		newDesc, err := te.taskDescriptionBinding.Get()
-		if err == nil {
-			if te.taskData != nil {
-				te.isDirty = te.taskData.Description != newDesc
-			}
-		}
-	}))
 	te.taskData = new(models.TaskData)
+	te.observerablesMap = map[string]rxgo.Observable{
+		TaskEditorTaskSavedEventKey:     te.taskSavedObservable,
+		TaskEditorEditCancelledEventKey: te.editCancelledObservable,
+	}
 	return te
+}
+
+func (te *TaskEditor) Observables() map[string]rxgo.Observable {
+	return te.observerablesMap
 }
 
 func (te *TaskEditor) GetTask() *models.TaskData {
@@ -74,50 +83,56 @@ func (te *TaskEditor) GetDirtyTask() *models.TaskData {
 	if !te.IsDirty() {
 		return te.GetTask()
 	}
-	dirty := new(models.TaskData)
-	dirty.ID = te.GetTask().ID
+	dirty := te.taskData.Clone()
 	dirty.Synopsis = te.taskSynopsis
 	dirty.Description = te.taskDescription
-	dirty.CreatedAt = te.GetTask().CreatedAt
-	dirty.UpdatedAt = te.GetTask().UpdatedAt
 	return dirty
 }
 
 func (te *TaskEditor) IsDirty() bool {
-	return te.isDirty
+	log := te.log.With().Str("func", "IsDirty").Logger()
+	editSynopsis, err := te.taskSynopsisBinding.Get()
+	if err != nil {
+		log.Err(err).Msg("error getting synopsis from binding")
+		return false
+	}
+	if te.taskData.Synopsis != editSynopsis {
+		return true
+	}
+	editDescription, err := te.taskDescriptionBinding.Get()
+	if err != nil {
+		log.Err(err).Msg("error getting description from binding")
+		return false
+	}
+	if te.taskData.Description != editDescription {
+		return true
+	}
+	return false
 }
 
 func (te *TaskEditor) CreateRenderer() fyne.WidgetRenderer {
 	te.ExtendBaseWidget(te)
 	r := &taskEditorRenderer{
-		taskData:         te.taskData,
-		synopsisLabel:    widget.NewLabel("Synopsis:"),
-		synopsisEntry:    widget.NewEntryWithData(te.taskSynopsisBinding),
-		descriptionLabel: widget.NewLabel("Description:"),
-		descriptionEntry: widget.NewEntryWithData(te.taskDescriptionBinding),
-		saveCallback:     te.saveCB,
-		closeCallback:    te.closeCB,
+		taskEditor:           te,
+		taskData:             te.taskData,
+		synopsisLabel:        widget.NewLabel("Synopsis:"),
+		synopsisEntry:        widget.NewEntryWithData(te.taskSynopsisBinding),
+		descriptionLabel:     widget.NewLabel("Description:"),
+		descriptionEntry:     widget.NewEntryWithData(te.taskDescriptionBinding),
+		taskSavedChannel:     te.taskSavedChannel,
+		editCancelledChannel: te.editCancelledChannel,
 	}
 	r.synopsisEntry.SetPlaceHolder("enter the task synopsis here")
-	// TODO: write a function that updates the enabled status of buttons when an entry changes
-	r.synopsisEntry.OnChanged = func(changed string) {
-		if r.taskData != nil {
-			isDirty := changed != r.taskData.Synopsis
-			if isDirty {
-				r.saveButton.Enable()
-			} else {
-				r.saveButton.Disable()
-			}
-		}
-	}
+	r.synopsisEntry.OnChanged = func(_ string) { r.updateButtonStates() }
 	r.descriptionEntry.SetPlaceHolder("enter the task description here")
 	r.descriptionEntry.MultiLine = true
+	r.descriptionEntry.OnChanged = func(_ string) { r.updateButtonStates() }
 	r.fieldContainer = container.NewVBox(
 		r.synopsisLabel, r.synopsisEntry,
 		r.descriptionLabel, r.descriptionEntry,
 	)
-	r.saveButton = widget.NewButtonWithIcon("SAVE", theme.ConfirmIcon(), r.saveCallback)
-	r.closeButton = widget.NewButtonWithIcon("CLOSE", theme.CancelIcon(), r.closeCallback)
+	r.saveButton = widget.NewButtonWithIcon("SAVE", theme.ConfirmIcon(), r.doSaveTask)
+	r.closeButton = widget.NewButtonWithIcon("CLOSE", theme.CancelIcon(), r.doCancelEdit)
 	r.buttonContainer = container.NewCenter(container.NewHBox(r.closeButton, r.saveButton))
 	r.canvasObjects = []fyne.CanvasObject{
 		r.buttonContainer, r.fieldContainer,
@@ -132,19 +147,20 @@ func (te *TaskEditor) CreateRenderer() fyne.WidgetRenderer {
 }
 
 type taskEditorRenderer struct {
-	canvasObjects    []fyne.CanvasObject
-	layout           fyne.Layout
-	synopsisLabel    *widget.Label
-	synopsisEntry    *widget.Entry
-	descriptionLabel *widget.Label
-	descriptionEntry *widget.Entry
-	saveButton       *widget.Button
-	closeButton      *widget.Button
-	fieldContainer   *fyne.Container
-	buttonContainer  *fyne.Container
-	saveCallback     func()
-	closeCallback    func()
-	taskData         *models.TaskData
+	taskEditor           *TaskEditor
+	canvasObjects        []fyne.CanvasObject
+	layout               fyne.Layout
+	synopsisLabel        *widget.Label
+	synopsisEntry        *widget.Entry
+	descriptionLabel     *widget.Label
+	descriptionEntry     *widget.Entry
+	saveButton           *widget.Button
+	closeButton          *widget.Button
+	fieldContainer       *fyne.Container
+	buttonContainer      *fyne.Container
+	taskData             *models.TaskData
+	taskSavedChannel     chan rxgo.Item
+	editCancelledChannel chan rxgo.Item
 }
 
 func (r *taskEditorRenderer) Destroy() {}
@@ -162,5 +178,46 @@ func (r *taskEditorRenderer) Objects() []fyne.CanvasObject {
 }
 
 func (r *taskEditorRenderer) Refresh() {
+	r.updateButtonStates()
+	if r.taskEditor.Disabled() {
+		r.synopsisEntry.Disable()
+		r.descriptionEntry.Disable()
+	} else {
+		r.synopsisEntry.Enable()
+		r.descriptionEntry.Enable()
+	}
 	r.Layout(r.MinSize())
+}
+
+func (r *taskEditorRenderer) doSaveTask() {
+	r.taskSavedChannel <- rxgo.Of(r.taskData)
+}
+
+func (r *taskEditorRenderer) doCancelEdit() {
+	r.editCancelledChannel <- rxgo.Of(true)
+}
+
+func (r *taskEditorRenderer) updateButtonStates() {
+	if r.isDirty() && !r.taskEditor.Disabled() {
+		r.saveButton.Enable()
+	} else {
+		r.saveButton.Disable()
+	}
+	if r.taskEditor.Disabled() {
+		r.closeButton.Disable()
+	} else {
+		r.closeButton.Enable()
+	}
+}
+
+func (r *taskEditorRenderer) isDirty() bool {
+	if r.taskData != nil {
+		if r.taskData.Synopsis != r.synopsisEntry.Text {
+			return true
+		}
+		if r.taskData.Description != r.descriptionEntry.Text {
+			return true
+		}
+	}
+	return false
 }

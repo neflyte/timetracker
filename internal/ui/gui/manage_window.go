@@ -11,6 +11,7 @@ import (
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
 	"github.com/rs/zerolog"
+	"reflect"
 )
 
 const (
@@ -57,14 +58,36 @@ func (m *manageWindow) Init() {
 	// setup bindings
 	m.BindTaskList = binding.BindStringList(&m.taskList)
 	// setup widgets
-	m.TaskEditor = widgets.NewTaskEditor(m.doEditSave, m.doEditCancel)
+	m.TaskEditor = widgets.NewTaskEditor()
 	m.ListTasks = widget.NewListWithData(m.BindTaskList, m.listTasksCreateItem, m.listTasksUpdateItem)
 	m.ListTasks.OnSelected = m.taskWasSelected
+	// setup observables
+	m.TaskEditor.Observables()[widgets.TaskEditorTaskSavedEventKey].ForEach(
+		m.doEditSave,
+		func(err error) {
+			m.Log.Err(err).Msg("error from TaskSaved observable")
+		},
+		func() {
+			m.Log.Debug().Msgf("observable %s is finished", widgets.TaskEditorTaskSavedEventKey)
+		},
+	)
+	m.TaskEditor.Observables()[widgets.TaskEditorEditCancelledEventKey].ForEach(
+		m.doEditCancel,
+		func(err error) {
+			m.Log.Err(err).Msg("error from EditCancelled observable")
+		},
+		func() {
+			m.Log.Debug().Msgf("observable %s is finished", widgets.TaskEditorEditCancelledEventKey)
+		},
+	)
 	// setup layout
-	m.Container = container.NewMax(container.NewHSplit(
-		container.NewPadded(m.ListTasks),
-		container.NewPadded(m.TaskEditor),
-	))
+	m.Container = container.NewPadded(
+		container.NewAdaptiveGrid(
+			2,
+			container.NewVScroll(m.ListTasks),
+			m.TaskEditor,
+		),
+	)
 	m.Window.SetCloseIntercept(m.Hide)
 	m.Window.SetContent(m.Container)
 	m.Window.SetFixedSize(true)
@@ -76,9 +99,8 @@ func (m *manageWindow) Get() manageWindow {
 }
 
 func (m *manageWindow) Show() {
-	// Hide editor widgets by default
-	m.toggleEditWidgets(false)
 	m.refreshTasks()
+	m.TaskEditor.Disable()
 	m.Window.Show()
 }
 
@@ -88,6 +110,7 @@ func (m *manageWindow) Hide() {
 	if err != nil {
 		log.Err(err).Msg("error resetting task list")
 	}
+	m.TaskEditor.Disable()
 	m.Window.Hide()
 }
 
@@ -103,21 +126,25 @@ func (m *manageWindow) refreshTasks() {
 		return
 	}
 	log.Debug().Msgf("read %d tasks", len(tasks))
-	for _, task := range tasks {
-		log.Debug().Msgf("task=%s", task.String())
-		err = m.BindTaskList.Append(task.Synopsis)
-		if err != nil {
-			log.Err(err).Msgf("error appending task %s", task.String())
-		}
+	synopses := make([]string, len(tasks))
+	for idx, task := range tasks {
+		synopses[idx] = task.Synopsis
+	}
+	err = m.BindTaskList.Set(synopses)
+	if err != nil {
+		log.Err(err).Msg("error setting tasks")
 	}
 }
 
-func (m *manageWindow) doEditSave() {
-	log := m.Log.With().Str("function", "doEditSave").Logger()
-	if !m.TaskEditor.IsDirty() {
+func (m *manageWindow) doEditSave(item interface{}) {
+	log := m.Log.With().Str("func", "doEditSave").Logger()
+	dirtyTask, ok := item.(*models.TaskData)
+	if !ok {
+		// TODO: show error dialog
+		log.Error().Msgf("could not cast interface{} to *models.TaskData; got type %s", reflect.TypeOf(item).String())
 		return
 	}
-	err := m.saveChanges()
+	err := m.saveChanges(dirtyTask)
 	if err != nil {
 		// TODO: show error dialog
 		log.Err(err).Msg("error saving changes to task")
@@ -126,13 +153,15 @@ func (m *manageWindow) doEditSave() {
 	m.doneEditing()
 }
 
-func (m *manageWindow) doEditCancel() {
-	log := m.Log.With().Str("function", "doEditCancel").Logger()
-	if !m.isEditing {
-		dialog.NewError(
-			errors.New("a task is not being edited; please select a task to edit"),
-			m.Window,
-		).Show()
+func (m *manageWindow) doEditCancel(item interface{}) {
+	log := m.Log.With().Str("func", "doEditCancel").Logger()
+	editCancelled, ok := item.(bool)
+	if !ok {
+		log.Error().Msgf("could not cast interface{} to bool; got type %s", reflect.TypeOf(item).String())
+		return
+	}
+	if !editCancelled {
+		// Only do something if we got a true value
 		return
 	}
 	// check if we are dirty and prompt to save if we are
@@ -142,7 +171,7 @@ func (m *manageWindow) doEditCancel() {
 			"You have unsaved changes. Would you like to save them?",
 			func(saveChanges bool) {
 				if saveChanges {
-					err := m.saveChanges()
+					err := m.saveChanges(m.TaskEditor.GetDirtyTask())
 					if err != nil {
 						// TODO: show error dialog
 						log.Err(err).Msg("error saving changes to task")
@@ -158,10 +187,9 @@ func (m *manageWindow) doEditCancel() {
 	m.doneEditing()
 }
 
-func (m *manageWindow) saveChanges() error {
-	log := m.Log.With().Str("function", "saveChanges").Logger()
+func (m *manageWindow) saveChanges(dirtyTask *models.TaskData) error {
+	log := m.Log.With().Str("func", "saveChanges").Logger()
 	if m.isEditing && m.TaskEditor.IsDirty() {
-		dirtyTask := m.TaskEditor.GetDirtyTask()
 		if dirtyTask == nil {
 			log.Error().Msg("dirty task is nil; this is unexpected")
 			return errors.New("dirty task is nil")
@@ -190,7 +218,7 @@ func (m *manageWindow) saveChanges() error {
 }
 
 func (m *manageWindow) doneEditing() {
-	log := m.Log.With().Str("function", "doneEditing").Logger()
+	log := m.Log.With().Str("func", "doneEditing").Logger()
 	if !m.isEditing {
 		return
 	}
@@ -201,12 +229,12 @@ func (m *manageWindow) doneEditing() {
 	if err != nil {
 		log.Err(err).Msg("error setting task to empty task")
 	}
-	m.toggleEditWidgets(false)
+	m.TaskEditor.Disable()
 }
 
 func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
 	log := m.Log.With().
-		Str("function", "taskWasSelected").
+		Str("func", "taskWasSelected").
 		Int("listItemID", id).
 		Logger()
 	if m.isEditing && m.isDirty {
@@ -221,7 +249,7 @@ func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
 	m.selectedTaskID = id
 	m.isEditing = true
 	m.isDirty = false
-	m.toggleEditWidgets(true)
+	m.TaskEditor.Enable()
 	taskSyn := m.taskList[id]
 	td := new(models.TaskData)
 	td.Synopsis = taskSyn
@@ -244,7 +272,7 @@ func (m *manageWindow) listTasksCreateItem() fyne.CanvasObject {
 }
 
 func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject fyne.CanvasObject) {
-	log := m.Log.With().Str("function", "listTasksUpdateItem").Logger()
+	log := m.Log.With().Str("func", "listTasksUpdateItem").Logger()
 	taskSynopsisBinding := item.(binding.String)
 	taskSyn, err := taskSynopsisBinding.Get()
 	if err != nil {
@@ -252,11 +280,6 @@ func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject f
 		return
 	}
 	log = log.With().Str("taskSyn", taskSyn).Logger()
-	taskCard, ok := canvasObject.(*widget.Card)
-	if !ok {
-		log.Error().Msg("error getting card widget")
-		return
-	}
 	td := new(models.TaskData)
 	td.Synopsis = taskSyn
 	err = td.Load(false)
@@ -264,17 +287,15 @@ func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject f
 		log.Err(err).Msgf("error loading task with synopsis %s", taskSyn)
 		return
 	}
+	taskCard, ok := canvasObject.(*widget.Card)
+	if !ok {
+		log.Error().Msgf("error getting card widget; got %s", reflect.TypeOf(canvasObject).String())
+		return
+	}
 	log.Trace().Msgf("setting title=%s, subtitle=%s", td.Synopsis, td.Description)
 	taskCard.SetTitle(td.Synopsis)
 	// TODO: trim subtitle to 64 chars; use ellipsis if >64 chars
 	taskCard.SetSubTitle(td.Description)
+	taskCard.Refresh()
 	//taskCard.Content.(*fyne.Container).Objects[0].(*widget.Label).SetText(td.Description)
-}
-
-func (m *manageWindow) toggleEditWidgets(show bool) {
-	if show {
-		m.TaskEditor.Show()
-		return
-	}
-	m.TaskEditor.Hide()
 }

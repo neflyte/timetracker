@@ -23,6 +23,19 @@ func (td *TaskData) TableName() string {
 	return "task"
 }
 
+func (td *TaskData) Clone() *TaskData {
+	clone := new(TaskData)
+	// Clone GORM fields
+	clone.ID = td.ID
+	clone.CreatedAt = td.CreatedAt
+	clone.UpdatedAt = td.UpdatedAt
+	clone.DeletedAt = td.DeletedAt
+	// Clone TaskData fields
+	clone.Synopsis = td.Synopsis
+	clone.Description = td.Description
+	return clone
+}
+
 type Task interface {
 	Create() error
 	Load(withDeleted bool) error
