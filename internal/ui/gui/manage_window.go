@@ -86,7 +86,7 @@ func (m *manageWindow) Init() {
 		container.NewAdaptiveGrid(
 			manageWindowContainerRowsCols,
 			container.NewVScroll(m.ListTasks),
-			m.TaskEditor,
+			container.NewMax(m.TaskEditor),
 		),
 	)
 	m.Window.SetCloseIntercept(m.Hide)

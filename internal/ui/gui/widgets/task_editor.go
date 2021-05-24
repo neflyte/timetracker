@@ -26,10 +26,8 @@ type TaskEditor struct {
 	taskDescription        string
 	taskDescriptionBinding binding.ExternalString
 	taskData               *models.TaskData
-	taskDataChannel        chan rxgo.Item
 
-	// TODO: Remove the split synopsis/descripting bindings and replace with a taskData binding instead
-
+	taskDataChannel      chan rxgo.Item
 	taskSavedChannel     chan rxgo.Item
 	editCancelledChannel chan rxgo.Item
 
@@ -87,6 +85,9 @@ func (te *TaskEditor) SetTask(task *models.TaskData) error {
 func (te *TaskEditor) GetDirtyTask() *models.TaskData {
 	if !te.IsDirty() {
 		return te.GetTask()
+	}
+	if te.taskData == nil {
+		return te.taskData
 	}
 	dirty := te.taskData.Clone()
 	dirty.Synopsis = te.taskSynopsis
@@ -158,7 +159,7 @@ func (te *TaskEditor) CreateRenderer() fyne.WidgetRenderer {
 	)
 	r.saveButton = widget.NewButtonWithIcon("SAVE", theme.ConfirmIcon(), r.doSaveTask)
 	r.closeButton = widget.NewButtonWithIcon("CLOSE", theme.CancelIcon(), r.doCancelEdit)
-	r.buttonContainer = container.NewCenter(container.NewHBox(r.closeButton, r.saveButton))
+	r.buttonContainer = container.NewBorder(nil, nil, nil, container.NewHBox(r.closeButton, r.saveButton))
 	r.canvasObjects = []fyne.CanvasObject{
 		r.buttonContainer, r.fieldContainer,
 	}
