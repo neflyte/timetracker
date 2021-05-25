@@ -5,6 +5,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -13,11 +14,13 @@ const (
 
 type Tasklist struct {
 	widget.Select
+	log zerolog.Logger
 }
 
 func NewTasklist(changed func(string)) *Tasklist {
 	tl := new(Tasklist)
 	tl.ExtendBaseWidget(tl)
+	tl.log = logger.GetStructLogger("Tasklist")
 	if changed != nil {
 		tl.OnChanged = changed
 	}
@@ -26,7 +29,7 @@ func NewTasklist(changed func(string)) *Tasklist {
 }
 
 func (t *Tasklist) Init() {
-	log := logger.GetLogger("Tasklist.Init")
+	log := t.log.With().Str("func", "Init").Logger()
 	log.Debug().Msg("start")
 	td := new(models.TaskData)
 	tasks, err := td.LoadAll(false)

@@ -55,7 +55,7 @@ func (i *TasklistItem) CreateRenderer() fyne.WidgetRenderer {
 	i.ExtendBaseWidget(i)
 	r := &tasklistItemRenderer{
 		tasklistItem:     i,
-		layout:           layout.NewVBoxLayout(),
+		layout:           layout.NewGridLayoutWithColumns(3),
 		synopsisLabel:    widget.NewLabelWithData(i.synopsisBinding),
 		descriptionLabel: widget.NewLabelWithData(i.descriptionBinding),
 	}
@@ -87,6 +87,5 @@ func (r *tasklistItemRenderer) MinSize() fyne.Size {
 }
 
 func (r *tasklistItemRenderer) Refresh() {
-	// TODO: update enabled/disabled states here
 	r.Layout(r.MinSize())
 }

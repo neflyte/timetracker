@@ -2,6 +2,7 @@ package gui
 
 import (
 	"errors"
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
@@ -15,8 +16,7 @@ import (
 )
 
 const (
-	noSelectionIndex              = widget.ListItemID(-1)
-	manageWindowContainerRowsCols = 2
+	noSelectionIndex = widget.ListItemID(-1)
 )
 
 type ManageWindow interface {
@@ -32,6 +32,7 @@ type manageWindow struct {
 	App        *fyne.App
 	Window     fyne.Window
 	Container  *fyne.Container
+	HSplit     *container.Split
 	ListTasks  *widget.List
 	TaskEditor *widgets.TaskEditor
 
@@ -82,13 +83,13 @@ func (m *manageWindow) Init() {
 		},
 	)
 	// setup layout
-	m.Container = container.NewPadded(
-		container.NewAdaptiveGrid(
-			manageWindowContainerRowsCols,
+	m.HSplit = container.NewHSplit(
+		container.NewPadded(
 			container.NewVScroll(m.ListTasks),
-			container.NewMax(m.TaskEditor),
 		),
+		container.NewPadded(m.TaskEditor),
 	)
+	m.Container = container.NewMax(m.HSplit)
 	m.Window.SetCloseIntercept(m.Hide)
 	m.Window.SetContent(m.Container)
 	m.Window.SetFixedSize(true)
@@ -135,19 +136,30 @@ func (m *manageWindow) refreshTasks() {
 	if err != nil {
 		log.Err(err).Msg("error setting tasks")
 	}
+	m.jiggleHSplit()
+}
+
+// jiggleHSplit moves the HSplit component to the left and back again so each side
+// is forced to redraw with the correct sizing
+func (m *manageWindow) jiggleHSplit() {
+	oldOffset := m.HSplit.Offset
+	newOffset := oldOffset - 1.0
+	m.HSplit.SetOffset(newOffset)
+	m.HSplit.SetOffset(oldOffset)
 }
 
 func (m *manageWindow) doEditSave(item interface{}) {
 	log := m.Log.With().Str("func", "doEditSave").Logger()
 	dirtyTask, ok := item.(*models.TaskData)
 	if !ok {
-		// TODO: show error dialog
-		log.Error().Msgf("could not cast interface{} to *models.TaskData; got type %s", reflect.TypeOf(item).String())
+		err := fmt.Errorf("could not cast interface{} to *models.TaskData; got type %s", reflect.TypeOf(item).String())
+		dialog.NewError(err, m.Window).Show()
+		log.Error().Msg(err.Error())
 		return
 	}
 	err := m.saveChanges(dirtyTask)
 	if err != nil {
-		// TODO: show error dialog
+		dialog.NewError(err, m.Window).Show()
 		log.Err(err).Msg("error saving changes to task")
 		return
 	}
@@ -174,7 +186,7 @@ func (m *manageWindow) doEditCancel(item interface{}) {
 				if saveChanges {
 					err := m.saveChanges(m.TaskEditor.GetDirtyTask())
 					if err != nil {
-						// TODO: show error dialog
+						dialog.NewError(err, m.Window).Show()
 						log.Err(err).Msg("error saving changes to task")
 						return
 					}
@@ -200,7 +212,7 @@ func (m *manageWindow) saveChanges(dirtyTask *models.TaskData) error {
 		td.Synopsis = taskSyn
 		err := td.Load(false)
 		if err != nil {
-			// TODO: show error dialog
+			dialog.NewError(err, m.Window).Show()
 			log.Err(err).Msgf("error loading task with synopsis %s", taskSyn)
 			return err
 		}
@@ -208,7 +220,7 @@ func (m *manageWindow) saveChanges(dirtyTask *models.TaskData) error {
 		td.Description = dirtyTask.Description
 		err = td.Update(false)
 		if err != nil {
-			// TODO: show error dialog
+			dialog.NewError(err, m.Window).Show()
 			log.Err(err).Msgf("error updating task %s", td.String())
 			return err
 		}
@@ -231,6 +243,7 @@ func (m *manageWindow) doneEditing() {
 		log.Err(err).Msg("error setting task to empty task")
 	}
 	m.TaskEditor.Disable()
+	m.jiggleHSplit()
 }
 
 func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
@@ -256,7 +269,7 @@ func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
 	td.Synopsis = taskSyn
 	err := td.Load(false)
 	if err != nil {
-		// TODO: show error dialog
+		dialog.NewError(err, m.Window).Show()
 		log.Err(err).Msgf("error loading task with synopsis %s", taskSyn)
 		return
 	}
@@ -264,6 +277,7 @@ func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
 	if err != nil {
 		log.Err(err).Msg("error setting task")
 	}
+	m.jiggleHSplit()
 }
 
 func (m *manageWindow) listTasksCreateItem() fyne.CanvasObject {

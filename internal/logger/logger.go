@@ -25,6 +25,8 @@ func InitLogger(logLevel string, console bool) {
 	var err error
 
 	if !loggerInitialized {
+		// Override zerolog's default time field format so it doesn't truncate nanoseconds
+		zerolog.TimeFieldFormat = time.RFC3339Nano
 		configHome := GetConfigHome()
 		logPath = path.Join(configHome, "timetracker")
 		_ = os.MkdirAll(logPath, 0755)
@@ -39,7 +41,7 @@ func InitLogger(logLevel string, console bool) {
 			logWriters = append(logWriters, logFileHandle)
 		}
 		if console || logFileHandle == nil {
-			logWriters = append(logWriters, zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.Stamp})
+			logWriters = append(logWriters, zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.StampMilli})
 		}
 		// Create a new root logger
 		if len(logWriters) > 1 {

@@ -11,7 +11,7 @@ import (
 var (
 	guiInitialized = false
 	FyneApp        fyne.App
-	ttWin          TTWindow
+	ttWin          TimetrackerWindow
 )
 
 func StartGUI() {

@@ -158,7 +158,7 @@ func (te *TaskEditor) CreateRenderer() fyne.WidgetRenderer {
 		r.descriptionLabel, r.descriptionEntry,
 	)
 	r.saveButton = widget.NewButtonWithIcon("SAVE", theme.ConfirmIcon(), r.doSaveTask)
-	r.closeButton = widget.NewButtonWithIcon("CLOSE", theme.CancelIcon(), r.doCancelEdit)
+	r.closeButton = widget.NewButtonWithIcon("CANCEL", theme.CancelIcon(), r.doCancelEdit)
 	r.buttonContainer = container.NewBorder(nil, nil, nil, container.NewHBox(r.closeButton, r.saveButton))
 	r.canvasObjects = []fyne.CanvasObject{
 		r.buttonContainer, r.fieldContainer,

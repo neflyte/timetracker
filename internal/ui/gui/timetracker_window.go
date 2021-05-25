@@ -23,16 +23,16 @@ var (
 	taskNameRE = regexp.MustCompile(`^\[([0-9]+)].*$`)
 )
 
-type TTWindow interface {
+type TimetrackerWindow interface {
 	Show()
 	ShowAbout()
 	ShowWithError(err error)
 	Hide()
 	Close()
-	Get() ttWindow
+	Get() timetrackerWindow
 }
 
-type ttWindow struct {
+type timetrackerWindow struct {
 	App            *fyne.App
 	Window         fyne.Window
 	Container      *fyne.Container
@@ -61,17 +61,17 @@ type ttWindow struct {
 	elapsedTime string
 }
 
-func NewTimetrackerWindow(app fyne.App) TTWindow {
-	ttw := &ttWindow{
+func NewTimetrackerWindow(app fyne.App) TimetrackerWindow {
+	ttw := &timetrackerWindow{
 		App:    &app,
 		Window: app.NewWindow("Timetracker"),
-		Log:    logger.GetStructLogger("TTWindow"),
+		Log:    logger.GetStructLogger("TimetrackerWindow"),
 	}
 	ttw.Init()
 	return ttw
 }
 
-func (t *ttWindow) Init() {
+func (t *timetrackerWindow) Init() {
 	t.TaskList = widgets.NewTasklist(appstate.SetSelectedTask)
 	t.BtnStartTask = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), t.doStartTask)
 	t.BtnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)
@@ -149,7 +149,7 @@ func (t *ttWindow) Init() {
 	go t.InitWindowData()
 }
 
-func (t *ttWindow) InitWindowData() {
+func (t *timetrackerWindow) InitWindowData() {
 	funcLogger := t.Log.With().Str("func", "InitWindowData").Logger()
 	funcLogger.Trace().Msg("started")
 	// Load the running task
@@ -171,7 +171,7 @@ func (t *ttWindow) InitWindowData() {
 	funcLogger.Debug().Msg("done")
 }
 
-func (t *ttWindow) setupObservables() {
+func (t *timetrackerWindow) setupObservables() {
 	log := t.Log.With().Str("func", "setupObservables").Logger()
 	log.Trace().Msg("ObsRunningTimesheet")
 	appstate.ObsRunningTimesheet.ForEach(
@@ -241,7 +241,7 @@ func (t *ttWindow) setupObservables() {
 	)
 }
 
-func (t *ttWindow) doStartTask() {
+func (t *timetrackerWindow) doStartTask() {
 	log := t.Log.With().Str("func", "doStartTask").Logger()
 	log.Trace().Msg("started")
 	selectedTask := appstate.GetSelectedTask()
@@ -287,7 +287,7 @@ func (t *ttWindow) doStartTask() {
 	log.Trace().Msg("done")
 }
 
-func (t *ttWindow) doStopTask() {
+func (t *timetrackerWindow) doStopTask() {
 	log := t.Log.With().Str("func", "doStopTask").Logger()
 	log.Trace().Msg("started")
 	runningTS := appstate.GetRunningTimesheet()
@@ -307,21 +307,21 @@ func (t *ttWindow) doStopTask() {
 	log.Trace().Msg("done")
 }
 
-func (t *ttWindow) doManageTasks() {
+func (t *timetrackerWindow) doManageTasks() {
 	if t.mngWindow == nil {
 		t.mngWindow = NewManageWindow(*t.App)
 	}
 	t.mngWindow.Show()
 }
 
-func (t *ttWindow) doQuit() {
+func (t *timetrackerWindow) doQuit() {
 	if t.App != nil {
 		app := *t.App
 		app.Quit()
 	}
 }
 
-func (t *ttWindow) doAbout() {
+func (t *timetrackerWindow) doAbout() {
 	appVersion := "??"
 	appVersionIntf, ok := appstate.Map().Load(appstate.KeyAppVersion)
 	if ok {
@@ -337,31 +337,31 @@ func (t *ttWindow) doAbout() {
 	).Show()
 }
 
-func (t *ttWindow) Show() {
+func (t *timetrackerWindow) Show() {
 	t.Window.Show()
 }
 
-func (t *ttWindow) ShowWithError(err error) {
+func (t *timetrackerWindow) ShowWithError(err error) {
 	t.Show()
 	dialog.NewError(err, t.Window).Show()
 }
 
-func (t *ttWindow) ShowAbout() {
+func (t *timetrackerWindow) ShowAbout() {
 	t.Show()
 	t.doAbout()
 }
 
-func (t *ttWindow) Hide() {
+func (t *timetrackerWindow) Hide() {
 	if t.mngWindow != nil {
 		t.mngWindow.Hide()
 	}
 	t.Window.Hide()
 }
 
-func (t *ttWindow) Close() {
+func (t *timetrackerWindow) Close() {
 	t.Window.Close()
 }
 
-func (t *ttWindow) Get() ttWindow {
+func (t *timetrackerWindow) Get() timetrackerWindow {
 	return *t
 }
