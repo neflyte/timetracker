@@ -2,6 +2,7 @@ package widgets
 
 import (
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
@@ -14,37 +15,54 @@ const (
 
 type Tasklist struct {
 	widget.Select
-	log zerolog.Logger
+	log         zerolog.Logger
+	listBinding binding.StringList
 }
 
-func NewTasklist(changed func(string)) *Tasklist {
-	tl := new(Tasklist)
-	tl.ExtendBaseWidget(tl)
-	tl.log = logger.GetStructLogger("Tasklist")
-	if changed != nil {
-		tl.OnChanged = changed
+func NewTasklist() *Tasklist {
+	tl := &Tasklist{
+		log:         logger.GetStructLogger("Tasklist"),
+		listBinding: binding.NewStringList(),
 	}
-	go tl.Init()
+	tl.ExtendBaseWidget(tl)
+	tl.listBinding.AddListener(binding.NewDataListener(tl.listBindingChanged))
 	return tl
 }
 
-func (t *Tasklist) Init() {
-	log := t.log.With().Str("func", "Init").Logger()
-	log.Debug().Msg("start")
+func (t *Tasklist) Refresh() {
+	t.refreshTaskList()
+	t.Select.Refresh()
+}
+
+func (t *Tasklist) listBindingChanged() {
+	log := logger.GetFuncLogger(t.log, "listBindingChanged")
+	changed, err := t.listBinding.Get()
+	if err != nil {
+		log.Err(err).Msg("error getting list from binding")
+		return
+	}
+	t.Select.Options = changed
+}
+
+func (t *Tasklist) refreshTaskList() {
+	log := logger.GetFuncLogger(t.log, "refreshTaskList")
 	td := new(models.TaskData)
 	tasks, err := td.LoadAll(false)
 	if err != nil {
 		log.Err(err).Msg("unable to load task list")
 		return
 	}
-	log.Debug().Msgf("len(tasks)=%d", len(tasks))
+	log.Trace().Msgf("len(tasks)=%d", len(tasks))
 	taskStrings := make([]string, len(tasks))
 	for idx, task := range tasks {
 		taskStrings[idx] = task.String()
 	}
-	log.Debug().Msgf("taskStrings=%#v", taskStrings)
-	t.Options = taskStrings
-	log.Debug().Msg("done")
+	log.Trace().Msgf("taskStrings=%#v", taskStrings)
+	err = t.listBinding.Set(taskStrings)
+	if err != nil {
+		log.Err(err).Msg("unable to set list binding")
+		return
+	}
 }
 
 func (t *Tasklist) MinSize() fyne.Size {

@@ -27,6 +27,7 @@ type TimetrackerWindow interface {
 	Show()
 	ShowAbout()
 	ShowWithError(err error)
+	ShowWithManageWindow()
 	Hide()
 	Close()
 	Get() timetrackerWindow
@@ -72,7 +73,10 @@ func NewTimetrackerWindow(app fyne.App) TimetrackerWindow {
 }
 
 func (t *timetrackerWindow) Init() {
-	t.TaskList = widgets.NewTasklist(appstate.SetSelectedTask)
+	log := logger.GetFuncLogger(t.Log, "Init")
+	log.Debug().Msg("started")
+	t.TaskList = widgets.NewTasklist()
+	t.TaskList.OnChanged = appstate.SetSelectedTask
 	t.BtnStartTask = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), t.doStartTask)
 	t.BtnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)
 	t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), t.doManageTasks)
@@ -138,6 +142,7 @@ func (t *timetrackerWindow) Init() {
 			)),
 		),
 	)
+	log.Debug().Msg("set content")
 	t.Window.SetContent(t.Container)
 	t.Window.SetFixedSize(true)
 	t.Window.Resize(MinimumWindowSize)
@@ -145,13 +150,13 @@ func (t *timetrackerWindow) Init() {
 	t.Window.SetCloseIntercept(t.Hide)
 	// Set up our observables
 	t.setupObservables()
-	// Spawn a goroutine to load the window's data
-	go t.InitWindowData()
+	// Load the window's data
+	t.InitWindowData()
 }
 
 func (t *timetrackerWindow) InitWindowData() {
-	funcLogger := t.Log.With().Str("func", "InitWindowData").Logger()
-	funcLogger.Trace().Msg("started")
+	log := logger.GetFuncLogger(t.Log, "InitWindowData")
+	log.Debug().Msg("started")
 	// Load the running task
 	runningTS := appstate.GetRunningTimesheet()
 	if runningTS != nil {
@@ -168,12 +173,12 @@ func (t *timetrackerWindow) InitWindowData() {
 		// Task is not running
 		t.BtnStopTask.Disable()
 	}
-	funcLogger.Debug().Msg("done")
+	log.Debug().Msg("done")
 }
 
 func (t *timetrackerWindow) setupObservables() {
-	log := t.Log.With().Str("func", "setupObservables").Logger()
-	log.Trace().Msg("ObsRunningTimesheet")
+	log := logger.GetFuncLogger(t.Log, "setupObservables")
+	log.Debug().Msg("ObsRunningTimesheet")
 	appstate.ObsRunningTimesheet.ForEach(
 		func(item interface{}) {
 			runningTS, ok := item.(*models.TimesheetData)
@@ -216,7 +221,7 @@ func (t *timetrackerWindow) setupObservables() {
 			log.Trace().Msg("running timesheet observable is done")
 		},
 	)
-	log.Trace().Msg("ObsSelectedTask")
+	log.Debug().Msg("ObsSelectedTask")
 	appstate.ObsSelectedTask.ForEach(
 		func(item interface{}) {
 			selectedTask, ok := item.(string)
@@ -242,7 +247,7 @@ func (t *timetrackerWindow) setupObservables() {
 }
 
 func (t *timetrackerWindow) doStartTask() {
-	log := t.Log.With().Str("func", "doStartTask").Logger()
+	log := logger.GetFuncLogger(t.Log, "doStartTask")
 	log.Trace().Msg("started")
 	selectedTask := appstate.GetSelectedTask()
 	if selectedTask == "" {
@@ -288,7 +293,7 @@ func (t *timetrackerWindow) doStartTask() {
 }
 
 func (t *timetrackerWindow) doStopTask() {
-	log := t.Log.With().Str("func", "doStopTask").Logger()
+	log := logger.GetFuncLogger(t.Log, "doStopTask")
 	log.Trace().Msg("started")
 	runningTS := appstate.GetRunningTimesheet()
 	if runningTS == nil {
@@ -310,6 +315,20 @@ func (t *timetrackerWindow) doStopTask() {
 func (t *timetrackerWindow) doManageTasks() {
 	if t.mngWindow == nil {
 		t.mngWindow = NewManageWindow(*t.App)
+		t.mngWindow.Get().TaskListChangedObservable.ForEach(
+			func(item interface{}) {
+				changed, ok := item.(bool)
+				if ok && changed {
+					t.TaskList.Refresh()
+				}
+			},
+			func(err error) {
+				t.Log.Err(err).Msg("error from tasklist changed observable")
+			},
+			func() {
+				t.Log.Trace().Msg("tasklist changed observable is finished")
+			},
+		)
 	}
 	t.mngWindow.Show()
 }
@@ -338,7 +357,14 @@ func (t *timetrackerWindow) doAbout() {
 }
 
 func (t *timetrackerWindow) Show() {
+	log := logger.GetFuncLogger(t.Log, "Show")
+	log.Debug().Msg("t.Window.Show()")
 	t.Window.Show()
+}
+
+func (t *timetrackerWindow) ShowWithManageWindow() {
+	t.Show()
+	t.doManageTasks()
 }
 
 func (t *timetrackerWindow) ShowWithError(err error) {

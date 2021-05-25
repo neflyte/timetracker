@@ -11,15 +11,15 @@ import (
 var (
 	guiInitialized = false
 	FyneApp        fyne.App
-	ttWin          TimetrackerWindow
+	mainWindow     TimetrackerWindow
+	guiLogger      = logger.GetPackageLogger("gui")
 )
 
 func StartGUI() {
 	if appstate.GetGUIStarted() {
 		return
 	}
-	initGUI()
-	guiFunc(&FyneApp)
+	guiFunc(initGUI())
 }
 
 func StopGUI() {
@@ -29,52 +29,58 @@ func StopGUI() {
 	FyneApp.Quit()
 }
 
-func initGUI() {
-	log := logger.GetLogger("initGUI")
+func initGUI() *fyne.App {
+	log := logger.GetFuncLogger(guiLogger, "initGUI")
 	if guiInitialized {
 		log.Debug().Msg("GUI already initialized")
-		return
+		return nil
 	}
 	// Set up fyne
-	log.Trace().Msg("setting up FyneApp")
-	FyneApp = app.New()
+	log.Debug().Msg("setting up FyneApp")
+	FyneApp = app.NewWithID("Timetracker")
 	// Create the main timetracker window
-	log.Trace().Msg("creating timetracker window")
-	ttWin = NewTimetrackerWindow(FyneApp)
-	if ttWin != nil {
-		log.Trace().Msg("set ttWin as master")
-		ttWin.Get().Window.SetMaster()
-	}
+	log.Debug().Msg("creating timetracker window")
+	mainWindow = NewTimetrackerWindow(FyneApp)
+	log.Debug().Msg("set mainWindow as master")
+	mainWindow.Get().Window.SetMaster()
 	log.Debug().Msg("GUI initialized")
 	guiInitialized = true
+	return &FyneApp
 }
 
 func ShowTimetrackerWindow() {
 	if !appstate.GetGUIStarted() {
 		return
 	}
-	ttWin.Show()
+	mainWindow.Show()
 }
 
 func ShowTimetrackerWindowWithAbout() {
 	if !appstate.GetGUIStarted() {
 		return
 	}
-	ttWin.ShowAbout()
+	mainWindow.ShowAbout()
+}
+
+func ShowTimetrackerWindowWithManageWindow() {
+	if !appstate.GetGUIStarted() {
+		return
+	}
+	mainWindow.ShowWithManageWindow()
 }
 
 func ShowTimetrackerWindowWithError(err error) {
 	if !appstate.GetGUIStarted() {
 		return
 	}
-	ttWin.ShowWithError(err)
+	mainWindow.ShowWithError(err)
 }
 
 func ShowTimetrackerWindowWithConfirm(title string, message string, cb func(bool), hideAfterConfirm bool) {
 	if !appstate.GetGUIStarted() {
 		return
 	}
-	ttWin.Show()
+	mainWindow.Show()
 	dialog.NewConfirm(
 		title,
 		message,
@@ -83,15 +89,15 @@ func ShowTimetrackerWindowWithConfirm(title string, message string, cb func(bool
 			cb(res)
 			// Hide the window if we were asked to
 			if hideAfterConfirm {
-				ttWin.Hide()
+				mainWindow.Hide()
 			}
 		},
-		ttWin.Get().Window,
+		mainWindow.Get().Window,
 	).Show()
 }
 
 func guiFunc(appPtr *fyne.App) {
-	log := logger.GetLogger("guiFunc")
+	log := logger.GetFuncLogger(guiLogger, "guiFunc")
 	if appPtr != nil {
 		fyneApp := *appPtr
 		appstate.SetGUIStarted(true)
@@ -99,6 +105,8 @@ func guiFunc(appPtr *fyne.App) {
 		log.Trace().Msg("calling app.Run()")
 		fyneApp.Run()
 		log.Trace().Msg("fyne exited")
+	} else {
+		log.Error().Msg("appPtr was nil; this is unexpected")
 	}
 	log.Trace().Msg("done")
 }

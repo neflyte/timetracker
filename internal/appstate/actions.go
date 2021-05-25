@@ -2,7 +2,6 @@ package appstate
 
 import (
 	"github.com/neflyte/timetracker/internal/constants"
-	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"sync"
 	"time"
@@ -13,7 +12,7 @@ var (
 )
 
 func ActionLoop(quitChannel chan bool) {
-	log := logger.GetLogger("appstate.ActionLoop")
+	log := appstateLog.With().Str("func", "ActionLoop").Logger()
 	runningIntf, _ := Map().LoadOrStore(KeyActionLoopStarted, false)
 	running := runningIntf.(bool)
 	if running {
@@ -37,8 +36,7 @@ func ActionLoop(quitChannel chan bool) {
 }
 
 func UpdateRunningTimesheet() {
-	log := logger.GetLogger("appstate.UpdateRunningTimesheet")
-	log.Trace().Msg("acquiring lock")
+	log := appstateLog.With().Str("func", "UpdateRunningTimesheet").Logger()
 	updateTSMutex.Lock()
 	log.Trace().Msg("lock acquired successfully")
 	defer func() {

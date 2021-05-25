@@ -22,10 +22,10 @@ const (
 type TaskEditor struct {
 	widget.DisableableWidget
 	taskSynopsis           string
-	taskSynopsisBinding    binding.ExternalString
 	taskDescription        string
-	taskDescriptionBinding binding.ExternalString
-	taskData               *models.TaskData
+	taskSynopsisBinding    binding.String
+	taskDescriptionBinding binding.String
+	taskData               models.TaskData
 
 	taskDataChannel      chan rxgo.Item
 	taskSavedChannel     chan rxgo.Item
@@ -47,9 +47,25 @@ func NewTaskEditor() *TaskEditor {
 	te.editCancelledChannel = make(chan rxgo.Item, TaskEditorEventChannelBufferSize)
 	te.taskSavedObservable = rxgo.FromEventSource(te.taskSavedChannel)
 	te.editCancelledObservable = rxgo.FromEventSource(te.editCancelledChannel)
-	te.taskSynopsisBinding = binding.BindString(&te.taskSynopsis)
-	te.taskDescriptionBinding = binding.BindString(&te.taskDescription)
-	te.taskData = new(models.TaskData)
+	te.taskSynopsisBinding = binding.NewString()
+	te.taskSynopsisBinding.AddListener(binding.NewDataListener(func() {
+		te.log.Debug().Msg("taskSynopsisBinding listener fired")
+		editSynopsis, err := te.taskSynopsisBinding.Get()
+		if err != nil {
+			te.log.Err(err).Msg("error getting synopsis from binding")
+		}
+		te.taskSynopsis = editSynopsis
+	}))
+	te.taskDescriptionBinding = binding.NewString()
+	te.taskDescriptionBinding.AddListener(binding.NewDataListener(func() {
+		te.log.Debug().Msg("taskDescriptionBinding listener fired")
+		editDescription, err := te.taskDescriptionBinding.Get()
+		if err != nil {
+			te.log.Err(err).Msg("error getting description from binding")
+		}
+		te.taskDescription = editDescription
+	}))
+	te.taskData = models.TaskData{}
 	te.taskDataChannel = make(chan rxgo.Item, TaskEditorEventChannelBufferSize)
 	te.observerablesMap = map[string]rxgo.Observable{
 		TaskEditorTaskSavedEventKey:     te.taskSavedObservable,
@@ -63,31 +79,28 @@ func (te *TaskEditor) Observables() map[string]rxgo.Observable {
 }
 
 func (te *TaskEditor) GetTask() *models.TaskData {
-	return te.taskData
+	return &te.taskData
 }
 
 func (te *TaskEditor) SetTask(task *models.TaskData) error {
-	te.taskData = task
-	if te.taskData != nil {
-		err := te.taskSynopsisBinding.Set(te.taskData.Synopsis)
+	if task != nil {
+		te.taskDataChannel <- rxgo.Of(task)
+		te.taskData = *task
+		err := te.taskSynopsisBinding.Set(task.Synopsis)
 		if err != nil {
 			return err
 		}
-		err = te.taskDescriptionBinding.Set(te.taskData.Description)
+		err = te.taskDescriptionBinding.Set(task.Description)
 		if err != nil {
 			return err
 		}
 	}
-	te.taskDataChannel <- rxgo.Of(task)
 	return nil
 }
 
 func (te *TaskEditor) GetDirtyTask() *models.TaskData {
 	if !te.IsDirty() {
 		return te.GetTask()
-	}
-	if te.taskData == nil {
-		return te.taskData
 	}
 	dirty := te.taskData.Clone()
 	dirty.Synopsis = te.taskSynopsis
@@ -96,33 +109,33 @@ func (te *TaskEditor) GetDirtyTask() *models.TaskData {
 }
 
 func (te *TaskEditor) IsDirty() bool {
-	log := te.log.With().Str("func", "IsDirty").Logger()
-	if te.taskData == nil {
-		return false
-	}
-	editSynopsis, err := te.taskSynopsisBinding.Get()
-	if err != nil {
-		log.Err(err).Msg("error getting synopsis from binding")
-		return false
-	}
-	if te.taskData.Synopsis != editSynopsis {
+	log := logger.GetFuncLogger(te.log, "IsDirty")
+	log.Debug().Msgf(
+		"te.taskData.Synopsis=%s, te.taskSynopsis=%s",
+		te.taskData.Synopsis,
+		te.taskSynopsis,
+	)
+	if te.taskData.Synopsis != te.taskSynopsis {
+		log.Debug().Msg("synopsis is different; returning true")
 		return true
 	}
-	editDescription, err := te.taskDescriptionBinding.Get()
-	if err != nil {
-		log.Err(err).Msg("error getting description from binding")
-		return false
-	}
-	if te.taskData.Description != editDescription {
+	log.Debug().Msgf(
+		"te.taskData.Description=%s, te.taskDescription=%s",
+		te.taskData.Description,
+		te.taskDescription,
+	)
+	if te.taskData.Description != te.taskDescription {
+		log.Debug().Msg("description is different; returning true")
 		return true
 	}
+	log.Debug().Msg("no differences; returning false")
 	return false
 }
 
 func (te *TaskEditor) CreateRenderer() fyne.WidgetRenderer {
 	te.ExtendBaseWidget(te)
 	r := &taskEditorRenderer{
-		log:                  logger.GetStructLogger("TaskEditor.taskEditorRenderer"),
+		log:                  te.log.With().Str("struct", "taskEditorRenderer").Logger(),
 		taskEditor:           te,
 		taskData:             te.taskData,
 		taskDataObservable:   rxgo.FromEventSource(te.taskDataChannel),
@@ -135,24 +148,42 @@ func (te *TaskEditor) CreateRenderer() fyne.WidgetRenderer {
 	}
 	r.taskDataObservable.ForEach(
 		func(item interface{}) {
-			newTaskData, ok := item.(*models.TaskData)
+			r.log.Debug().Msg("taskData observable fired")
+			newTaskData, ok := item.(models.TaskData)
 			if ok {
 				r.log.Debug().Msgf("setting taskData from observable; taskData=%s", newTaskData.String())
-				r.taskData = newTaskData
+				r.taskData = *newTaskData.Clone()
 			}
 		},
 		func(err error) {
 			r.log.Err(err).Msg("error from taskData observable")
 		},
 		func() {
-			r.log.Debug().Msg("taskData observable is finished")
+			r.log.Trace().Msg("taskData observable is finished")
 		},
 	)
+	te.taskSynopsisBinding.AddListener(binding.NewDataListener(func() {
+		r.updateButtonStates()
+		/*updatedSynopsis, err := te.taskSynopsisBinding.Get()
+		if err != nil {
+			r.log.Err(err).Msg("error getting synopsis from binding")
+			return
+		}
+		r.taskData.Synopsis = updatedSynopsis*/
+	}))
+	te.taskDescriptionBinding.AddListener(binding.NewDataListener(func() {
+		r.updateButtonStates()
+		/*updatedDescription, err := te.taskDescriptionBinding.Get()
+		if err != nil {
+			r.log.Err(err).Msg("error getting description from binding")
+			return
+		}
+		r.taskData.Description = updatedDescription*/
+	}))
 	r.synopsisEntry.SetPlaceHolder("enter the task synopsis here")
-	r.synopsisEntry.OnChanged = func(_ string) { r.updateButtonStates() }
 	r.descriptionEntry.SetPlaceHolder("enter the task description here")
 	r.descriptionEntry.MultiLine = true
-	r.descriptionEntry.OnChanged = func(_ string) { r.updateButtonStates() }
+	r.descriptionEntry.Wrapping = fyne.TextWrapWord
 	r.fieldContainer = container.NewVBox(
 		r.synopsisLabel, r.synopsisEntry,
 		r.descriptionLabel, r.descriptionEntry,
@@ -185,7 +216,7 @@ type taskEditorRenderer struct {
 	closeButton          *widget.Button
 	fieldContainer       *fyne.Container
 	buttonContainer      *fyne.Container
-	taskData             *models.TaskData
+	taskData             models.TaskData
 	taskDataObservable   rxgo.Observable
 	taskSavedChannel     chan rxgo.Item
 	editCancelledChannel chan rxgo.Item
@@ -226,26 +257,32 @@ func (r *taskEditorRenderer) doCancelEdit() {
 }
 
 func (r *taskEditorRenderer) updateButtonStates() {
-	if r.isDirty() && !r.taskEditor.Disabled() {
-		r.saveButton.Enable()
-	} else {
-		r.saveButton.Disable()
+	if r.saveButton != nil {
+		if r.isDirty() && (r.taskEditor != nil && !r.taskEditor.Disabled()) {
+			r.saveButton.Enable()
+		} else {
+			r.saveButton.Disable()
+		}
 	}
-	if r.taskEditor.Disabled() {
-		r.closeButton.Disable()
-	} else {
-		r.closeButton.Enable()
+	if r.closeButton != nil {
+		if r.taskEditor.Disabled() {
+			r.closeButton.Disable()
+		} else {
+			r.closeButton.Enable()
+		}
 	}
 }
 
 func (r *taskEditorRenderer) isDirty() bool {
-	if r.taskData != nil {
-		if r.taskData.Synopsis != r.synopsisEntry.Text {
-			return true
-		}
-		if r.taskData.Description != r.descriptionEntry.Text {
-			return true
-		}
+	log := logger.GetFuncLogger(r.log, "isDirty")
+	if r.taskData.Synopsis != r.synopsisEntry.Text {
+		log.Debug().Msg("synopsis is different; returning true")
+		return true
 	}
+	if r.taskData.Description != r.descriptionEntry.Text {
+		log.Debug().Msg("description is different; returning true")
+		return true
+	}
+	log.Debug().Msg("no differences; returning false")
 	return false
 }

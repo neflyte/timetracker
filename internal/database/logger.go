@@ -15,7 +15,7 @@ type gormLogger struct {
 
 func NewGormLogger() gormLog.Interface {
 	return &gormLogger{
-		log: logger.GetLogger("GORM"),
+		log: logger.GetPackageLogger("GORM"),
 	}
 }
 
@@ -51,18 +51,14 @@ func (gl *gormLogger) Trace(_ context.Context, begin time.Time, fc func() (strin
 		return
 	}
 	elapsed := time.Since(begin)
+	traceLog := gl.log.With().Str("elapsed", elapsed.String()).Logger()
 	sql, rows := fc()
-	errStr := ""
 	if err != nil {
-		errStr = err.Error()
+		traceLog = traceLog.With().Str("err", err.Error()).Logger()
 	}
-	rowsStr := ""
 	if rows > -1 {
-		rowsStr = strconv.Itoa(int(rows))
+		rowsStr := strconv.Itoa(int(rows))
+		traceLog = traceLog.With().Str("rows", rowsStr).Logger()
 	}
-	gl.log.Trace().
-		Str("elapsed", elapsed.String()).
-		Str("err", errStr).
-		Str("rows", rowsStr).
-		Msg(sql)
+	traceLog.Trace().Msg(sql)
 }

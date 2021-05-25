@@ -1,7 +1,6 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/neflyte/timetracker/internal/logger"
 	"gorm.io/driver/sqlite"
@@ -13,17 +12,18 @@ var (
 	gormConfig = &gorm.Config{
 		Logger: NewGormLogger(),
 	}
+	databaseLog = logger.GetPackageLogger("database")
 )
 
 func Open(fileName string) (*gorm.DB, error) {
-	log := logger.GetLogger("Open")
+	log := databaseLog.With().Str("func", "Open").Logger()
 	dsn := fmt.Sprintf("file:%s?_foreign_keys=1&_journal_mode=WAL&_mode=rwc", fileName)
 	log.Printf("opening sqlite db at %s\n", dsn)
 	return gorm.Open(sqlite.Open(dsn), gormConfig)
 }
 
 func Close(db *gorm.DB) {
-	log := logger.GetLogger("Close")
+	log := databaseLog.With().Str("func", "Close").Logger()
 	if db != nil {
 		sqldb, err := db.DB()
 		if err != nil {
@@ -38,12 +38,13 @@ func Close(db *gorm.DB) {
 	}
 }
 
-func CloseRows(rows *sql.Rows) {
-	log := logger.GetLogger("CloseRows")
+// CloseRows isn't needed yet
+/*func CloseRows(rows *sql.Rows) {
+	log := databaseLog.With().Str("func", "CloseRows").Logger()
 	if rows != nil {
 		err := rows.Close()
 		if err != nil {
 			log.Printf("error closing rows: %s\n", err)
 		}
 	}
-}
+}*/

@@ -21,15 +21,11 @@ const (
 )
 
 var (
-	// chanStatusError      = make(chan rxgo.Item, ChannelBufferSize)
-	// ObsStatusError       = rxgo.FromEventSource(chanStatusError)
-	// chanLastState        = make(chan rxgo.Item, ChannelBufferSize)
-	// ObsLastState         = rxgo.FromEventSource(chanLastState)
 	chanRunningTimesheet = make(chan rxgo.Item, ChannelBufferSize)
 	ObsRunningTimesheet  = rxgo.FromEventSource(chanRunningTimesheet)
 	chanSelectedTask     = make(chan rxgo.Item, ChannelBufferSize)
 	ObsSelectedTask      = rxgo.FromEventSource(chanSelectedTask)
-	appstateLog          = logger.GetLogger("appstate")
+	appstateLog          = logger.GetPackageLogger("appstate")
 )
 
 // syncMap is a synchronized map[interface{}]interface{} which holds the application state
@@ -41,122 +37,126 @@ func Map() *sync.Map {
 }
 
 func GetStatusError() error {
+	log := appstateLog.With().
+		Str("func", "GetStatusError").
+		Str("key", KeyStatusError).
+		Logger()
 	err, ok := syncMap.LoadOrStore(KeyStatusError, nil)
 	if !ok {
-		appstateLog.Trace().
-			Str("key", KeyStatusError).
-			Msg("key not found; storing + loading default")
+		log.Trace().Msg("key not found; storing + loading default")
 		return nil
 	}
-	appstateLog.Trace().
-		Str("key", KeyStatusError).
-		Msgf("loaded %#v", err)
+	log.Trace().Msgf("loaded %#v", err)
 	return err.(error)
 }
 
 func SetStatusError(newStatusError error) {
-	appstateLog.Trace().
+	log := appstateLog.With().
+		Str("func", "SetStatusError").
 		Str("key", KeyStatusError).
-		Msgf("storing %#v", newStatusError)
+		Logger()
+	log.Trace().Msgf("storing %#v", newStatusError)
 	syncMap.Store(KeyStatusError, newStatusError)
-	// chanStatusError<- rxgo.Of(newStatusError)
 }
 
 func GetLastState() int {
+	log := appstateLog.With().
+		Str("func", "GetLastState").
+		Str("key", KeyLastState).
+		Logger()
 	lstate, ok := syncMap.LoadOrStore(KeyLastState, constants.TimesheetStatusIdle)
 	if !ok {
-		appstateLog.Trace().
-			Str("key", KeyLastState).
-			Msg("key not found; storing + loading default")
+		log.Trace().Msg("key not found; storing + loading default")
 		return constants.TimesheetStatusIdle
 	}
-	appstateLog.Trace().
-		Str("key", KeyLastState).
-		Msgf("loading %#v", lstate)
+	log.Trace().Msgf("loading %#v", lstate)
 	return lstate.(int)
 }
 
 func SetLastState(newLastState int) {
-	appstateLog.Trace().
+	log := appstateLog.With().
+		Str("func", "SetLastState").
 		Str("key", KeyLastState).
-		Msgf("storing %#v", newLastState)
+		Logger()
+	log.Trace().Msgf("storing %#v", newLastState)
 	syncMap.Store(KeyLastState, newLastState)
-	// chanLastState<- rxgo.Of(newLastState)
 }
 
 func GetRunningTimesheet() *models.TimesheetData {
+	log := appstateLog.With().
+		Str("func", "GetRunningTimesheet").
+		Str("key", KeyRunningTimesheet).
+		Logger()
 	tsd, ok := syncMap.LoadOrStore(KeyRunningTimesheet, nil)
 	if !ok {
-		appstateLog.Trace().
-			Str("key", KeyRunningTimesheet).
-			Msg("key not found; storing + loading default")
+		log.Trace().Msg("key not found; storing + loading default")
 		return nil
 	}
 	if tsd == nil {
-		appstateLog.Trace().
-			Str("key", KeyRunningTimesheet).
-			Msg("loading nil")
+		log.Trace().Msg("loading nil")
 		return nil
 	}
-	appstateLog.Trace().
-		Str("key", KeyRunningTimesheet).
-		Msgf("loading %#v", tsd)
+	log.Trace().Msgf("loading %#v", tsd)
 	return tsd.(*models.TimesheetData)
 }
 
 func SetRunningTimesheet(newTimesheet *models.TimesheetData) {
+	log := appstateLog.With().
+		Str("func", "SetRunningTimesheet").
+		Str("key", KeyRunningTimesheet).
+		Logger()
 	if newTimesheet == nil {
-		appstateLog.Trace().
-			Str("key", KeyRunningTimesheet).
-			Msg("storing nil")
+		log.Trace().Msg("storing nil")
 	} else {
-		appstateLog.Trace().
-			Str("key", KeyRunningTimesheet).
-			Msgf("storing %#v", newTimesheet)
+		log.Trace().Msgf("storing %#v", newTimesheet)
 	}
 	syncMap.Store(KeyRunningTimesheet, newTimesheet)
 	chanRunningTimesheet <- rxgo.Of(newTimesheet)
 }
 
 func GetSelectedTask() string {
+	log := appstateLog.With().
+		Str("func", "GetSelectedTask").
+		Str("key", KeySelectedTask).
+		Logger()
 	task, ok := syncMap.LoadOrStore(KeySelectedTask, "")
 	if !ok {
-		appstateLog.Trace().
-			Str("key", KeySelectedTask).
-			Msg("key not found; storing + loading default")
+		log.Trace().Msg("key not found; storing + loading default")
 		return ""
 	}
-	appstateLog.Trace().
-		Str("key", KeySelectedTask).
-		Msgf("loading %#v", task)
+	appstateLog.Trace().Msgf("loading %#v", task)
 	return task.(string)
 }
 
 func SetSelectedTask(newTask string) {
-	appstateLog.Trace().
+	log := appstateLog.With().
+		Str("func", "SetSelectedTask").
 		Str("key", KeySelectedTask).
-		Msgf("storing %#v", newTask)
+		Logger()
+	log.Trace().Msgf("storing %#v", newTask)
 	syncMap.Store(KeySelectedTask, newTask)
 	chanSelectedTask <- rxgo.Of(newTask)
 }
 
 func GetGUIStarted() bool {
+	log := appstateLog.With().
+		Str("func", "GetGUIStarted").
+		Str("key", KeyGUIStarted).
+		Logger()
 	started, ok := syncMap.LoadOrStore(KeyGUIStarted, false)
 	if !ok {
-		appstateLog.Trace().
-			Str("key", KeyGUIStarted).
-			Msg("key not found; storing + loading default")
+		log.Trace().Msg("key not found; storing + loading default")
 		return false
 	}
-	appstateLog.Trace().
-		Str("key", KeyGUIStarted).
-		Msgf("loading %#v", started)
+	log.Trace().Msgf("loading %#v", started)
 	return started.(bool)
 }
 
 func SetGUIStarted(isStarted bool) {
-	appstateLog.Trace().
+	log := appstateLog.With().
+		Str("func", "SetGUIStarted").
 		Str("key", KeyGUIStarted).
-		Msgf("storing %#v", isStarted)
+		Logger()
+	log.Trace().Msgf("storing %#v", isStarted)
 	syncMap.Store(KeyGUIStarted, isStarted)
 }

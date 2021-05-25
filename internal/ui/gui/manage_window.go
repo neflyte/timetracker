@@ -7,10 +7,12 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
+	"github.com/reactivex/rxgo/v2"
 	"github.com/rs/zerolog"
 	"reflect"
 )
@@ -29,40 +31,47 @@ type ManageWindow interface {
 type manageWindow struct {
 	Log zerolog.Logger
 
-	App        *fyne.App
-	Window     fyne.Window
-	Container  *fyne.Container
-	HSplit     *container.Split
-	ListTasks  *widget.List
-	TaskEditor *widgets.TaskEditor
+	App           *fyne.App
+	Window        fyne.Window
+	Container     *fyne.Container
+	HSplit        *container.Split
+	ListTasks     *widget.List
+	AddTaskButton *widget.Button
+	TaskEditor    *widgets.TaskEditor
+
+	taskListChangedChannel    chan rxgo.Item
+	TaskListChangedObservable rxgo.Observable
 
 	BindTaskList binding.ExternalStringList
 	taskList     []string
 
 	isEditing      bool
-	isDirty        bool
 	selectedTaskID widget.ListItemID
 }
 
 func NewManageWindow(app fyne.App) ManageWindow {
 	mw := &manageWindow{
-		App:            &app,
-		Window:         app.NewWindow("Manage Tasks"),
-		Log:            logger.GetStructLogger("ManageWindow"),
-		taskList:       make([]string, 0),
-		selectedTaskID: noSelectionIndex,
+		App:                    &app,
+		Window:                 app.NewWindow("Manage Tasks"),
+		Log:                    logger.GetStructLogger("ManageWindow"),
+		taskList:               make([]string, 0),
+		selectedTaskID:         noSelectionIndex,
+		taskListChangedChannel: make(chan rxgo.Item, ManageWindowEventChannelBufferSize),
 	}
 	mw.Init()
 	return mw
 }
 
 func (m *manageWindow) Init() {
+	// setup observables
+	m.TaskListChangedObservable = rxgo.FromEventSource(m.taskListChangedChannel)
 	// setup bindings
 	m.BindTaskList = binding.BindStringList(&m.taskList)
 	// setup widgets
 	m.TaskEditor = widgets.NewTaskEditor()
 	m.ListTasks = widget.NewListWithData(m.BindTaskList, m.listTasksCreateItem, m.listTasksUpdateItem)
 	m.ListTasks.OnSelected = m.taskWasSelected
+	m.AddTaskButton = widget.NewButtonWithIcon("NEW", theme.ContentAddIcon(), m.createNewTask)
 	// setup observables
 	m.TaskEditor.Observables()[widgets.TaskEditorTaskSavedEventKey].ForEach(
 		m.doEditSave,
@@ -70,7 +79,7 @@ func (m *manageWindow) Init() {
 			m.Log.Err(err).Msg("error from TaskSaved observable")
 		},
 		func() {
-			m.Log.Debug().Msgf("observable %s is finished", widgets.TaskEditorTaskSavedEventKey)
+			m.Log.Trace().Msgf("observable %s is finished", widgets.TaskEditorTaskSavedEventKey)
 		},
 	)
 	m.TaskEditor.Observables()[widgets.TaskEditorEditCancelledEventKey].ForEach(
@@ -79,13 +88,19 @@ func (m *manageWindow) Init() {
 			m.Log.Err(err).Msg("error from EditCancelled observable")
 		},
 		func() {
-			m.Log.Debug().Msgf("observable %s is finished", widgets.TaskEditorEditCancelledEventKey)
+			m.Log.Trace().Msgf("observable %s is finished", widgets.TaskEditorEditCancelledEventKey)
 		},
 	)
 	// setup layout
 	m.HSplit = container.NewHSplit(
 		container.NewPadded(
-			container.NewVScroll(m.ListTasks),
+			container.NewBorder(
+				nil,
+				container.NewCenter(m.AddTaskButton),
+				nil,
+				nil,
+				container.NewVScroll(m.ListTasks),
+			),
 		),
 		container.NewPadded(m.TaskEditor),
 	)
@@ -102,17 +117,18 @@ func (m *manageWindow) Get() manageWindow {
 
 func (m *manageWindow) Show() {
 	m.refreshTasks()
-	m.TaskEditor.Disable()
+	m.TaskEditor.Hide()
 	m.Window.Show()
+	m.jiggleHSplit()
 }
 
 func (m *manageWindow) Hide() {
-	log := m.Log.With().Str("func", "Hide").Logger()
+	log := logger.GetFuncLogger(m.Log, "Hide")
 	err := m.BindTaskList.Set(make([]string, 0))
 	if err != nil {
 		log.Err(err).Msg("error resetting task list")
 	}
-	m.TaskEditor.Disable()
+	m.TaskEditor.Hide()
 	m.Window.Hide()
 }
 
@@ -121,13 +137,13 @@ func (m *manageWindow) Close() {
 }
 
 func (m *manageWindow) refreshTasks() {
-	log := m.Log.With().Str("func", "refreshTasks").Logger()
+	log := logger.GetFuncLogger(m.Log, "refreshTasks")
 	tasks, err := models.Task(new(models.TaskData)).LoadAll(false)
 	if err != nil {
 		log.Err(err).Msg("error reading all tasks")
 		return
 	}
-	log.Debug().Msgf("read %d tasks", len(tasks))
+	log.Trace().Msgf("read %d tasks", len(tasks))
 	synopses := make([]string, len(tasks))
 	for idx, task := range tasks {
 		synopses[idx] = task.Synopsis
@@ -149,14 +165,15 @@ func (m *manageWindow) jiggleHSplit() {
 }
 
 func (m *manageWindow) doEditSave(item interface{}) {
-	log := m.Log.With().Str("func", "doEditSave").Logger()
-	dirtyTask, ok := item.(*models.TaskData)
+	log := logger.GetFuncLogger(m.Log, "doEditSave")
+	dirtyTask, ok := item.(models.TaskData)
 	if !ok {
-		err := fmt.Errorf("could not cast interface{} to *models.TaskData; got type %s", reflect.TypeOf(item).String())
+		err := fmt.Errorf("could not cast interface{} to models.TaskData; got type %s", reflect.TypeOf(item).String())
 		dialog.NewError(err, m.Window).Show()
 		log.Error().Msg(err.Error())
 		return
 	}
+	log.Debug().Msgf("saving dirtyTask %s", dirtyTask.String())
 	err := m.saveChanges(dirtyTask)
 	if err != nil {
 		dialog.NewError(err, m.Window).Show()
@@ -164,10 +181,12 @@ func (m *manageWindow) doEditSave(item interface{}) {
 		return
 	}
 	m.doneEditing()
+	m.refreshTasks()
+	m.taskListChangedChannel <- rxgo.Of(true)
 }
 
 func (m *manageWindow) doEditCancel(item interface{}) {
-	log := m.Log.With().Str("func", "doEditCancel").Logger()
+	log := logger.GetFuncLogger(m.Log, "doEditCancel")
 	editCancelled, ok := item.(bool)
 	if !ok {
 		log.Error().Msgf("could not cast interface{} to bool; got type %s", reflect.TypeOf(item).String())
@@ -184,7 +203,7 @@ func (m *manageWindow) doEditCancel(item interface{}) {
 			"You have unsaved changes. Would you like to save them?",
 			func(saveChanges bool) {
 				if saveChanges {
-					err := m.saveChanges(m.TaskEditor.GetDirtyTask())
+					err := m.saveChanges(*m.TaskEditor.GetDirtyTask())
 					if err != nil {
 						dialog.NewError(err, m.Window).Show()
 						log.Err(err).Msg("error saving changes to task")
@@ -200,29 +219,42 @@ func (m *manageWindow) doEditCancel(item interface{}) {
 	m.doneEditing()
 }
 
-func (m *manageWindow) saveChanges(dirtyTask *models.TaskData) error {
-	log := m.Log.With().Str("func", "saveChanges").Logger()
+func (m *manageWindow) saveChanges(dirtyTask models.TaskData) error {
+	log := logger.GetFuncLogger(m.Log, "saveChanges")
 	if m.isEditing && m.TaskEditor.IsDirty() {
-		if dirtyTask == nil {
-			log.Error().Msg("dirty task is nil; this is unexpected")
-			return errors.New("dirty task is nil")
-		}
-		taskSyn := m.taskList[m.selectedTaskID]
+		log.Debug().Msgf("dirtyTask=%s", dirtyTask.String())
 		td := new(models.TaskData)
-		td.Synopsis = taskSyn
-		err := td.Load(false)
-		if err != nil {
-			dialog.NewError(err, m.Window).Show()
-			log.Err(err).Msgf("error loading task with synopsis %s", taskSyn)
-			return err
+		// Re-load the task record first if it exists
+		if dirtyTask.ID > 0 {
+			td.Synopsis = dirtyTask.Synopsis
+			log.Debug().Msgf("re-loading record for task ID %d (%s)", dirtyTask.ID, dirtyTask.Synopsis)
+			err := td.Load(false)
+			if err != nil {
+				dialog.NewError(err, m.Window).Show()
+				log.Err(err).Msgf("error loading task with synopsis %s", dirtyTask.Synopsis)
+				return err
+			}
 		}
 		td.Synopsis = dirtyTask.Synopsis
 		td.Description = dirtyTask.Description
-		err = td.Update(false)
-		if err != nil {
-			dialog.NewError(err, m.Window).Show()
-			log.Err(err).Msgf("error updating task %s", td.String())
-			return err
+		if td.ID > 0 {
+			log.Trace().Msgf("updating record for task ID %d (%s)", td.ID, td.Synopsis)
+			err := td.Update(false)
+			if err != nil {
+				dialog.NewError(err, m.Window).Show()
+				log.Err(err).Msgf("error updating task %s", td.String())
+				return err
+			}
+			log.Debug().Msgf("record for task ID %d (%s) updated successfully", td.ID, td.Synopsis)
+		} else {
+			log.Trace().Msgf("creating new task record (%s)", td.Synopsis)
+			err := td.Create()
+			if err != nil {
+				dialog.NewError(err, m.Window).Show()
+				log.Err(err).Msgf("error creating task %s", td.String())
+				return err
+			}
+			log.Debug().Msgf("new task record (%s) created successfully", td.Synopsis)
 		}
 		m.refreshTasks()
 		return nil
@@ -231,7 +263,7 @@ func (m *manageWindow) saveChanges(dirtyTask *models.TaskData) error {
 }
 
 func (m *manageWindow) doneEditing() {
-	log := m.Log.With().Str("func", "doneEditing").Logger()
+	log := logger.GetFuncLogger(m.Log, "doneEditing")
 	if !m.isEditing {
 		return
 	}
@@ -242,15 +274,13 @@ func (m *manageWindow) doneEditing() {
 	if err != nil {
 		log.Err(err).Msg("error setting task to empty task")
 	}
-	m.TaskEditor.Disable()
+	m.TaskEditor.Hide()
 	m.jiggleHSplit()
 }
 
 func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
-	log := m.Log.With().
-		Str("func", "taskWasSelected").
-		Int("listItemID", id).
-		Logger()
+	log := logger.GetFuncLogger(m.Log, "taskWasSelected").
+		With().Int("listItemID", id).Logger()
 	if m.isEditing && m.TaskEditor.IsDirty() {
 		dialog.NewInformation(
 			"Unsaved Changes",
@@ -262,8 +292,7 @@ func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
 	}
 	m.selectedTaskID = id
 	m.isEditing = true
-	m.isDirty = false
-	m.TaskEditor.Enable()
+	m.TaskEditor.Show()
 	taskSyn := m.taskList[id]
 	td := new(models.TaskData)
 	td.Synopsis = taskSyn
@@ -280,12 +309,33 @@ func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
 	m.jiggleHSplit()
 }
 
+func (m *manageWindow) createNewTask() {
+	// basically the same as taskWasSelected but load an empty task record into the editor instead
+	log := logger.GetFuncLogger(m.Log, "createNewTask")
+	if m.isEditing && m.TaskEditor.IsDirty() {
+		dialog.NewInformation(
+			"Unsaved Changes",
+			"You have unsaved changes.\nSave them or cancel editing before creating a new task.",
+			m.Window,
+		).Show()
+		return
+	}
+	m.selectedTaskID = -1
+	m.isEditing = true
+	m.TaskEditor.Show()
+	err := m.TaskEditor.SetTask(new(models.TaskData))
+	if err != nil {
+		log.Err(err).Msg("error setting empty task")
+	}
+	m.jiggleHSplit()
+}
+
 func (m *manageWindow) listTasksCreateItem() fyne.CanvasObject {
 	return widgets.NewTasklistItem()
 }
 
 func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject fyne.CanvasObject) {
-	log := m.Log.With().Str("func", "listTasksUpdateItem").Logger()
+	log := logger.GetFuncLogger(m.Log, "listTasksUpdateItem")
 	taskSynopsisBinding := item.(binding.String)
 	taskSyn, err := taskSynopsisBinding.Get()
 	if err != nil {

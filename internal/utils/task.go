@@ -5,8 +5,12 @@ import (
 	"strconv"
 )
 
+var (
+	utilsLog = logger.GetPackageLogger("utils")
+)
+
 func ResolveTask(arg string) (taskid uint, tasksynopsis string) {
-	log := logger.GetLogger("ResolveTask")
+	log := utilsLog.With().Str("func", "ResolveTask").Logger()
 	if arg == "" {
 		return 0, ""
 	}

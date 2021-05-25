@@ -21,12 +21,15 @@ var (
 	loggerInitialized = false
 )
 
+func init() {
+	// Override zerolog's default time field format so it doesn't truncate nanoseconds
+	zerolog.TimeFieldFormat = time.RFC3339Nano
+}
+
 func InitLogger(logLevel string, console bool) {
 	var err error
 
 	if !loggerInitialized {
-		// Override zerolog's default time field format so it doesn't truncate nanoseconds
-		zerolog.TimeFieldFormat = time.RFC3339Nano
 		configHome := GetConfigHome()
 		logPath = path.Join(configHome, "timetracker")
 		_ = os.MkdirAll(logPath, 0755)
@@ -86,7 +89,7 @@ func CleanupLogger() {
 
 func GetLogger(funcName string) zerolog.Logger {
 	if !loggerInitialized {
-		return zerolog.New(&zerolog.ConsoleWriter{Out: os.Stderr}).
+		return zerolog.New(&zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.StampMilli}).
 			With().Timestamp().Str("func", funcName).Logger().
 			Level(zerolog.TraceLevel)
 	}
@@ -95,11 +98,24 @@ func GetLogger(funcName string) zerolog.Logger {
 
 func GetStructLogger(structName string) zerolog.Logger {
 	if !loggerInitialized {
-		return zerolog.New(&zerolog.ConsoleWriter{Out: os.Stderr}).
+		return zerolog.New(&zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.StampMilli}).
 			With().Timestamp().Str("struct", structName).Logger().
 			Level(zerolog.TraceLevel)
 	}
 	return RootLogger.With().Str("struct", structName).Logger()
+}
+
+func GetPackageLogger(packageName string) zerolog.Logger {
+	if !loggerInitialized {
+		return zerolog.New(&zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.StampMilli}).
+			With().Timestamp().Str("package", packageName).Logger().
+			Level(zerolog.TraceLevel)
+	}
+	return RootLogger.With().Str("package", packageName).Logger()
+}
+
+func GetFuncLogger(existingLog zerolog.Logger, funcName string) zerolog.Logger {
+	return existingLog.With().Str("func", funcName).Logger()
 }
 
 func GetConfigHome() string {

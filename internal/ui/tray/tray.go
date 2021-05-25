@@ -23,6 +23,9 @@ const (
 
 var (
 	mStatus            *systray.MenuItem
+	mManage            *systray.MenuItem
+	mLastStarted       *systray.MenuItem
+	lastStartedItems   []*systray.MenuItem
 	mAbout             *systray.MenuItem
 	mQuit              *systray.MenuItem
 	lockFile           lockfile.Lockfile
@@ -30,10 +33,11 @@ var (
 	wg                 sync.WaitGroup
 	trayQuitChan       chan bool
 	actionLoopQuitChan chan bool
+	trayLogger         = logger.GetPackageLogger("tray")
 )
 
 func Run() (err error) {
-	log := logger.GetLogger("tray.Run")
+	log := logger.GetFuncLogger(trayLogger, "Run")
 	userConfigDir, err := os.UserConfigDir()
 	if err != nil {
 		userConfigDir = "."
@@ -83,7 +87,7 @@ func Run() (err error) {
 func onReady() {
 	var err error
 
-	log := logger.GetLogger("tray.onReady")
+	log := logger.GetFuncLogger(trayLogger, "onReady")
 	log.Trace().Msg("starting")
 	defer func() {
 		// Signal that we're initialized
@@ -105,7 +109,12 @@ func onReady() {
 	systray.SetTitle("Timetracker")
 	systray.SetTooltip("Timetracker")
 	systray.SetTemplateIcon(icons.Check, icons.Check)
-	mStatus = systray.AddMenuItem("(idle)", "Timetracker task status")
+	mStatus = systray.AddMenuItem("Start new task", "Display a task selector and start a task")
+	mManage = systray.AddMenuItem("Manage tasks", "Display the Manage Tasks window to add, change, or remove tasks")
+	systray.AddSeparator()
+	// TODO: List the top 5 last-started tasks as easy-start options
+	mLastStarted = systray.AddMenuItem("Recent tasks", "Select a recently started task to start it again")
+	lastStartedItems = make([]*systray.MenuItem, 0)
 	systray.AddSeparator()
 	mAbout = systray.AddMenuItem("About Timetracker", "About the Timetracker app")
 	mQuit = systray.AddMenuItem("Quit", "Quit the Timetracker tray app")
@@ -119,7 +128,7 @@ func onReady() {
 		},
 		func(err error) {
 			systray.SetTemplateIcon(icons.Error, icons.Error)
-			mStatus.SetTitle("[error]")
+			mStatus.SetTitle("An error occurred; click for details")
 		},
 		func() {
 			log.Debug().Msg("running timesheet observable is done")
@@ -131,45 +140,44 @@ func onReady() {
 }
 
 func onExit() {
-	log := logger.GetLogger("tray.onExit")
-	log.Trace().Msg("started")
+	log := logger.GetFuncLogger(trayLogger, "onExit")
 	err := lockFile.Unlock()
 	if err != nil {
 		log.Err(err).Msgf("error releasing pidfile")
 		return
 	}
 	log.Debug().Msg("unlocked pidfile")
-	log.Trace().Msg("done")
 }
 
 func updateStatus(tsd *models.TimesheetData) {
-	log := logger.GetLogger("tray.updateStatus")
+	log := logger.GetFuncLogger(trayLogger, "updateStatus")
 	log.Debug().Msg("called")
 	if tsd == nil {
 		// No running timesheet
 		log.Debug().Msg("got nil running timesheet item")
 		systray.SetTemplateIcon(icons.Check, icons.Check)
-		mStatus.SetTitle("(idle)")
+		mStatus.SetTitle("Start new task")
+		mStatus.SetTooltip("Display a task selector and start a task")
 		return
 	}
 	log.Debug().Msgf("got running timesheet object: %s", tsd.String())
 	systray.SetTemplateIcon(icons.Running, icons.Running)
 	statusText := fmt.Sprintf(
-		"%s %s",
+		"Stop task %s (%s)",
 		tsd.Task.Synopsis,
 		time.Since(tsd.StartTime).Truncate(time.Second).String(),
 	)
 	mStatus.SetTitle(statusText)
+	mStatus.SetTooltip("Stop the running task")
 }
 
 func mainLoop(quitChan chan bool) {
-	log := logger.GetLogger("tray.mainLoop")
+	log := logger.GetFuncLogger(trayLogger, "mainLoop")
 	// Start main loop
 	log.Trace().Msg("starting")
 	for {
 		select {
 		case <-mStatus.ClickedCh:
-			log.Debug().Msg("status menu item selected")
 			switch appstate.GetLastState() {
 			case constants.TimesheetStatusRunning:
 				runningTimesheet := appstate.GetRunningTimesheet()
@@ -199,15 +207,15 @@ func mainLoop(quitChan chan bool) {
 			case constants.TimesheetStatusIdle:
 				gui.ShowTimetrackerWindow()
 			}
+		case <-mManage.ClickedCh:
+			gui.ShowTimetrackerWindowWithManageWindow()
 		case <-mAbout.ClickedCh:
-			log.Debug().Msg("about menu item selected; showing about dialog")
 			gui.ShowTimetrackerWindowWithAbout()
 		case <-mQuit.ClickedCh:
-			log.Debug().Msg("quit menu item selected; quitting app")
 			gui.StopGUI()
 			return
 		case <-quitChan:
-			log.Debug().Msg("quit channel fired; exiting function")
+			log.Trace().Msg("quit channel fired; exiting function")
 			return
 		}
 	}
