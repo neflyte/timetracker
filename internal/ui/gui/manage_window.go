@@ -360,7 +360,6 @@ func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject f
 		return
 	}
 	log.Trace().Msgf("setting task=%s", td.String())
-	// TODO: trim subtitle to 64 chars; use ellipsis if >64 chars
 	err = tasklistItem.SetTask(td)
 	if err != nil {
 		log.Err(err).Msg("error setting task on tasklistItem")

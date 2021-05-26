@@ -11,13 +11,16 @@ import (
 	"github.com/rs/zerolog"
 )
 
+const (
+	synopsisTrimLength    = 8
+	descriptionTrimLength = 25
+)
+
 type TasklistItem struct {
 	widget.BaseWidget
 	log                zerolog.Logger
-	synopsis           string
-	description        string
-	synopsisBinding    binding.ExternalString
-	descriptionBinding binding.ExternalString
+	synopsisBinding    binding.String
+	descriptionBinding binding.String
 	taskData           *models.TaskData
 }
 
@@ -25,8 +28,8 @@ func NewTasklistItem() *TasklistItem {
 	item := new(TasklistItem)
 	item.ExtendBaseWidget(item)
 	item.log = logger.GetStructLogger("TasklistItem")
-	item.synopsisBinding = binding.BindString(&item.synopsis)
-	item.descriptionBinding = binding.BindString(&item.description)
+	item.synopsisBinding = binding.NewString()
+	item.descriptionBinding = binding.NewString()
 	item.taskData = new(models.TaskData)
 	return item
 }
@@ -36,19 +39,27 @@ func (i *TasklistItem) GetTask() *models.TaskData {
 }
 
 func (i *TasklistItem) SetTask(newTask *models.TaskData) error {
+	// log := logger.GetFuncLogger(i.log, "SetTask")
 	if newTask == nil {
 		return errors.New("nil values are not accepted")
 	}
 	i.taskData = newTask
-	err := i.synopsisBinding.Set(newTask.Synopsis)
+	err := i.synopsisBinding.Set(i.trimWithEllipsis(newTask.Synopsis, synopsisTrimLength))
 	if err != nil {
 		return err
 	}
-	err = i.descriptionBinding.Set(newTask.Description)
+	err = i.descriptionBinding.Set(i.trimWithEllipsis(newTask.Description, descriptionTrimLength))
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (i *TasklistItem) trimWithEllipsis(toTrim string, trimLength int) string {
+	if len(toTrim) <= trimLength {
+		return toTrim
+	}
+	return toTrim[0:trimLength-2] + `…`
 }
 
 func (i *TasklistItem) CreateRenderer() fyne.WidgetRenderer {

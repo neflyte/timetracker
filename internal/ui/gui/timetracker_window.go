@@ -19,6 +19,9 @@ import (
 	"time"
 )
 
+// TODO: rework the UI layout to better contain the components (e.g. use themes and a custom layout, not just a card)
+// TODO: implement an "elapsed time" counter if a task is running
+
 var (
 	taskNameRE = regexp.MustCompile(`^\[([0-9]+)].*$`)
 )

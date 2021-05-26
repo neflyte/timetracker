@@ -71,7 +71,7 @@ func initDatabase() {
 		log.Fatal().Msgf("error opening database at %s: %s\n", configFile, err)
 	}
 	log.Printf("database opened")
-	database.DB = db
+	database.Set(db)
 	err = db.AutoMigrate(new(models.TaskData), new(models.TimesheetData))
 	if err != nil {
 		cleanUp(nil, nil)
@@ -85,7 +85,7 @@ func initLogger() {
 }
 
 func cleanUp(_ *cobra.Command, _ []string) {
-	database.Close(database.DB)
-	database.DB = nil
+	database.Close(database.Get())
+	database.Set(nil)
 	logger.CleanupLogger()
 }

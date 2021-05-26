@@ -40,7 +40,7 @@ func init() {
 func InitLogger(logLevel string, console bool) {
 	var err error
 
-	if !loggerInitialized {
+	if loggerInitialized {
 		return
 	}
 	configHome := GetConfigHome()
