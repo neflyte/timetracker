@@ -49,20 +49,20 @@ func NewTaskEditor() *TaskEditor {
 	te.editCancelledObservable = rxgo.FromEventSource(te.editCancelledChannel)
 	te.taskSynopsisBinding = binding.NewString()
 	te.taskSynopsisBinding.AddListener(binding.NewDataListener(func() {
-		te.log.Debug().Msg("taskSynopsisBinding listener fired")
 		editSynopsis, err := te.taskSynopsisBinding.Get()
 		if err != nil {
 			te.log.Err(err).Msg("error getting synopsis from binding")
 		}
+		te.log.Trace().Msgf("setting te.taskSynopsis=%s from binding datalistener", editSynopsis)
 		te.taskSynopsis = editSynopsis
 	}))
 	te.taskDescriptionBinding = binding.NewString()
 	te.taskDescriptionBinding.AddListener(binding.NewDataListener(func() {
-		te.log.Debug().Msg("taskDescriptionBinding listener fired")
 		editDescription, err := te.taskDescriptionBinding.Get()
 		if err != nil {
 			te.log.Err(err).Msg("error getting description from binding")
 		}
+		te.log.Trace().Msgf("setting te.taskDescription=%s from binding datalistener", editDescription)
 		te.taskDescription = editDescription
 	}))
 	te.taskData = models.TaskData{}
@@ -83,13 +83,18 @@ func (te *TaskEditor) GetTask() *models.TaskData {
 }
 
 func (te *TaskEditor) SetTask(task *models.TaskData) error {
+	log := logger.GetFuncLogger(te.log, "SetTask")
 	if task != nil {
+		log.Trace().Msgf("sending task %s to taskDataChannel", task.String())
 		te.taskDataChannel <- rxgo.Of(task)
+		log.Trace().Msgf("setting te.taskData=%s", task.String())
 		te.taskData = *task
+		log.Trace().Msgf("setting synopsis binding to %s", task.Synopsis)
 		err := te.taskSynopsisBinding.Set(task.Synopsis)
 		if err != nil {
 			return err
 		}
+		log.Trace().Msgf("setting description binding to %s", task.Description)
 		err = te.taskDescriptionBinding.Set(task.Description)
 		if err != nil {
 			return err
@@ -110,7 +115,7 @@ func (te *TaskEditor) GetDirtyTask() *models.TaskData {
 
 func (te *TaskEditor) IsDirty() bool {
 	log := logger.GetFuncLogger(te.log, "IsDirty")
-	log.Debug().Msgf(
+	log.Trace().Msgf(
 		"te.taskData.Synopsis=%s, te.taskSynopsis=%s",
 		te.taskData.Synopsis,
 		te.taskSynopsis,
@@ -119,7 +124,7 @@ func (te *TaskEditor) IsDirty() bool {
 		log.Debug().Msg("synopsis is different; returning true")
 		return true
 	}
-	log.Debug().Msgf(
+	log.Trace().Msgf(
 		"te.taskData.Description=%s, te.taskDescription=%s",
 		te.taskData.Description,
 		te.taskDescription,
@@ -148,11 +153,12 @@ func (te *TaskEditor) CreateRenderer() fyne.WidgetRenderer {
 	}
 	r.taskDataObservable.ForEach(
 		func(item interface{}) {
-			r.log.Debug().Msg("taskData observable fired")
+			r.log.Trace().Msg("taskData observable fired")
 			newTaskData, ok := item.(models.TaskData)
 			if ok {
-				r.log.Debug().Msgf("setting taskData from observable; taskData=%s", newTaskData.String())
-				r.taskData = *newTaskData.Clone()
+				r.log.Trace().Msgf("setting taskData from observable (cloned); taskData=%s", newTaskData.String())
+				cloned := newTaskData.Clone()
+				r.taskData = *cloned
 			}
 		},
 		func(err error) {
@@ -164,21 +170,9 @@ func (te *TaskEditor) CreateRenderer() fyne.WidgetRenderer {
 	)
 	te.taskSynopsisBinding.AddListener(binding.NewDataListener(func() {
 		r.updateButtonStates()
-		/*updatedSynopsis, err := te.taskSynopsisBinding.Get()
-		if err != nil {
-			r.log.Err(err).Msg("error getting synopsis from binding")
-			return
-		}
-		r.taskData.Synopsis = updatedSynopsis*/
 	}))
 	te.taskDescriptionBinding.AddListener(binding.NewDataListener(func() {
 		r.updateButtonStates()
-		/*updatedDescription, err := te.taskDescriptionBinding.Get()
-		if err != nil {
-			r.log.Err(err).Msg("error getting description from binding")
-			return
-		}
-		r.taskData.Description = updatedDescription*/
 	}))
 	r.synopsisEntry.SetPlaceHolder("enter the task synopsis here")
 	r.descriptionEntry.SetPlaceHolder("enter the task description here")
@@ -249,7 +243,10 @@ func (r *taskEditorRenderer) Refresh() {
 }
 
 func (r *taskEditorRenderer) doSaveTask() {
-	r.taskSavedChannel <- rxgo.Of(r.taskData)
+	dirtyTask := r.taskData.Clone()
+	dirtyTask.Synopsis = r.synopsisEntry.Text
+	dirtyTask.Description = r.descriptionEntry.Text
+	r.taskSavedChannel <- rxgo.Of(*dirtyTask)
 }
 
 func (r *taskEditorRenderer) doCancelEdit() {

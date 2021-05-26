@@ -3,11 +3,15 @@ package errors
 import "fmt"
 
 const (
-	CreateTimesheetError       = "error creating timesheet"
-	TooManyOpenTimesheetsError = "there are too many open timesheets; this is unexpected"
-	SearchOpenTimesheetsError  = "error searching for open timesheet"
-	UpdateTimesheetError       = "error updating timesheet"
-	ListTimesheetError         = "error listing timesheets"
+	// CreateTimesheetError represents an error that occurs when creating a timesheet
+	CreateTimesheetError = "error creating timesheet"
+
+	// TooManyOpenTimesheetsError = "there are too many open timesheets; this is unexpected"
+	// SearchOpenTimesheetsError  = "error searching for open timesheet"
+	// UpdateTimesheetError       = "error updating timesheet"
+
+	// ListTimesheetError represents an error that occurs when timesheets are listed
+	ListTimesheetError = "error listing timesheets"
 )
 
 type ErrInvalidTimesheetState struct {

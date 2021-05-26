@@ -162,7 +162,7 @@ func (t *timetrackerWindow) InitWindowData() {
 	if runningTS != nil {
 		// Task is running
 		t.BtnStopTask.Enable()
-		newSelectedTask := (*runningTS).Task.String()
+		newSelectedTask := runningTS.Task.String()
 		if newSelectedTask != "" {
 			t.TaskList.SetSelected(newSelectedTask)
 			t.BtnStartTask.Disable()
@@ -261,15 +261,15 @@ func (t *timetrackerWindow) doStartTask() {
 	// TODO: convert from selectedTask string to task ID so we can start a new timesheet
 	if taskNameRE.MatchString(selectedTask) {
 		matches := taskNameRE.FindStringSubmatch(selectedTask)
-		taskIdString := matches[1]
-		taskIdInt, err := strconv.Atoi(taskIdString)
+		taskIDString := matches[1]
+		taskIDInt, err := strconv.Atoi(taskIDString)
 		if err != nil {
-			log.Err(err).Msgf("err converting taskIdString '%s' to int", taskIdString)
+			log.Err(err).Msgf("err converting taskIDString '%s' to int", taskIDString)
 			dialog.NewError(err, t.Window).Show()
 			return
 		}
 		taskData := new(models.TaskData)
-		taskData.ID = uint(taskIdInt)
+		taskData.ID = uint(taskIDInt)
 		err = models.Task(taskData).Load(false)
 		if err != nil {
 			log.Err(err).Msgf("error loading task id %d", taskData.ID)
@@ -344,7 +344,10 @@ func (t *timetrackerWindow) doAbout() {
 	appVersion := "??"
 	appVersionIntf, ok := appstate.Map().Load(appstate.KeyAppVersion)
 	if ok {
-		appVersionStr := appVersionIntf.(string)
+		appVersionStr, isString := appVersionIntf.(string)
+		if !isString {
+			appVersionStr = "??"
+		}
 		if appVersionStr != "" {
 			appVersion = appVersionStr
 		}

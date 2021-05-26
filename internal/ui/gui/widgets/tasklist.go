@@ -4,6 +4,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
+	"github.com/elliotchance/pie/pie"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/rs/zerolog"
@@ -31,7 +32,6 @@ func NewTasklist() *Tasklist {
 
 func (t *Tasklist) Refresh() {
 	t.refreshTaskList()
-	t.Select.Refresh()
 }
 
 func (t *Tasklist) listBindingChanged() {
@@ -41,7 +41,12 @@ func (t *Tasklist) listBindingChanged() {
 		log.Err(err).Msg("error getting list from binding")
 		return
 	}
+	// If the currently selected option doesn't exist in the new list of options then we need to unset it
+	if t.Select.Selected != "" && !pie.Strings(changed).Contains(t.Select.Selected) {
+		t.Select.ClearSelected()
+	}
 	t.Select.Options = changed
+	t.Select.Refresh()
 }
 
 func (t *Tasklist) refreshTaskList() {

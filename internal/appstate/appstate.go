@@ -9,23 +9,34 @@ import (
 )
 
 const (
-	KeyAppVersion        = "app_version"
+	// KeyAppVersion is the map key for the application version
+	KeyAppVersion = "app_version"
+	// KeyActionLoopStarted is the map key for the ActionLoopStarted flag
 	KeyActionLoopStarted = "action_loop_started"
-	KeyStatusError       = "status_error"
-	KeyLastState         = "last_state"
-	KeyRunningTimesheet  = "running_timesheet"
-	KeySelectedTask      = "selected_task"
-	KeyGUIStarted        = "gui_started"
+	// KeyStatusError is the map key for the error from the last status check
+	KeyStatusError = "status_error"
+	// KeyLastState is the map key for the last timesheet state
+	KeyLastState = "last_state"
+	// KeyRunningTimesheet is the map key for the running timesheet, if any
+	KeyRunningTimesheet = "running_timesheet"
+	// KeySelectedTask is the map key for the selected task
+	KeySelectedTask = "selected_task"
+	// KeyGUIStarted is the map key for the GUI Started flag
+	KeyGUIStarted = "gui_started"
 
-	ChannelBufferSize = 5
+	channelBufferSize = 5
 )
 
 var (
-	chanRunningTimesheet = make(chan rxgo.Item, ChannelBufferSize)
-	ObsRunningTimesheet  = rxgo.FromEventSource(chanRunningTimesheet)
-	chanSelectedTask     = make(chan rxgo.Item, ChannelBufferSize)
-	ObsSelectedTask      = rxgo.FromEventSource(chanSelectedTask)
-	appstateLog          = logger.GetPackageLogger("appstate")
+	chanRunningTimesheet = make(chan rxgo.Item, channelBufferSize)
+	chanSelectedTask     = make(chan rxgo.Item, channelBufferSize)
+
+	// ObsRunningTimesheet is the Observable for the running timesheet channel
+	ObsRunningTimesheet = rxgo.FromEventSource(chanRunningTimesheet)
+	// ObsSelectedTask is the Observable for the selected task channel
+	ObsSelectedTask = rxgo.FromEventSource(chanSelectedTask)
+
+	appstateLog = logger.GetPackageLogger("appstate")
 )
 
 // syncMap is a synchronized map[interface{}]interface{} which holds the application state

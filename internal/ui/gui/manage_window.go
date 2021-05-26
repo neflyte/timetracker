@@ -336,7 +336,11 @@ func (m *manageWindow) listTasksCreateItem() fyne.CanvasObject {
 
 func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject fyne.CanvasObject) {
 	log := logger.GetFuncLogger(m.Log, "listTasksUpdateItem")
-	taskSynopsisBinding := item.(binding.String)
+	taskSynopsisBinding, ok := item.(binding.String)
+	if !ok {
+		log.Error().Msgf("did not get binding.String; got %s instead", reflect.TypeOf(item).String())
+		return
+	}
 	taskSyn, err := taskSynopsisBinding.Get()
 	if err != nil {
 		log.Err(err).Msg("error getting task synopsis from binding")

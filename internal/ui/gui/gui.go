@@ -9,8 +9,10 @@ import (
 )
 
 var (
+	// FyneApp is the main fyne app instance
+	FyneApp fyne.App
+
 	guiInitialized = false
-	FyneApp        fyne.App
 	mainWindow     TimetrackerWindow
 	guiLogger      = logger.GetPackageLogger("gui")
 )

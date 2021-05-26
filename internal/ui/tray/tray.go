@@ -22,10 +22,10 @@ const (
 )
 
 var (
-	mStatus            *systray.MenuItem
-	mManage            *systray.MenuItem
-	mLastStarted       *systray.MenuItem
-	lastStartedItems   []*systray.MenuItem
+	mStatus *systray.MenuItem
+	mManage *systray.MenuItem
+	// mLastStarted       *systray.MenuItem
+	// lastStartedItems   []*systray.MenuItem
 	mAbout             *systray.MenuItem
 	mQuit              *systray.MenuItem
 	lockFile           lockfile.Lockfile
@@ -111,10 +111,10 @@ func onReady() {
 	systray.SetTemplateIcon(icons.Check, icons.Check)
 	mStatus = systray.AddMenuItem("Start new task", "Display a task selector and start a task")
 	mManage = systray.AddMenuItem("Manage tasks", "Display the Manage Tasks window to add, change, or remove tasks")
-	systray.AddSeparator()
 	// TODO: List the top 5 last-started tasks as easy-start options
-	mLastStarted = systray.AddMenuItem("Recent tasks", "Select a recently started task to start it again")
-	lastStartedItems = make([]*systray.MenuItem, 0)
+	// systray.AddSeparator()
+	// mLastStarted = systray.AddMenuItem("Recent tasks", "Select a recently started task to start it again")
+	// lastStartedItems = make([]*systray.MenuItem, 0)
 	systray.AddSeparator()
 	mAbout = systray.AddMenuItem("About Timetracker", "About the Timetracker app")
 	mQuit = systray.AddMenuItem("Quit", "Quit the Timetracker tray app")
@@ -181,25 +181,15 @@ func mainLoop(quitChan chan bool) {
 			switch appstate.GetLastState() {
 			case constants.TimesheetStatusRunning:
 				runningTimesheet := appstate.GetRunningTimesheet()
+				taskMessage := fmt.Sprintf(
+					"Stop task %s (%s) ?",
+					runningTimesheet.Task.Synopsis,
+					time.Since(runningTimesheet.StartTime).Truncate(time.Second).String(),
+				)
 				gui.ShowTimetrackerWindowWithConfirm(
 					"Stop running task?",
-					fmt.Sprintf(
-						"Stop task %s (%s) ?",
-						runningTimesheet.Task.Synopsis,
-						time.Since(runningTimesheet.StartTime).Truncate(time.Second).String(),
-					),
-					func(res bool) {
-						if res {
-							// Stop the running task
-							log.Debug().Msgf("stopping task %s", runningTimesheet.Task.Synopsis)
-							err := models.Task(new(models.TaskData)).StopRunningTask()
-							if err != nil {
-								log.Err(err).Msg(errors.StopRunningTaskError)
-							}
-							// Get a new timesheet and update the appstate
-							appstate.UpdateRunningTimesheet()
-						}
-					},
+					taskMessage,
+					stopTaskConfirmCallback,
 					false,
 				)
 			case constants.TimesheetStatusError:
@@ -218,5 +208,19 @@ func mainLoop(quitChan chan bool) {
 			log.Trace().Msg("quit channel fired; exiting function")
 			return
 		}
+	}
+}
+
+func stopTaskConfirmCallback(res bool) {
+	log := logger.GetFuncLogger(trayLogger, "stopTaskConfirmCallback")
+	if res {
+		// Stop the running task
+		log.Debug().Msg("stopping the running task")
+		err := models.Task(new(models.TaskData)).StopRunningTask()
+		if err != nil {
+			log.Err(err).Msg(errors.StopRunningTaskError)
+		}
+		// Get a new timesheet and update the appstate
+		appstate.UpdateRunningTimesheet()
 	}
 }

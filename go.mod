@@ -6,6 +6,7 @@ require (
 	fyne.io/fyne/v2 v2.0.3
 	github.com/alexeyco/simpletable v1.0.0
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
+	github.com/elliotchance/pie v1.38.2
 	github.com/fatih/color v1.11.0
 	github.com/getlantern/golog v0.0.0-20201105130739-9586b8bde3a9 // indirect
 	github.com/getlantern/hidden v0.0.0-20201229170000-e66e7f878730 // indirect

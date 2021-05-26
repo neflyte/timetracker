@@ -14,7 +14,10 @@ var (
 func ActionLoop(quitChannel chan bool) {
 	log := appstateLog.With().Str("func", "ActionLoop").Logger()
 	runningIntf, _ := Map().LoadOrStore(KeyActionLoopStarted, false)
-	running := runningIntf.(bool)
+	running, ok := runningIntf.(bool)
+	if !ok {
+		log.Error().Msgf("error getting value of key %s", KeyActionLoopStarted)
+	}
 	if running {
 		log.Warn().Msg("action loop is already running")
 		return

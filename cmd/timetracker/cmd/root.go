@@ -15,8 +15,10 @@ const (
 )
 
 var (
-	AppVersion = "" // AppVersion is the application version number
-	rootCmd    = &cobra.Command{
+	// AppVersion is the application version number
+	AppVersion = ""
+
+	rootCmd = &cobra.Command{
 		Version:           AppVersion,
 		Use:               "timetracker",
 		Short:             "A simple time tracker",
