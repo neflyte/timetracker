@@ -18,6 +18,7 @@ const (
 )
 
 var (
+	// CreateCmd is the definition of the create command
 	CreateCmd = &cobra.Command{
 		Use:     "create [synopsis] [description]",
 		Aliases: []string{"c"},
