@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	tasklistMinWidth = 350 // tasklistMinWidth is the minimum width of the widget in pixels
+	// tasklistMinWidth is the minimum width of the widget in pixels
+	tasklistMinWidth = 350
 )
 
 type Tasklist struct {

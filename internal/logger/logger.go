@@ -83,7 +83,7 @@ func CleanupLogger() {
 		if logFileHandle != nil {
 			err := logFileHandle.Close()
 			if err != nil {
-				fmt.Printf("error cleaning up logger: %s\n", err)
+				fmt.Printf("*  error cleaning up logger: %s\n", err)
 			}
 			logFileHandle = nil
 		}
@@ -123,15 +123,18 @@ func GetFuncLogger(existingLog zerolog.Logger, funcName string) zerolog.Logger {
 }
 
 func GetConfigHome() string {
+	log := GetLogger("GetConfigHome")
 	// Look for XDG_CONFIG_HOME
 	configHome, err := os.UserConfigDir()
 	if err != nil {
+		log.Err(err).Msg("error getting user config directory")
 		configHome = ""
 	}
 	// Look for HOME
 	if configHome == "" {
 		configHome, err = os.UserHomeDir()
 		if err != nil {
+			log.Err(err).Msg("error getting user home directory")
 			configHome = ""
 		}
 	}

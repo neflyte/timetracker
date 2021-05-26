@@ -9,28 +9,32 @@ import (
 	"time"
 )
 
+var (
+	levelMap = map[gormLog.LogLevel]zerolog.Level{
+		gormLog.Silent: zerolog.NoLevel,
+		gormLog.Info:   zerolog.InfoLevel,
+		gormLog.Warn:   zerolog.WarnLevel,
+		gormLog.Error:  zerolog.ErrorLevel,
+	}
+)
+
 type gormLogger struct {
 	log zerolog.Logger
 }
 
 func NewGormLogger() gormLog.Interface {
 	return &gormLogger{
-		log: logger.GetPackageLogger("GORM"),
+		log: logger.GetPackageLogger("gorm"),
 	}
 }
 
 func (gl *gormLogger) LogMode(level gormLog.LogLevel) gormLog.Interface {
 	g := *gl
-	switch level {
-	case gormLog.Silent:
-		g.log = g.log.Level(zerolog.NoLevel)
-	case gormLog.Info:
-		g.log = g.log.Level(zerolog.InfoLevel)
-	case gormLog.Warn:
-		g.log = g.log.Level(zerolog.WarnLevel)
-	case gormLog.Error:
-		g.log = g.log.Level(zerolog.ErrorLevel)
+	zerologLevel, ok := levelMap[level]
+	if !ok {
+		zerologLevel = zerolog.InfoLevel
 	}
+	g.log = g.log.Level(zerologLevel)
 	return &g
 }
 

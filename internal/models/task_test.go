@@ -13,7 +13,7 @@ import (
 func TestUnit_Task_CreateAndLoad_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task
 	td := new(TaskData)
@@ -35,7 +35,7 @@ func TestUnit_Task_CreateAndLoad_Nominal(t *testing.T) {
 func TestUnit_Task_Load_NotFound(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task
 	td := new(TaskData)
@@ -56,7 +56,7 @@ func TestUnit_Task_Load_NotFound(t *testing.T) {
 func TestUnit_Task_Create_InvalidID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task with an invalid ID
 	td := new(TaskData)
@@ -72,7 +72,7 @@ func TestUnit_Task_Create_InvalidID(t *testing.T) {
 func TestUnit_Task_Create_EmptySynopsis(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task with an empty synopsis
 	td := new(TaskData)
@@ -87,7 +87,7 @@ func TestUnit_Task_Create_EmptySynopsis(t *testing.T) {
 func TestUnit_Task_Load_BySynopsis_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create some tasks
 	tasks := []TaskData{
@@ -113,7 +113,7 @@ func TestUnit_Task_Load_BySynopsis_Nominal(t *testing.T) {
 func TestUnit_Task_Load_BySynopsis_NotFound(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create some tasks
 	tasks := []TaskData{
@@ -137,7 +137,7 @@ func TestUnit_Task_Load_BySynopsis_NotFound(t *testing.T) {
 func TestUnit_Task_Load_WithDeleted(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task
 	td := new(TaskData)
@@ -163,7 +163,7 @@ func TestUnit_Task_Load_WithDeleted(t *testing.T) {
 func TestUnit_Task_Load_InvalidIDAndEmptySynopsis(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Load a task with an invalid ID and an empty synopsis
 	td := new(TaskData)
@@ -177,7 +177,7 @@ func TestUnit_Task_Load_InvalidIDAndEmptySynopsis(t *testing.T) {
 func TestUnit_Task_Delete_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task
 	td := new(TaskData)
@@ -202,7 +202,7 @@ func TestUnit_Task_Delete_Nominal(t *testing.T) {
 func TestUnit_Task_Delete_InvalidIDAndEmptySynopsis(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Delete a task with invalid ID and empty synopsis
 	td := new(TaskData)
@@ -217,7 +217,7 @@ func TestUnit_Task_Delete_InvalidIDAndEmptySynopsis(t *testing.T) {
 func TestUnit_Task_LoadAll_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create some tasks
 	tasks := []TaskData{
@@ -243,7 +243,7 @@ func TestUnit_Task_LoadAll_Nominal(t *testing.T) {
 func TestUnit_Task_LoadAll_WithDeleted(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create some tasks
 	tasks := []TaskData{
@@ -275,7 +275,7 @@ func TestUnit_Task_LoadAll_WithDeleted(t *testing.T) {
 func TestUnit_Task_Search_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create test data
 	td := new(TaskData)
@@ -304,7 +304,7 @@ func TestUnit_Task_Search_Nominal(t *testing.T) {
 func TestUnit_Task_Search_NotFound(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create test data
 	td := new(TaskData)
@@ -327,7 +327,7 @@ func TestUnit_Task_Search_NotFound(t *testing.T) {
 func TestUnit_Update_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create test data
 	td := new(TaskData)
@@ -354,7 +354,7 @@ func TestUnit_Update_Nominal(t *testing.T) {
 func TestUnit_Update_InvalidID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Update test data
 	td := new(TaskData)
@@ -368,7 +368,7 @@ func TestUnit_Update_InvalidID(t *testing.T) {
 func TestUnit_Update_EmptySynopsis(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Update test data
 	td := new(TaskData)
@@ -382,7 +382,7 @@ func TestUnit_Update_EmptySynopsis(t *testing.T) {
 /*func TestUnit_Update_Deleted(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create test data
 	td := new(TaskData)
@@ -432,7 +432,7 @@ func TestUnit_Update_EmptySynopsis(t *testing.T) {
 func TestUnit_StopRunningTask_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task
 	td := new(TaskData)

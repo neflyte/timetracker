@@ -119,7 +119,7 @@ func onReady() {
 	mAbout = systray.AddMenuItem("About Timetracker", "About the Timetracker app")
 	mQuit = systray.AddMenuItem("Quit", "Quit the Timetracker tray app")
 	log.Trace().Msg("setting up observables")
-	appstate.ObsRunningTimesheet.ForEach(
+	appstate.Observables()[appstate.KeyRunningTimesheet].ForEach(
 		func(item interface{}) {
 			tsd, ok := item.(*models.TimesheetData)
 			if ok {

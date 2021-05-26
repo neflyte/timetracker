@@ -8,7 +8,9 @@ import (
 )
 
 var (
-	DB         *gorm.DB
+	// dbInstance is the singleton database handle
+	dbInstance *gorm.DB
+
 	gormConfig = &gorm.Config{
 		Logger: NewGormLogger(),
 	}
@@ -16,14 +18,14 @@ var (
 )
 
 func Open(fileName string) (*gorm.DB, error) {
-	log := databaseLog.With().Str("func", "Open").Logger()
+	log := logger.GetFuncLogger(databaseLog, "Open")
 	dsn := fmt.Sprintf("file:%s?_foreign_keys=1&_journal_mode=WAL&_mode=rwc", fileName)
 	log.Printf("opening sqlite db at %s\n", dsn)
 	return gorm.Open(sqlite.Open(dsn), gormConfig)
 }
 
 func Close(db *gorm.DB) {
-	log := databaseLog.With().Str("func", "Close").Logger()
+	log := logger.GetFuncLogger(databaseLog, "Close")
 	if db != nil {
 		sqldb, err := db.DB()
 		if err != nil {
@@ -36,6 +38,14 @@ func Close(db *gorm.DB) {
 			log.Printf("error closing DB handle: %s\n", err)
 		}
 	}
+}
+
+func Get() *gorm.DB {
+	return dbInstance
+}
+
+func Set(db *gorm.DB) {
+	dbInstance = db
 }
 
 // CloseRows isn't needed yet

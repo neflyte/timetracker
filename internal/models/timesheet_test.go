@@ -14,7 +14,7 @@ import (
 func TestUnit_Timesheet_CreateAndLoad_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task
 	td := new(TaskData)
@@ -45,7 +45,7 @@ func TestUnit_Timesheet_CreateAndLoad_Nominal(t *testing.T) {
 func TestUnit_Timesheet_Create_InvalidID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	tsd := new(TimesheetData)
 	tsd.ID = 1
@@ -58,7 +58,7 @@ func TestUnit_Timesheet_Create_InvalidID(t *testing.T) {
 func TestUnit_Timesheet_Create_InvalidTaskID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	tsd := new(TimesheetData)
 	tsd.Task.ID = 0
@@ -71,7 +71,7 @@ func TestUnit_Timesheet_Create_InvalidTaskID(t *testing.T) {
 func TestUnit_Timesheet_Load_InvalidID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	tsd := new(TimesheetData)
 	tsd.Task.ID = 0
@@ -84,7 +84,7 @@ func TestUnit_Timesheet_Load_InvalidID(t *testing.T) {
 func TestUnit_Timesheet_Delete_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task
 	td := new(TaskData)
@@ -116,7 +116,7 @@ func TestUnit_Timesheet_Delete_Nominal(t *testing.T) {
 func TestUnit_Timesheet_LoadAll_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create two tasks
 	td := new(TaskData)
@@ -170,7 +170,7 @@ func TestUnit_Timesheet_LoadAll_Nominal(t *testing.T) {
 func TestUnit_Timesheet_SearchOpen_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task
 	td := new(TaskData)
@@ -200,7 +200,7 @@ func TestUnit_Timesheet_SearchOpen_Nominal(t *testing.T) {
 func TestUnit_Timesheet_Update_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task
 	td := new(TaskData)
@@ -234,7 +234,7 @@ func TestUnit_Timesheet_Update_Nominal(t *testing.T) {
 func TestUnit_Timesheet_Update_InvalidID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	tsd := new(TimesheetData)
 	tsd.ID = 0
@@ -247,7 +247,7 @@ func TestUnit_Timesheet_Update_InvalidID(t *testing.T) {
 func TestUnit_Timesheet_Update_InvalidTaskID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	tsd := new(TimesheetData)
 	tsd.ID = 1

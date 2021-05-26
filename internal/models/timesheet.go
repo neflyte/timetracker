@@ -55,7 +55,7 @@ func (tsd *TimesheetData) Create() error {
 			Details: "no task is associated with the timesheet",
 		}
 	}
-	return database.DB.Create(tsd).Error
+	return database.Get().Create(tsd).Error
 }
 
 func (tsd *TimesheetData) Load() error {
@@ -64,7 +64,7 @@ func (tsd *TimesheetData) Load() error {
 			Details: "cannot load a timesheet that does not exist",
 		}
 	}
-	return database.DB.Joins("Task").First(tsd, tsd.ID).Error
+	return database.Get().Joins("Task").First(tsd, tsd.ID).Error
 }
 
 func (tsd *TimesheetData) Delete() error {
@@ -77,11 +77,11 @@ func (tsd *TimesheetData) Delete() error {
 	if err != nil {
 		return err
 	}
-	return database.DB.Delete(tsd).Error
+	return database.Get().Delete(tsd).Error
 }
 
 func (tsd *TimesheetData) LoadAll(withDeleted bool) ([]TimesheetData, error) {
-	db := database.DB
+	db := database.Get()
 	if withDeleted {
 		db = db.Unscoped()
 	}
@@ -98,21 +98,21 @@ func (tsd *TimesheetData) SearchOpen() ([]TimesheetData, error) {
 	if tsd.Task.ID > 0 {
 		args["task_id"] = tsd.Task.ID
 	}
-	err := database.DB.Joins("Task").Where(args).Find(&timesheets).Error
+	err := database.Get().Joins("Task").Where(args).Find(&timesheets).Error
 	return timesheets, err
 }
 
 func (tsd *TimesheetData) SearchDateRange() ([]TimesheetData, error) {
 	timesheets := make([]TimesheetData, 0)
 	if tsd.StopTime.Valid {
-		err := database.DB.
+		err := database.Get().
 			Joins("Task").
 			Where("start_time >= ? AND stop_time <= ?", tsd.StartTime, tsd.StopTime.Time).
 			Find(&timesheets).
 			Error
 		return timesheets, err
 	}
-	err := database.DB.
+	err := database.Get().
 		Joins("Task").
 		Where("start_time >= ?", tsd.StartTime).
 		Find(&timesheets).
@@ -131,5 +131,5 @@ func (tsd *TimesheetData) Update() error {
 			Details: "no task is associated with the timesheet",
 		}
 	}
-	return database.DB.Save(tsd).Error
+	return database.Get().Save(tsd).Error
 }

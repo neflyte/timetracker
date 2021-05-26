@@ -179,7 +179,7 @@ func (t *timetrackerWindow) InitWindowData() {
 func (t *timetrackerWindow) setupObservables() {
 	log := logger.GetFuncLogger(t.Log, "setupObservables")
 	log.Debug().Msg("ObsRunningTimesheet")
-	appstate.ObsRunningTimesheet.ForEach(
+	appstate.Observables()[appstate.KeyRunningTimesheet].ForEach(
 		func(item interface{}) {
 			runningTS, ok := item.(*models.TimesheetData)
 			if ok {
@@ -222,7 +222,7 @@ func (t *timetrackerWindow) setupObservables() {
 		},
 	)
 	log.Debug().Msg("ObsSelectedTask")
-	appstate.ObsSelectedTask.ForEach(
+	appstate.Observables()[appstate.KeySelectedTask].ForEach(
 		func(item interface{}) {
 			selectedTask, ok := item.(string)
 			if ok {

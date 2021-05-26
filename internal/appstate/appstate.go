@@ -31,10 +31,15 @@ var (
 	chanRunningTimesheet = make(chan rxgo.Item, channelBufferSize)
 	chanSelectedTask     = make(chan rxgo.Item, channelBufferSize)
 
-	// ObsRunningTimesheet is the Observable for the running timesheet channel
-	ObsRunningTimesheet = rxgo.FromEventSource(chanRunningTimesheet)
-	// ObsSelectedTask is the Observable for the selected task channel
-	ObsSelectedTask = rxgo.FromEventSource(chanSelectedTask)
+	// obsRunningTimesheet is the Observable for the running timesheet channel
+	obsRunningTimesheet = rxgo.FromEventSource(chanRunningTimesheet)
+	// obsSelectedTask is the Observable for the selected task channel
+	obsSelectedTask = rxgo.FromEventSource(chanSelectedTask)
+
+	observablesMap = map[string]rxgo.Observable{
+		KeyRunningTimesheet: obsRunningTimesheet,
+		KeySelectedTask:     obsSelectedTask,
+	}
 
 	appstateLog = logger.GetPackageLogger("appstate")
 )
@@ -45,6 +50,10 @@ var syncMap = sync.Map{}
 // Map allows direct access to the synchronized map
 func Map() *sync.Map {
 	return &syncMap
+}
+
+func Observables() map[string]rxgo.Observable {
+	return observablesMap
 }
 
 func GetStatusError() error {

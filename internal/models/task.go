@@ -64,7 +64,7 @@ func (td *TaskData) Create() error {
 			Details: "cannot create a task with an empty synopsis",
 		}
 	}
-	return database.DB.Create(td).Error
+	return database.Get().Create(td).Error
 }
 
 func (td *TaskData) Load(withDeleted bool) error {
@@ -73,7 +73,7 @@ func (td *TaskData) Load(withDeleted bool) error {
 			Details: "cannot load a task that does not exist",
 		}
 	}
-	db := database.DB
+	db := database.Get()
 	if withDeleted {
 		db = db.Unscoped()
 	}
@@ -93,11 +93,11 @@ func (td *TaskData) Delete() error {
 	if err != nil {
 		return err
 	}
-	return database.DB.Delete(td).Error
+	return database.Get().Delete(td).Error
 }
 
 func (td *TaskData) LoadAll(withDeleted bool) ([]TaskData, error) {
-	db := database.DB
+	db := database.Get()
 	if withDeleted {
 		db = db.Unscoped()
 	}
@@ -108,7 +108,7 @@ func (td *TaskData) LoadAll(withDeleted bool) ([]TaskData, error) {
 
 func (td *TaskData) Search(text string) ([]TaskData, error) {
 	tasks := make([]TaskData, 0)
-	err := database.DB.
+	err := database.Get().
 		Model(new(TaskData)).
 		Where("synopsis LIKE ? OR description LIKE ?", text, text).
 		Find(&tasks).
@@ -127,7 +127,7 @@ func (td *TaskData) Update(withDeleted bool) error {
 			Details: "cannot update a task to have an empty synopsis",
 		}
 	}
-	db := database.DB
+	db := database.Get()
 	if withDeleted {
 		db = db.Unscoped()
 	}

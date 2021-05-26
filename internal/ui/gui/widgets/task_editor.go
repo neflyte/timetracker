@@ -14,9 +14,12 @@ import (
 )
 
 const (
+	// TaskEditorEventChannelBufferSize is the size of the event channels in this widget
 	TaskEditorEventChannelBufferSize = 2
-	TaskEditorTaskSavedEventKey      = "task-saved"
-	TaskEditorEditCancelledEventKey  = "edit-cancelled"
+	// TaskEditorTaskSavedEventKey is the map key to the taskSaved observable
+	TaskEditorTaskSavedEventKey = "task-saved"
+	// TaskEditorEditCancelledEventKey is the map key to the editCancelled observable
+	TaskEditorEditCancelledEventKey = "edit-cancelled"
 )
 
 type TaskEditor struct {
