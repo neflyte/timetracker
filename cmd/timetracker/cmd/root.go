@@ -35,7 +35,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&configFileName, "config", "c", "", "Specify the full path and filename of the database to use")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "logLevel", "l", "info", "Specify the logging level")
 	rootCmd.PersistentFlags().BoolVar(&consoleLogging, "console", false, "Log messages to the console as well as the log file")
-	rootCmd.AddCommand(taskCmd, timesheetCmd, statusCmd, trayCmd)
+	rootCmd.AddCommand(taskCmd, timesheetCmd, statusCmd, trayCmd, guiCmd)
 	rootCmd.SetVersionTemplate(fmt.Sprintf("timetracker %s", AppVersion))
 }
 

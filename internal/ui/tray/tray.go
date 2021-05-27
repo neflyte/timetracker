@@ -5,20 +5,18 @@ import (
 	"github.com/getlantern/systray"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/constants"
-	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
-	"github.com/neflyte/timetracker/internal/ui/gui"
 	"github.com/neflyte/timetracker/internal/ui/icons"
-	"github.com/nightlyone/lockfile"
 	"os"
-	"path"
-	"sync"
+	"os/exec"
 	"time"
 )
 
 const (
-	trayPidfile = "timetracker-tray.pid"
+	guiOptionStopRunningTask  = "--stop-running-task"
+	guiOptionShowManageWindow = "--manage"
+	guiOptionShowAboutWindow  = "--about"
 )
 
 var (
@@ -26,11 +24,9 @@ var (
 	mManage *systray.MenuItem
 	// mLastStarted       *systray.MenuItem
 	// lastStartedItems   []*systray.MenuItem
-	mAbout             *systray.MenuItem
-	mQuit              *systray.MenuItem
-	lockFile           lockfile.Lockfile
-	pidPath            string
-	wg                 sync.WaitGroup
+	mAbout *systray.MenuItem
+	mQuit  *systray.MenuItem
+	// wg                 sync.WaitGroup
 	trayQuitChan       chan bool
 	actionLoopQuitChan chan bool
 	trayLogger         = logger.GetPackageLogger("tray")
@@ -38,74 +34,22 @@ var (
 
 func Run() (err error) {
 	log := logger.GetFuncLogger(trayLogger, "Run")
-	userConfigDir, err := os.UserConfigDir()
-	if err != nil {
-		userConfigDir = "."
-		err = nil // Make sure we can't accidentally return a non-nil error in this case
-	} else {
-		userConfigDir = path.Join(userConfigDir, "timetracker")
-	}
-	if userConfigDir != "." {
-		err = os.MkdirAll(userConfigDir, 0755)
-		if err != nil {
-			log.Err(err).Msgf("error creating directories for pidfile; userConfigDir=%s", userConfigDir)
-			return
-		}
-	}
-	pidPath = path.Join(userConfigDir, trayPidfile)
-	log.Trace().Msgf("pidPath=%s", pidPath)
-
 	// Start the ActionLoop
 	actionLoopQuitChan = make(chan bool, 1)
+	log.Trace().Msg("go appstate.ActionLoop(...)")
 	go appstate.ActionLoop(actionLoopQuitChan)
-	// Start the systray in a goroutine
-	wg = sync.WaitGroup{}
-	wg.Add(1)
-	log.Trace().Msg("go systray.Run(...)")
-	go systray.Run(onReady, onExit)
-	// Wait for the systray to finish initializing
-	log.Debug().Msg("waiting for systray")
-	wg.Wait()
-	log.Debug().Msg("systray initialized")
-	// Start mainLoop
-	trayQuitChan = make(chan bool, 1)
-	log.Trace().Msg("go mainLoop(...)")
-	go mainLoop(trayQuitChan)
-	// Start GUI
-	log.Trace().Msg("gui.StartGUI()")
-	gui.StartGUI()
-	log.Trace().Msg("gui has finished")
+	log.Trace().Msg("systray.Run(...)")
+	systray.Run(onReady, onExit)
 	// Shut down mainLoop
 	trayQuitChan <- true
 	// Shut down ActionLoop
 	actionLoopQuitChan <- true
-	// Shut down systray
-	systray.Quit()
 	return
 }
 
 func onReady() {
-	var err error
-
 	log := logger.GetFuncLogger(trayLogger, "onReady")
 	log.Trace().Msg("starting")
-	defer func() {
-		// Signal that we're initialized
-		log.Debug().Msg("signalling true")
-		wg.Done()
-	}()
-	lockFile, err = lockfile.New(pidPath)
-	if err != nil {
-		log.Err(err).Msgf("error creating pidfile; pidPath=%s", pidPath)
-		return
-	}
-	err = lockFile.TryLock()
-	if err != nil {
-		log.Err(err).Msgf("error locking pidfile; pidPath=%s", pidPath)
-		systray.Quit()
-		return
-	}
-	log.Debug().Msgf("locked pidfile %s", pidPath)
 	systray.SetTitle("Timetracker")
 	systray.SetTooltip("Timetracker")
 	systray.SetTemplateIcon(icons.Check, icons.Check)
@@ -136,17 +80,15 @@ func onReady() {
 	)
 	log.Trace().Msg("priming status")
 	updateStatus(appstate.GetRunningTimesheet())
+	// Start mainLoop
+	trayQuitChan = make(chan bool, 1)
+	log.Trace().Msg("go mainLoop(...)")
+	go mainLoop(trayQuitChan)
 	log.Trace().Msg("done")
 }
 
 func onExit() {
-	log := logger.GetFuncLogger(trayLogger, "onExit")
-	err := lockFile.Unlock()
-	if err != nil {
-		log.Err(err).Msgf("error releasing pidfile")
-		return
-	}
-	log.Debug().Msg("unlocked pidfile")
+	// Do nothing
 }
 
 func updateStatus(tsd *models.TimesheetData) {
@@ -180,29 +122,31 @@ func mainLoop(quitChan chan bool) {
 		case <-mStatus.ClickedCh:
 			switch appstate.GetLastState() {
 			case constants.TimesheetStatusRunning:
-				runningTimesheet := appstate.GetRunningTimesheet()
-				taskMessage := fmt.Sprintf(
-					"Stop task %s (%s) ?",
-					runningTimesheet.Task.Synopsis,
-					time.Since(runningTimesheet.StartTime).Truncate(time.Second).String(),
-				)
-				gui.ShowTimetrackerWindowWithConfirm(
-					"Stop running task?",
-					taskMessage,
-					stopTaskConfirmCallback,
-					false,
-				)
+				err := launchGUI(guiOptionStopRunningTask)
+				if err != nil {
+					log.Err(err).Msg("error launching gui to stop running task")
+				}
 			case constants.TimesheetStatusError:
-				gui.ShowTimetrackerWindowWithError(appstate.GetStatusError())
+				log.Error().Msg("IMPLEMENTATION MISSING")
 			case constants.TimesheetStatusIdle:
-				gui.ShowTimetrackerWindow()
+				err := launchGUI()
+				if err != nil {
+					log.Err(err).Msg("error launching gui")
+				}
 			}
 		case <-mManage.ClickedCh:
-			gui.ShowTimetrackerWindowWithManageWindow()
+			err := launchGUI(guiOptionShowManageWindow)
+			if err != nil {
+				log.Err(err).Msg("error launching gui to show manage window")
+			}
 		case <-mAbout.ClickedCh:
-			gui.ShowTimetrackerWindowWithAbout()
+			err := launchGUI(guiOptionShowAboutWindow)
+			if err != nil {
+				log.Err(err).Msg("error launching gui to show about window")
+			}
 		case <-mQuit.ClickedCh:
-			gui.StopGUI()
+			log.Trace().Msg("quit option clicked; calling systray.Quit() and exiting function")
+			systray.Quit()
 			return
 		case <-quitChan:
 			log.Trace().Msg("quit channel fired; exiting function")
@@ -211,16 +155,22 @@ func mainLoop(quitChan chan bool) {
 	}
 }
 
-func stopTaskConfirmCallback(res bool) {
-	log := logger.GetFuncLogger(trayLogger, "stopTaskConfirmCallback")
-	if res {
-		// Stop the running task
-		log.Debug().Msg("stopping the running task")
-		err := models.Task(new(models.TaskData)).StopRunningTask()
-		if err != nil {
-			log.Err(err).Msg(errors.StopRunningTaskError)
-		}
-		// Get a new timesheet and update the appstate
-		appstate.UpdateRunningTimesheet()
+func launchGUI(options ...string) (err error) {
+	log := logger.GetFuncLogger(trayLogger, "launchGUI")
+	log.Debug().Msgf("options=%#v", options)
+	timetrackerExecutable, err := os.Executable()
+	if err != nil {
+		log.Err(err).Msg("error getting path and name of this program")
+		return err
 	}
+	guiOptions := []string{"gui"}
+	guiOptions = append(guiOptions, options...)
+	guiCmd := exec.Command(timetrackerExecutable, guiOptions...)
+	err = guiCmd.Start()
+	if err != nil {
+		log.Err(err).Msgf("error launching gui with Cmd %s", guiCmd.String())
+		return err
+	}
+	log.Debug().Msg("gui launched successfully")
+	return nil
 }

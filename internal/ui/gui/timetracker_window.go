@@ -155,6 +155,24 @@ func (t *timetrackerWindow) Init() {
 	t.setupObservables()
 	// Load the window's data
 	t.InitWindowData()
+	// Set up the Manage Window as well
+	t.mngWindow = NewManageWindow(*t.App)
+	t.mngWindow.Get().TaskListChangedObservable.ForEach(
+		func(item interface{}) {
+			changed, ok := item.(bool)
+			if ok && changed {
+				t.TaskList.Refresh()
+			}
+		},
+		func(err error) {
+			t.Log.Err(err).Msg("error from tasklist changed observable")
+		},
+		func() {
+			t.Log.Trace().Msg("tasklist changed observable is finished")
+		},
+	)
+	// Hide the Manage Window by default
+	t.mngWindow.Hide()
 }
 
 func (t *timetrackerWindow) InitWindowData() {
@@ -316,31 +334,11 @@ func (t *timetrackerWindow) doStopTask() {
 }
 
 func (t *timetrackerWindow) doManageTasks() {
-	if t.mngWindow == nil {
-		t.mngWindow = NewManageWindow(*t.App)
-		t.mngWindow.Get().TaskListChangedObservable.ForEach(
-			func(item interface{}) {
-				changed, ok := item.(bool)
-				if ok && changed {
-					t.TaskList.Refresh()
-				}
-			},
-			func(err error) {
-				t.Log.Err(err).Msg("error from tasklist changed observable")
-			},
-			func() {
-				t.Log.Trace().Msg("tasklist changed observable is finished")
-			},
-		)
-	}
 	t.mngWindow.Show()
 }
 
 func (t *timetrackerWindow) doQuit() {
-	if t.App != nil {
-		app := *t.App
-		app.Quit()
-	}
+	StopGUI()
 }
 
 func (t *timetrackerWindow) doAbout() {

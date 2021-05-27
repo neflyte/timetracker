@@ -17,11 +17,11 @@ var (
 	guiLogger      = logger.GetPackageLogger("gui")
 )
 
-func StartGUI() {
+func StartGUI(app *fyne.App) {
 	if appstate.GetGUIStarted() {
 		return
 	}
-	guiFunc(initGUI())
+	guiFunc(app)
 }
 
 func StopGUI() {
@@ -31,7 +31,7 @@ func StopGUI() {
 	FyneApp.Quit()
 }
 
-func initGUI() *fyne.App {
+func InitGUI() *fyne.App {
 	log := logger.GetFuncLogger(guiLogger, "initGUI")
 	if guiInitialized {
 		log.Debug().Msg("GUI already initialized")
@@ -51,37 +51,37 @@ func initGUI() *fyne.App {
 }
 
 func ShowTimetrackerWindow() {
-	if !appstate.GetGUIStarted() {
+	/*if !appstate.GetGUIStarted() {
 		return
-	}
+	}*/
 	mainWindow.Show()
 }
 
 func ShowTimetrackerWindowWithAbout() {
-	if !appstate.GetGUIStarted() {
+	/*if !appstate.GetGUIStarted() {
 		return
-	}
+	}*/
 	mainWindow.ShowAbout()
 }
 
 func ShowTimetrackerWindowWithManageWindow() {
-	if !appstate.GetGUIStarted() {
+	/*if !appstate.GetGUIStarted() {
 		return
-	}
+	}*/
 	mainWindow.ShowWithManageWindow()
 }
 
 func ShowTimetrackerWindowWithError(err error) {
-	if !appstate.GetGUIStarted() {
+	/*if !appstate.GetGUIStarted() {
 		return
-	}
+	}*/
 	mainWindow.ShowWithError(err)
 }
 
 func ShowTimetrackerWindowWithConfirm(title string, message string, cb func(bool), hideAfterConfirm bool) {
-	if !appstate.GetGUIStarted() {
+	/*if !appstate.GetGUIStarted() {
 		return
-	}
+	}*/
 	mainWindow.Show()
 	dialog.NewConfirm(
 		title,
