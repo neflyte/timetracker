@@ -349,7 +349,7 @@ func (t *timetrackerWindow) doAbout() {
 	}
 	dialog.NewInformation(
 		"About Timetracker",
-		fmt.Sprintf("Timetracker v%s\n\nhttps://github.com/neflyte/timetracker", appVersion),
+		fmt.Sprintf("Timetracker %s\n\nhttps://github.com/neflyte/timetracker", appVersion),
 		t.Window,
 	).Show()
 }

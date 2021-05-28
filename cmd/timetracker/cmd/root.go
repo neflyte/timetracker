@@ -16,7 +16,7 @@ const (
 
 var (
 	// AppVersion is the application version number
-	AppVersion = ""
+	AppVersion = "dev"
 
 	rootCmd = &cobra.Command{
 		Version:           AppVersion,
@@ -41,8 +41,9 @@ func init() {
 
 func Execute() {
 	log := logger.GetLogger("Execute")
-	if err := rootCmd.Execute(); err != nil {
-		log.Printf("error: %s\n", err)
+	err := rootCmd.Execute()
+	if err != nil {
+		log.Err(err).Msg("error executing root command")
 		os.Exit(1)
 	}
 }

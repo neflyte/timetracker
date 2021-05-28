@@ -4,7 +4,7 @@
 
 APPVERSION=$(shell cat VERSION)
 OSES=darwin linux
-GO_LDFLAGS=-ldflags "-X cmd.root.AppVersion=$(APPVERSION)"
+GO_LDFLAGS=-ldflags "-X 'github.com/neflyte/timetracker/cmd/timetracker/cmd.AppVersion=$(APPVERSION)'"
 BINPREFIX=timetracker-$(APPVERSION)_
 
 build:
@@ -29,7 +29,7 @@ dist: lint
 	@if [ ! -d dist ]; then mkdir dist; fi
 	@for os in $(OSES); do \
 		echo "Building for $$os" && \
-  		GOARCH=amd64 GOOS=$$os go build -o dist/$(BINPREFIX)$$os-amd64 ./cmd/timetracker && \
+  		GOARCH=amd64 GOOS=$$os go build $(GO_LDFLAGS) -o dist/$(BINPREFIX)$$os-amd64 ./cmd/timetracker && \
   		cd dist && \
   		tar cfJ $(BINPREFIX)$$os-amd64.tar.xz $(BINPREFIX)$$os-amd64 && \
         sha512sum $(BINPREFIX)$$os-amd64.tar.xz > $(BINPREFIX)$$os-amd64.tar.xz.sha512 && \
