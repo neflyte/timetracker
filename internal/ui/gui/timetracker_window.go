@@ -31,6 +31,7 @@ type TimetrackerWindow interface {
 	ShowAbout()
 	ShowWithError(err error)
 	ShowWithManageWindow()
+	ShowAndStopRunningTask()
 	Hide()
 	Close()
 	Get() timetrackerWindow
@@ -56,13 +57,9 @@ type timetrackerWindow struct {
 	LblStartTime   *widget.Label
 	LblElapsedTime *widget.Label
 
-	BindRunningTask binding.ExternalString
-	BindStartTime   binding.ExternalString
-	BindElapsedTime binding.ExternalString
-
-	runningTask string
-	startTime   string
-	elapsedTime string
+	BindRunningTask binding.String
+	BindStartTime   binding.String
+	BindElapsedTime binding.String
 }
 
 func NewTimetrackerWindow(app fyne.App) TimetrackerWindow {
@@ -94,17 +91,14 @@ func (t *timetrackerWindow) Init() {
 			t.BtnQuit,
 		),
 	)
-	t.runningTask = "none"
-	t.BindRunningTask = binding.BindString(&t.runningTask)
+	t.BindRunningTask = binding.NewString()
 	t.LblStatus = widget.NewLabelWithData(t.BindRunningTask)
 	t.LblStatus.TextStyle = fyne.TextStyle{
 		Monospace: true,
 	}
-	t.startTime = ""
-	t.BindStartTime = binding.BindString(&t.startTime)
+	t.BindStartTime = binding.NewString()
 	t.LblStartTime = widget.NewLabelWithData(t.BindStartTime)
-	t.elapsedTime = ""
-	t.BindElapsedTime = binding.BindString(&t.elapsedTime)
+	t.BindElapsedTime = binding.NewString()
 	t.LblElapsedTime = widget.NewLabelWithData(t.BindElapsedTime)
 	t.SubStatusBox = container.NewVBox(
 		container.NewHBox(
@@ -347,7 +341,7 @@ func (t *timetrackerWindow) doAbout() {
 	if ok {
 		appVersionStr, isString := appVersionIntf.(string)
 		if !isString {
-			appVersionStr = "??"
+			appVersionStr = "!!"
 		}
 		if appVersionStr != "" {
 			appVersion = appVersionStr
@@ -361,9 +355,24 @@ func (t *timetrackerWindow) doAbout() {
 }
 
 func (t *timetrackerWindow) Show() {
-	log := logger.GetFuncLogger(t.Log, "Show")
-	log.Debug().Msg("t.Window.Show()")
 	t.Window.Show()
+	t.TaskList.Refresh()
+}
+
+func (t *timetrackerWindow) ShowAndStopRunningTask() {
+	timesheetData := new(models.TimesheetData)
+	openTimesheets, searchErr := timesheetData.SearchOpen()
+	if searchErr != nil {
+		t.ShowWithError(searchErr)
+		return
+	}
+	if len(openTimesheets) == 0 {
+		t.ShowWithError(fmt.Errorf("a task is not running; please start a task first"))
+		return
+	}
+	t.Show()
+	confirmMessage := fmt.Sprintf("Do you want to stop task %s?", openTimesheets[0].Task.Synopsis)
+	dialog.NewConfirm("Stop Running Task", confirmMessage, t.maybeStopRunningTask, t.Window).Show()
 }
 
 func (t *timetrackerWindow) ShowWithManageWindow() {
@@ -394,4 +403,17 @@ func (t *timetrackerWindow) Close() {
 
 func (t *timetrackerWindow) Get() timetrackerWindow {
 	return *t
+}
+
+func (t *timetrackerWindow) maybeStopRunningTask(stopTask bool) {
+	log := logger.GetFuncLogger(t.Log, "maybeStopRunningTask")
+	if !stopTask {
+		return
+	}
+	td := new(models.TaskData)
+	err := td.StopRunningTask()
+	if err != nil {
+		log.Err(err).Msg("error stopping the running task")
+		dialog.NewError(err, t.Window).Show()
+	}
 }

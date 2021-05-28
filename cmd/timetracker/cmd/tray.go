@@ -72,5 +72,6 @@ func postDoTray(_ *cobra.Command, _ []string) error {
 func doTray(_ *cobra.Command, _ []string) error {
 	// Write the AppVersion to the appstate Map so gui components can access it without a direct binding
 	appstate.Map().Store(appstate.KeyAppVersion, AppVersion)
-	return tray.Run()
+	tray.Run()
+	return nil
 }

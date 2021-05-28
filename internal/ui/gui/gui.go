@@ -3,7 +3,6 @@ package gui
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/dialog"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
 )
@@ -34,54 +33,39 @@ func StopGUI() {
 func InitGUI() *fyne.App {
 	log := logger.GetFuncLogger(guiLogger, "initGUI")
 	if guiInitialized {
-		log.Debug().Msg("GUI already initialized")
+		log.Warn().Msg("GUI already initialized")
 		return nil
 	}
 	// Set up fyne
-	log.Debug().Msg("setting up FyneApp")
 	FyneApp = app.NewWithID("Timetracker")
 	// Create the main timetracker window
-	log.Debug().Msg("creating timetracker window")
 	mainWindow = NewTimetrackerWindow(FyneApp)
-	log.Debug().Msg("set mainWindow as master")
 	mainWindow.Get().Window.SetMaster()
-	log.Debug().Msg("GUI initialized")
 	guiInitialized = true
 	return &FyneApp
 }
 
 func ShowTimetrackerWindow() {
-	/*if !appstate.GetGUIStarted() {
-		return
-	}*/
 	mainWindow.Show()
 }
 
 func ShowTimetrackerWindowWithAbout() {
-	/*if !appstate.GetGUIStarted() {
-		return
-	}*/
 	mainWindow.ShowAbout()
 }
 
 func ShowTimetrackerWindowWithManageWindow() {
-	/*if !appstate.GetGUIStarted() {
-		return
-	}*/
 	mainWindow.ShowWithManageWindow()
 }
 
-func ShowTimetrackerWindowWithError(err error) {
-	/*if !appstate.GetGUIStarted() {
-		return
-	}*/
+func ShowTimetrackerWindowAndStopRunningTask() {
+	mainWindow.ShowAndStopRunningTask()
+}
+
+/*func ShowTimetrackerWindowWithError(err error) {
 	mainWindow.ShowWithError(err)
 }
 
 func ShowTimetrackerWindowWithConfirm(title string, message string, cb func(bool), hideAfterConfirm bool) {
-	/*if !appstate.GetGUIStarted() {
-		return
-	}*/
 	mainWindow.Show()
 	dialog.NewConfirm(
 		title,
@@ -96,17 +80,24 @@ func ShowTimetrackerWindowWithConfirm(title string, message string, cb func(bool
 		},
 		mainWindow.Get().Window,
 	).Show()
-}
+}*/
 
 func guiFunc(appPtr *fyne.App) {
 	log := logger.GetFuncLogger(guiLogger, "guiFunc")
 	if appPtr != nil {
 		fyneApp := *appPtr
+		// Start ActionLoop
+		actionLoopQuitChan := make(chan bool, 1)
+		go appstate.ActionLoop(actionLoopQuitChan)
+		// Set gui started state
 		appstate.SetGUIStarted(true)
 		defer appstate.SetGUIStarted(false)
-		log.Trace().Msg("calling app.Run()")
+		// start Fyne
+		log.Trace().Msg("calling fyneApp.Run()")
 		fyneApp.Run()
 		log.Trace().Msg("fyne exited")
+		// stop actionloop
+		actionLoopQuitChan <- true
 	} else {
 		log.Error().Msg("appPtr was nil; this is unexpected")
 	}

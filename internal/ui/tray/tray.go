@@ -24,32 +24,26 @@ var (
 	mManage *systray.MenuItem
 	// mLastStarted       *systray.MenuItem
 	// lastStartedItems   []*systray.MenuItem
-	mAbout *systray.MenuItem
-	mQuit  *systray.MenuItem
-	// wg                 sync.WaitGroup
+	mAbout             *systray.MenuItem
+	mQuit              *systray.MenuItem
 	trayQuitChan       chan bool
 	actionLoopQuitChan chan bool
 	trayLogger         = logger.GetPackageLogger("tray")
 )
 
-func Run() (err error) {
+func Run() {
 	log := logger.GetFuncLogger(trayLogger, "Run")
 	// Start the ActionLoop
 	actionLoopQuitChan = make(chan bool, 1)
 	log.Trace().Msg("go appstate.ActionLoop(...)")
 	go appstate.ActionLoop(actionLoopQuitChan)
+	// Start the systray
 	log.Trace().Msg("systray.Run(...)")
 	systray.Run(onReady, onExit)
-	// Shut down mainLoop
-	trayQuitChan <- true
-	// Shut down ActionLoop
-	actionLoopQuitChan <- true
-	return
 }
 
 func onReady() {
 	log := logger.GetFuncLogger(trayLogger, "onReady")
-	log.Trace().Msg("starting")
 	systray.SetTitle("Timetracker")
 	systray.SetTooltip("Timetracker")
 	systray.SetTemplateIcon(icons.Check, icons.Check)
@@ -88,21 +82,23 @@ func onReady() {
 }
 
 func onExit() {
-	// Do nothing
+	// Shut down mainLoop
+	trayQuitChan <- true
+	// Shut down ActionLoop
+	actionLoopQuitChan <- true
 }
 
 func updateStatus(tsd *models.TimesheetData) {
 	log := logger.GetFuncLogger(trayLogger, "updateStatus")
-	log.Debug().Msg("called")
 	if tsd == nil {
 		// No running timesheet
-		log.Debug().Msg("got nil running timesheet item")
+		log.Trace().Msg("got nil running timesheet item")
 		systray.SetTemplateIcon(icons.Check, icons.Check)
 		mStatus.SetTitle("Start new task")
 		mStatus.SetTooltip("Display a task selector and start a task")
 		return
 	}
-	log.Debug().Msgf("got running timesheet object: %s", tsd.String())
+	log.Trace().Msgf("got running timesheet object: %s", tsd.String())
 	systray.SetTemplateIcon(icons.Running, icons.Running)
 	statusText := fmt.Sprintf(
 		"Stop task %s (%s)",
@@ -120,20 +116,7 @@ func mainLoop(quitChan chan bool) {
 	for {
 		select {
 		case <-mStatus.ClickedCh:
-			switch appstate.GetLastState() {
-			case constants.TimesheetStatusRunning:
-				err := launchGUI(guiOptionStopRunningTask)
-				if err != nil {
-					log.Err(err).Msg("error launching gui to stop running task")
-				}
-			case constants.TimesheetStatusError:
-				log.Error().Msg("IMPLEMENTATION MISSING")
-			case constants.TimesheetStatusIdle:
-				err := launchGUI()
-				if err != nil {
-					log.Err(err).Msg("error launching gui")
-				}
-			}
+			handleStatusClick()
 		case <-mManage.ClickedCh:
 			err := launchGUI(guiOptionShowManageWindow)
 			if err != nil {
@@ -173,4 +156,22 @@ func launchGUI(options ...string) (err error) {
 	}
 	log.Debug().Msg("gui launched successfully")
 	return nil
+}
+
+func handleStatusClick() {
+	log := logger.GetFuncLogger(trayLogger, "handleStatusClick")
+	switch appstate.GetLastState() {
+	case constants.TimesheetStatusRunning:
+		err := launchGUI(guiOptionStopRunningTask)
+		if err != nil {
+			log.Err(err).Msg("error launching gui to stop running task")
+		}
+	case constants.TimesheetStatusError:
+		log.Error().Msg("IMPLEMENTATION MISSING")
+	case constants.TimesheetStatusIdle:
+		err := launchGUI()
+		if err != nil {
+			log.Err(err).Msg("error launching gui")
+		}
+	}
 }

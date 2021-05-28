@@ -82,16 +82,18 @@ func postDoGUI(_ *cobra.Command, _ []string) error {
 
 func doGUI(_ *cobra.Command, _ []string) error {
 	app := gui.InitGUI()
+	// Default to showing the main timetracker window
+	gui.ShowTimetrackerWindow()
 	if *guiCmdOptionStopRunningTask {
-		// TODO: Stop running task
-	} else if *guiCmdOptionShowManageWindow {
-		gui.ShowTimetrackerWindowWithManageWindow()
-	} else if *guiCmdOptionShowAboutWindow {
-		gui.ShowTimetrackerWindowWithAbout()
-	} else {
-		// Default to showing the main timetracker window
-		gui.ShowTimetrackerWindow()
+		gui.ShowTimetrackerWindowAndStopRunningTask()
 	}
+	if *guiCmdOptionShowManageWindow {
+		gui.ShowTimetrackerWindowWithManageWindow()
+	}
+	if *guiCmdOptionShowAboutWindow {
+		gui.ShowTimetrackerWindowWithAbout()
+	}
+	// Start the GUI
 	gui.StartGUI(app)
 	return nil
 }
