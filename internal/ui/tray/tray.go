@@ -10,6 +10,7 @@ import (
 	"github.com/neflyte/timetracker/internal/ui/icons"
 	"os"
 	"os/exec"
+	"runtime"
 	"time"
 )
 
@@ -44,9 +45,9 @@ func Run() {
 
 func onReady() {
 	log := logger.GetFuncLogger(trayLogger, "onReady")
-	systray.SetTitle("Timetracker")
+	setTrayTitle("Timetracker")
 	systray.SetTooltip("Timetracker")
-	systray.SetTemplateIcon(icons.Check, icons.Check)
+	systray.SetIcon(icons.Check)
 	mStatus = systray.AddMenuItem("Start new task", "Display a task selector and start a task")
 	mManage = systray.AddMenuItem("Manage tasks", "Display the Manage Tasks window to add, change, or remove tasks")
 	// TODO: List the top 5 last-started tasks as easy-start options
@@ -65,7 +66,7 @@ func onReady() {
 			}
 		},
 		func(err error) {
-			systray.SetTemplateIcon(icons.Error, icons.Error)
+			systray.SetIcon(icons.Error)
 			mStatus.SetTitle("An error occurred; click for details")
 		},
 		func() {
@@ -93,13 +94,13 @@ func updateStatus(tsd *models.TimesheetData) {
 	if tsd == nil {
 		// No running timesheet
 		log.Trace().Msg("got nil running timesheet item")
-		systray.SetTemplateIcon(icons.Check, icons.Check)
+		systray.SetIcon(icons.Check)
 		mStatus.SetTitle("Start new task")
 		mStatus.SetTooltip("Display a task selector and start a task")
 		return
 	}
 	log.Trace().Msgf("got running timesheet object: %s", tsd.String())
-	systray.SetTemplateIcon(icons.Running, icons.Running)
+	systray.SetIcon(icons.Running)
 	statusText := fmt.Sprintf(
 		"Stop task %s (%s)",
 		tsd.Task.Synopsis,
@@ -173,5 +174,11 @@ func handleStatusClick() {
 		if err != nil {
 			log.Err(err).Msg("error launching gui")
 		}
+	}
+}
+
+func setTrayTitle(title string) {
+	if runtime.GOOS != "darwin" {
+		systray.SetTitle(title)
 	}
 }
