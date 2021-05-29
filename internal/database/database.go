@@ -12,11 +12,12 @@ var (
 	dbInstance *gorm.DB
 
 	gormConfig = &gorm.Config{
-		Logger: NewGormLogger(),
+		Logger: newGormLogger(),
 	}
 	databaseLog = logger.GetPackageLogger("database")
 )
 
+// Open opens a new database connection to the specified SQLite database file
 func Open(fileName string) (*gorm.DB, error) {
 	log := logger.GetFuncLogger(databaseLog, "Open")
 	dsn := fmt.Sprintf("file:%s?_foreign_keys=1&_journal_mode=WAL&_mode=rwc", fileName)
@@ -24,6 +25,7 @@ func Open(fileName string) (*gorm.DB, error) {
 	return gorm.Open(sqlite.Open(dsn), gormConfig)
 }
 
+// Close closes an open database connection
 func Close(db *gorm.DB) {
 	log := logger.GetFuncLogger(databaseLog, "Close")
 	if db != nil {
@@ -40,21 +42,12 @@ func Close(db *gorm.DB) {
 	}
 }
 
+// Get returns the singleton database connection
 func Get() *gorm.DB {
 	return dbInstance
 }
 
+// Set sets the singleton database connection
 func Set(db *gorm.DB) {
 	dbInstance = db
 }
-
-// CloseRows isn't needed yet
-/*func CloseRows(rows *sql.Rows) {
-	log := databaseLog.With().Str("func", "CloseRows").Logger()
-	if rows != nil {
-		err := rows.Close()
-		if err != nil {
-			log.Printf("error closing rows: %s\n", err)
-		}
-	}
-}*/

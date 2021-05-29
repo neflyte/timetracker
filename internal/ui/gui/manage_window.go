@@ -21,14 +21,14 @@ const (
 	noSelectionIndex = widget.ListItemID(-1)
 )
 
-type ManageWindow interface {
+type manageWindow interface {
 	Show()
 	Hide()
 	Close()
-	Get() manageWindow
+	Get() manageWindowData
 }
 
-type manageWindow struct {
+type manageWindowData struct {
 	Log zerolog.Logger
 
 	App           *fyne.App
@@ -49,20 +49,20 @@ type manageWindow struct {
 	selectedTaskID widget.ListItemID
 }
 
-func NewManageWindow(app fyne.App) ManageWindow {
-	mw := &manageWindow{
+func newManageWindow(app fyne.App) manageWindow {
+	mw := &manageWindowData{
 		App:                    &app,
 		Window:                 app.NewWindow("Manage Tasks"),
-		Log:                    logger.GetStructLogger("ManageWindow"),
+		Log:                    logger.GetStructLogger("manageWindow"),
 		taskList:               make([]string, 0),
 		selectedTaskID:         noSelectionIndex,
-		taskListChangedChannel: make(chan rxgo.Item, ManageWindowEventChannelBufferSize),
+		taskListChangedChannel: make(chan rxgo.Item, manageWindowEventChannelBufferSize),
 	}
-	mw.Init()
+	mw.initWindow()
 	return mw
 }
 
-func (m *manageWindow) Init() {
+func (m *manageWindowData) initWindow() {
 	// setup observables
 	m.TaskListChangedObservable = rxgo.FromEventSource(m.taskListChangedChannel)
 	// setup bindings
@@ -108,21 +108,24 @@ func (m *manageWindow) Init() {
 	m.Window.SetCloseIntercept(m.Hide)
 	m.Window.SetContent(m.Container)
 	m.Window.SetFixedSize(true)
-	m.Window.Resize(MinimumWindowSize)
+	m.Window.Resize(minimumWindowSize)
 }
 
-func (m *manageWindow) Get() manageWindow {
+// Get returns the underlying data structure
+func (m *manageWindowData) Get() manageWindowData {
 	return *m
 }
 
-func (m *manageWindow) Show() {
+// Show shows the manage window
+func (m *manageWindowData) Show() {
 	m.refreshTasks()
 	m.TaskEditor.Hide()
 	m.Window.Show()
 	m.jiggleHSplit()
 }
 
-func (m *manageWindow) Hide() {
+// Hide hides the manage window
+func (m *manageWindowData) Hide() {
 	log := logger.GetFuncLogger(m.Log, "Hide")
 	err := m.BindTaskList.Set(make([]string, 0))
 	if err != nil {
@@ -132,11 +135,12 @@ func (m *manageWindow) Hide() {
 	m.Window.Hide()
 }
 
-func (m *manageWindow) Close() {
+// Close closes the manage window
+func (m *manageWindowData) Close() {
 	m.Window.Close()
 }
 
-func (m *manageWindow) refreshTasks() {
+func (m *manageWindowData) refreshTasks() {
 	log := logger.GetFuncLogger(m.Log, "refreshTasks")
 	tasks, err := models.Task(new(models.TaskData)).LoadAll(false)
 	if err != nil {
@@ -157,14 +161,14 @@ func (m *manageWindow) refreshTasks() {
 
 // jiggleHSplit moves the HSplit component to the left and back again so each side
 // is forced to redraw with the correct sizing
-func (m *manageWindow) jiggleHSplit() {
+func (m *manageWindowData) jiggleHSplit() {
 	oldOffset := m.HSplit.Offset
 	newOffset := oldOffset - 1.0
 	m.HSplit.SetOffset(newOffset)
 	m.HSplit.SetOffset(oldOffset)
 }
 
-func (m *manageWindow) doEditSave(item interface{}) {
+func (m *manageWindowData) doEditSave(item interface{}) {
 	log := logger.GetFuncLogger(m.Log, "doEditSave")
 	dirtyTask, ok := item.(models.TaskData)
 	if !ok {
@@ -185,7 +189,7 @@ func (m *manageWindow) doEditSave(item interface{}) {
 	m.taskListChangedChannel <- rxgo.Of(true)
 }
 
-func (m *manageWindow) doEditCancel(item interface{}) {
+func (m *manageWindowData) doEditCancel(item interface{}) {
 	log := logger.GetFuncLogger(m.Log, "doEditCancel")
 	editCancelled, ok := item.(bool)
 	if !ok {
@@ -219,7 +223,7 @@ func (m *manageWindow) doEditCancel(item interface{}) {
 	m.doneEditing()
 }
 
-func (m *manageWindow) saveChanges(dirtyTask models.TaskData) error {
+func (m *manageWindowData) saveChanges(dirtyTask models.TaskData) error {
 	log := logger.GetFuncLogger(m.Log, "saveChanges")
 	if m.isEditing && m.TaskEditor.IsDirty() {
 		log.Debug().Msgf("dirtyTask=%s", dirtyTask.String())
@@ -262,7 +266,7 @@ func (m *manageWindow) saveChanges(dirtyTask models.TaskData) error {
 	return errors.New("task is not being edited or task is not dirty")
 }
 
-func (m *manageWindow) doneEditing() {
+func (m *manageWindowData) doneEditing() {
 	log := logger.GetFuncLogger(m.Log, "doneEditing")
 	if !m.isEditing {
 		return
@@ -278,7 +282,7 @@ func (m *manageWindow) doneEditing() {
 	m.jiggleHSplit()
 }
 
-func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
+func (m *manageWindowData) taskWasSelected(id widget.ListItemID) {
 	log := logger.GetFuncLogger(m.Log, "taskWasSelected").
 		With().Int("listItemID", id).Logger()
 	if m.isEditing && m.TaskEditor.IsDirty() {
@@ -309,7 +313,7 @@ func (m *manageWindow) taskWasSelected(id widget.ListItemID) {
 	m.jiggleHSplit()
 }
 
-func (m *manageWindow) createNewTask() {
+func (m *manageWindowData) createNewTask() {
 	// basically the same as taskWasSelected but load an empty task record into the editor instead
 	log := logger.GetFuncLogger(m.Log, "createNewTask")
 	if m.isEditing && m.TaskEditor.IsDirty() {
@@ -330,11 +334,11 @@ func (m *manageWindow) createNewTask() {
 	m.jiggleHSplit()
 }
 
-func (m *manageWindow) listTasksCreateItem() fyne.CanvasObject {
+func (m *manageWindowData) listTasksCreateItem() fyne.CanvasObject {
 	return widgets.NewTasklistItem()
 }
 
-func (m *manageWindow) listTasksUpdateItem(item binding.DataItem, canvasObject fyne.CanvasObject) {
+func (m *manageWindowData) listTasksUpdateItem(item binding.DataItem, canvasObject fyne.CanvasObject) {
 	log := logger.GetFuncLogger(m.Log, "listTasksUpdateItem")
 	taskSynopsisBinding, ok := item.(binding.String)
 	if !ok {

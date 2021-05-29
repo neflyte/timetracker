@@ -32,6 +32,7 @@ var (
 	trayLogger         = logger.GetPackageLogger("tray")
 )
 
+// Run starts the systray app
 func Run() {
 	log := logger.GetFuncLogger(trayLogger, "Run")
 	// Start the ActionLoop

@@ -2,30 +2,29 @@ package appstate
 
 import (
 	"github.com/neflyte/timetracker/internal/constants"
+	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"sync"
 	"time"
 )
 
 var (
-	updateTSMutex = sync.Mutex{}
+	updateTSMutex     = sync.Mutex{}
+	actionLoopRunning = false
 )
 
 // ActionLoop is a goroutine that periodically updates the running timesheet object in the appstate map
 func ActionLoop(quitChannel chan bool) {
-	log := appstateLog.With().Str("func", "ActionLoop").Logger()
-	runningIntf, _ := Map().LoadOrStore(KeyActionLoopStarted, false)
-	running, ok := runningIntf.(bool)
-	if !ok {
-		log.Error().Msgf("error getting value of key %s", KeyActionLoopStarted)
-	}
-	if running {
+	log := logger.GetFuncLogger(appstateLog, "ActionLoop")
+	if actionLoopRunning {
 		log.Warn().Msg("action loop is already running")
 		return
 	}
 	log.Debug().Msg("starting ActionLoop")
-	Map().Store(KeyActionLoopStarted, true)
-	defer Map().Store(KeyActionLoopStarted, false)
+	actionLoopRunning = true
+	defer func() {
+		actionLoopRunning = false
+	}()
 	for {
 		UpdateRunningTimesheet()
 		log.Trace().Msgf("delaying %d seconds until next action loop", constants.ActionLoopDelaySeconds)
@@ -41,7 +40,7 @@ func ActionLoop(quitChannel chan bool) {
 
 // UpdateRunningTimesheet gets the latest running timesheet object and sets the appropriate status
 func UpdateRunningTimesheet() {
-	log := appstateLog.With().Str("func", "UpdateRunningTimesheet").Logger()
+	log := logger.GetFuncLogger(appstateLog, "UpdateRunningTimesheet")
 	updateTSMutex.Lock()
 	log.Trace().Msg("lock acquired successfully")
 	defer func() {
@@ -50,27 +49,26 @@ func UpdateRunningTimesheet() {
 		log.Trace().Msg("lock released successfully")
 	}()
 	timesheets, err := models.Timesheet(new(models.TimesheetData)).SearchOpen()
-	// SetStatusError(err)
 	if err != nil {
-		SetRunningTimesheet(nil) // Reset running timesheet
+		setRunningTimesheet(nil) // Reset running timesheet
 		log.Err(err).Msg("error getting running timesheet")
 		if GetLastState() != constants.TimesheetStatusError {
-			SetLastState(constants.TimesheetStatusError)
+			setLastState(constants.TimesheetStatusError)
 		}
 	} else {
 		if len(timesheets) == 0 {
 			// No running task
 			log.Trace().Msg("there are no running tasks")
 			if GetLastState() != constants.TimesheetStatusIdle {
-				SetRunningTimesheet(nil) // Reset running timesheet
-				SetLastState(constants.TimesheetStatusIdle)
+				setRunningTimesheet(nil) // Reset running timesheet
+				setLastState(constants.TimesheetStatusIdle)
 			}
 		} else {
 			// Running task...
 			log.Trace().Msgf("there are %d running tasks", len(timesheets))
-			SetRunningTimesheet(&timesheets[0])
+			setRunningTimesheet(&timesheets[0])
 			if GetLastState() != constants.TimesheetStatusRunning {
-				SetLastState(constants.TimesheetStatusRunning)
+				setLastState(constants.TimesheetStatusRunning)
 			}
 		}
 	}

@@ -8,28 +8,32 @@ import (
 )
 
 var (
-	// FyneApp is the main fyne app instance
-	FyneApp fyne.App
+	// fyneApp is the main fyne app instance
+	fyneApp fyne.App
 
 	guiInitialized = false
-	mainWindow     TimetrackerWindow
+	mainWindow     timetrackerWindow
 	guiLogger      = logger.GetPackageLogger("gui")
+	guiStarted     = false
 )
 
+// StartGUI starts the GUI app
 func StartGUI(app *fyne.App) {
-	if appstate.GetGUIStarted() {
+	if guiStarted {
 		return
 	}
 	guiFunc(app)
 }
 
+// StopGUI quits the GUI app
 func StopGUI() {
-	if !appstate.GetGUIStarted() {
+	if !guiStarted {
 		return
 	}
-	FyneApp.Quit()
+	fyneApp.Quit()
 }
 
+// InitGUI initializes the GUI app
 func InitGUI() *fyne.App {
 	log := logger.GetFuncLogger(guiLogger, "initGUI")
 	if guiInitialized {
@@ -37,64 +41,49 @@ func InitGUI() *fyne.App {
 		return nil
 	}
 	// Set up fyne
-	FyneApp = app.NewWithID("Timetracker")
+	fyneApp = app.NewWithID("Timetracker")
 	// Create the main timetracker window
-	mainWindow = NewTimetrackerWindow(FyneApp)
+	mainWindow = newTimetrackerWindow(fyneApp)
 	mainWindow.Get().Window.SetMaster()
 	guiInitialized = true
-	return &FyneApp
+	return &fyneApp
 }
 
+// ShowTimetrackerWindow shows the main timetracker window
 func ShowTimetrackerWindow() {
 	mainWindow.Show()
 }
 
+// ShowTimetrackerWindowWithAbout shows the main timetracker window and then shows the about dialog
 func ShowTimetrackerWindowWithAbout() {
 	mainWindow.ShowAbout()
 }
 
+// ShowTimetrackerWindowWithManageWindow shows the main timetracker window and then shows the manage window
 func ShowTimetrackerWindowWithManageWindow() {
 	mainWindow.ShowWithManageWindow()
 }
 
+// ShowTimetrackerWindowAndStopRunningTask shows the main timetracker window and then confirms if the running task should be stopped
 func ShowTimetrackerWindowAndStopRunningTask() {
 	mainWindow.ShowAndStopRunningTask()
 }
 
-/*func ShowTimetrackerWindowWithError(err error) {
-	mainWindow.ShowWithError(err)
-}
-
-func ShowTimetrackerWindowWithConfirm(title string, message string, cb func(bool), hideAfterConfirm bool) {
-	mainWindow.Show()
-	dialog.NewConfirm(
-		title,
-		message,
-		func(res bool) {
-			// Call the callback
-			cb(res)
-			// Hide the window if we were asked to
-			if hideAfterConfirm {
-				mainWindow.Hide()
-			}
-		},
-		mainWindow.Get().Window,
-	).Show()
-}*/
-
 func guiFunc(appPtr *fyne.App) {
 	log := logger.GetFuncLogger(guiLogger, "guiFunc")
 	if appPtr != nil {
-		fyneApp := *appPtr
+		appInstance := *appPtr
 		// Start ActionLoop
 		actionLoopQuitChan := make(chan bool, 1)
 		go appstate.ActionLoop(actionLoopQuitChan)
 		// Set gui started state
-		appstate.SetGUIStarted(true)
-		defer appstate.SetGUIStarted(false)
+		guiStarted = true
+		defer func() {
+			guiStarted = false
+		}()
 		// start Fyne
-		log.Trace().Msg("calling fyneApp.Run()")
-		fyneApp.Run()
+		log.Trace().Msg("calling appInstance.Run()")
+		appInstance.Run()
 		log.Trace().Msg("fyne exited")
 		// stop actionloop
 		actionLoopQuitChan <- true

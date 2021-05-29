@@ -44,7 +44,7 @@ func InitLogger(logLevel string, console bool) {
 	if loggerInitialized {
 		return
 	}
-	configHome := GetConfigHome()
+	configHome := getConfigHome()
 	logPath = path.Join(configHome, "timetracker")
 	err = os.MkdirAll(logPath, 0755)
 	if err != nil {
@@ -128,8 +128,8 @@ func GetFuncLogger(existingLog zerolog.Logger, funcName string) zerolog.Logger {
 	return existingLog.With().Str("func", funcName).Logger()
 }
 
-// GetConfigHome attempts to determine the user's configuration files directory
-func GetConfigHome() string {
+// getConfigHome attempts to determine the user's configuration files directory
+func getConfigHome() string {
 	log := GetLogger("GetConfigHome")
 	// Look for XDG_CONFIG_HOME
 	configHome, err := os.UserConfigDir()

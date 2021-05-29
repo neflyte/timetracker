@@ -15,24 +15,34 @@ const (
 	tasklistMinWidth = 350
 )
 
+// Tasklist is an extended widget.Select object that adds data binding for displaying a list of tasks
 type Tasklist struct {
 	widget.Select
-	log         zerolog.Logger
-	listBinding binding.StringList
+	log              zerolog.Logger
+	listBinding      binding.StringList
+	selectionBinding binding.String
 }
 
 func NewTasklist() *Tasklist {
 	tl := &Tasklist{
-		log:         logger.GetStructLogger("Tasklist"),
-		listBinding: binding.NewStringList(),
+		log:              logger.GetStructLogger("Tasklist"),
+		listBinding:      binding.NewStringList(),
+		selectionBinding: binding.NewString(),
 	}
 	tl.ExtendBaseWidget(tl)
 	tl.listBinding.AddListener(binding.NewDataListener(tl.listBindingChanged))
+	tl.OnChanged = tl.selectionChanged
 	return tl
 }
 
+// Refresh redraws the task list
 func (t *Tasklist) Refresh() {
 	t.refreshTaskList()
+}
+
+// SelectionBinding returns the Select widget's data binding for the current selection
+func (t *Tasklist) SelectionBinding() binding.String {
+	return t.selectionBinding
 }
 
 func (t *Tasklist) listBindingChanged() {
@@ -48,6 +58,14 @@ func (t *Tasklist) listBindingChanged() {
 	}
 	t.Select.Options = changed
 	t.Select.Refresh()
+}
+
+func (t *Tasklist) selectionChanged(selection string) {
+	log := logger.GetFuncLogger(t.log, "selectionChanged")
+	err := t.selectionBinding.Set(selection)
+	if err != nil {
+		log.Err(err).Msg("error setting selectionBinding")
+	}
 }
 
 func (t *Tasklist) refreshTaskList() {
@@ -71,6 +89,7 @@ func (t *Tasklist) refreshTaskList() {
 	}
 }
 
+// MinSize returns the minimum size of this widget
 func (t *Tasklist) MinSize() fyne.Size {
 	minsize := t.Select.MinSize()
 	if minsize.Width < tasklistMinWidth {

@@ -14,14 +14,16 @@ import (
 )
 
 const (
-	// TaskEditorEventChannelBufferSize is the size of the event channels in this widget
-	TaskEditorEventChannelBufferSize = 2
+	// taskEditorEventChannelBufferSize is the size of the event channels in this widget
+	taskEditorEventChannelBufferSize = 2
+
 	// TaskEditorTaskSavedEventKey is the map key to the taskSaved observable
 	TaskEditorTaskSavedEventKey = "task-saved"
 	// TaskEditorEditCancelledEventKey is the map key to the editCancelled observable
 	TaskEditorEditCancelledEventKey = "edit-cancelled"
 )
 
+// TaskEditor is the main data structure for the TaskEditor widget
 type TaskEditor struct {
 	widget.DisableableWidget
 	taskSynopsis           string
@@ -34,22 +36,18 @@ type TaskEditor struct {
 	taskSavedChannel     chan rxgo.Item
 	editCancelledChannel chan rxgo.Item
 
-	taskSavedObservable     rxgo.Observable
-	editCancelledObservable rxgo.Observable
-
 	observerablesMap map[string]rxgo.Observable
 
 	log zerolog.Logger
 }
 
+// NewTaskEditor creates and initializes a new TaskEditor widget
 func NewTaskEditor() *TaskEditor {
 	te := new(TaskEditor)
 	te.ExtendBaseWidget(te)
 	te.log = logger.GetStructLogger("TaskEditor")
-	te.taskSavedChannel = make(chan rxgo.Item, TaskEditorEventChannelBufferSize)
-	te.editCancelledChannel = make(chan rxgo.Item, TaskEditorEventChannelBufferSize)
-	te.taskSavedObservable = rxgo.FromEventSource(te.taskSavedChannel)
-	te.editCancelledObservable = rxgo.FromEventSource(te.editCancelledChannel)
+	te.taskSavedChannel = make(chan rxgo.Item, taskEditorEventChannelBufferSize)
+	te.editCancelledChannel = make(chan rxgo.Item, taskEditorEventChannelBufferSize)
 	te.taskSynopsisBinding = binding.NewString()
 	te.taskSynopsisBinding.AddListener(binding.NewDataListener(func() {
 		editSynopsis, err := te.taskSynopsisBinding.Get()
@@ -69,35 +67,36 @@ func NewTaskEditor() *TaskEditor {
 		te.taskDescription = editDescription
 	}))
 	te.taskData = models.TaskData{}
-	te.taskDataChannel = make(chan rxgo.Item, TaskEditorEventChannelBufferSize)
+	te.taskDataChannel = make(chan rxgo.Item, taskEditorEventChannelBufferSize)
+	// te.taskSavedObservable = rxgo.FromEventSource(te.taskSavedChannel)
+	// te.editCancelledObservable = rxgo.FromEventSource(te.editCancelledChannel)
 	te.observerablesMap = map[string]rxgo.Observable{
-		TaskEditorTaskSavedEventKey:     te.taskSavedObservable,
-		TaskEditorEditCancelledEventKey: te.editCancelledObservable,
+		TaskEditorTaskSavedEventKey:     rxgo.FromEventSource(te.taskSavedChannel),
+		TaskEditorEditCancelledEventKey: rxgo.FromEventSource(te.editCancelledChannel),
 	}
 	return te
 }
 
+// Observables returns a map of Observable objects used by this widget
 func (te *TaskEditor) Observables() map[string]rxgo.Observable {
 	return te.observerablesMap
 }
 
-func (te *TaskEditor) GetTask() *models.TaskData {
+// getTask returns the current models.TaskData struct
+func (te *TaskEditor) getTask() *models.TaskData {
 	return &te.taskData
 }
 
+// SetTask sets the current models.TaskData struct
 func (te *TaskEditor) SetTask(task *models.TaskData) error {
-	log := logger.GetFuncLogger(te.log, "SetTask")
+	// log := logger.GetFuncLogger(te.log, "SetTask")
 	if task != nil {
-		log.Trace().Msgf("sending task %s to taskDataChannel", task.String())
 		te.taskDataChannel <- rxgo.Of(task)
-		log.Trace().Msgf("setting te.taskData=%s", task.String())
 		te.taskData = *task
-		log.Trace().Msgf("setting synopsis binding to %s", task.Synopsis)
 		err := te.taskSynopsisBinding.Set(task.Synopsis)
 		if err != nil {
 			return err
 		}
-		log.Trace().Msgf("setting description binding to %s", task.Description)
 		err = te.taskDescriptionBinding.Set(task.Description)
 		if err != nil {
 			return err
@@ -106,9 +105,10 @@ func (te *TaskEditor) SetTask(task *models.TaskData) error {
 	return nil
 }
 
+// GetDirtyTask returns the current models.TaskData structure updated with the data from the widget
 func (te *TaskEditor) GetDirtyTask() *models.TaskData {
 	if !te.IsDirty() {
-		return te.GetTask()
+		return te.getTask()
 	}
 	dirty := te.taskData.Clone()
 	dirty.Synopsis = te.taskSynopsis
@@ -116,6 +116,7 @@ func (te *TaskEditor) GetDirtyTask() *models.TaskData {
 	return dirty
 }
 
+// IsDirty determines if the editor fields have been modified from their original values
 func (te *TaskEditor) IsDirty() bool {
 	log := logger.GetFuncLogger(te.log, "IsDirty")
 	log.Trace().Msgf(
@@ -140,6 +141,7 @@ func (te *TaskEditor) IsDirty() bool {
 	return false
 }
 
+// CreateRenderer creates and initializes a new fyne.WidgetRenderer
 func (te *TaskEditor) CreateRenderer() fyne.WidgetRenderer {
 	te.ExtendBaseWidget(te)
 	r := &taskEditorRenderer{
@@ -155,15 +157,7 @@ func (te *TaskEditor) CreateRenderer() fyne.WidgetRenderer {
 		editCancelledChannel: te.editCancelledChannel,
 	}
 	r.taskDataObservable.ForEach(
-		func(item interface{}) {
-			r.log.Trace().Msg("taskData observable fired")
-			newTaskData, ok := item.(models.TaskData)
-			if ok {
-				r.log.Trace().Msgf("setting taskData from observable (cloned); taskData=%s", newTaskData.String())
-				cloned := newTaskData.Clone()
-				r.taskData = *cloned
-			}
-		},
+		r.taskDataChanged,
 		func(err error) {
 			r.log.Err(err).Msg("error from taskData observable")
 		},
@@ -219,20 +213,27 @@ type taskEditorRenderer struct {
 	editCancelledChannel chan rxgo.Item
 }
 
+// Destroy is for internal use.
 func (r *taskEditorRenderer) Destroy() {}
 
+// Layout is a hook that is called if the widget needs to be laid out.
+// This should never call Refresh.
 func (r *taskEditorRenderer) Layout(size fyne.Size) {
 	r.layout.Layout(r.Objects(), size)
 }
 
+// MinSize returns the minimum size of the widget that is rendered by this renderer.
 func (r *taskEditorRenderer) MinSize() fyne.Size {
 	return r.layout.MinSize(r.Objects())
 }
 
+// Objects returns all objects that should be drawn.
 func (r *taskEditorRenderer) Objects() []fyne.CanvasObject {
 	return r.canvasObjects
 }
 
+// Refresh is a hook that is called if the widget has updated and needs to be redrawn.
+// This might trigger a Layout.
 func (r *taskEditorRenderer) Refresh() {
 	r.updateButtonStates()
 	if r.taskEditor.Disabled() {
@@ -243,6 +244,17 @@ func (r *taskEditorRenderer) Refresh() {
 		r.descriptionEntry.Enable()
 	}
 	r.Layout(r.MinSize())
+}
+
+func (r *taskEditorRenderer) taskDataChanged(item interface{}) {
+	log := logger.GetFuncLogger(r.log, "taskDataChanged")
+	log.Trace().Msg("taskData observable fired")
+	newTaskData, ok := item.(models.TaskData)
+	if ok {
+		log.Trace().Msgf("setting taskData from observable (cloned); taskData=%s", newTaskData.String())
+		cloned := newTaskData.Clone()
+		r.taskData = *cloned
+	}
 }
 
 func (r *taskEditorRenderer) doSaveTask() {

@@ -126,8 +126,8 @@ func TestUnit_Timesheet_LoadAll_Nominal(t *testing.T) {
 
 	// Create two tasks
 	td := NewTaskData()
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
 	td2 := NewTaskData()
@@ -180,8 +180,8 @@ func TestUnit_Timesheet_SearchOpen_Nominal(t *testing.T) {
 
 	// Create a task
 	td := NewTaskData()
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
 
@@ -210,8 +210,8 @@ func TestUnit_Timesheet_Update_Nominal(t *testing.T) {
 
 	// Create a task
 	td := NewTaskData()
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
 
