@@ -15,8 +15,10 @@ const (
 	KeyAppVersion = "app_version"
 	// KeyActionLoopStarted is the map key for the ActionLoopStarted flag
 	KeyActionLoopStarted = "action_loop_started"
+
 	// KeyStatusError is the map key for the error from the last status check
-	KeyStatusError = "status_error"
+	// KeyStatusError = "status_error"
+
 	// KeyLastState is the map key for the last timesheet state
 	KeyLastState = "last_state"
 	// KeyRunningTimesheet is the map key for the running timesheet, if any

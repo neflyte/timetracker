@@ -46,15 +46,7 @@ func updateTask(_ *cobra.Command, args []string) error {
 	}
 	if taskData.DeletedAt.Valid {
 		if updateUndelete {
-			taskData.DeletedAt.Valid = false
-			err = models.Task(taskData).Update(true)
-			if err != nil {
-				cli.PrintAndLogError(log, err, errors.UndeleteTaskError)
-				return err
-			}
-			fmt.Println(color.WhiteString("Task ID %d", taskData.ID), color.GreenString("undeleted"))
-			log.Info().Msgf("task id %d undeleted", taskData.ID)
-			return nil
+			return undeleteTask(taskData)
 		}
 		err = fmt.Errorf("task id %d is deleted", taskData.ID)
 		cli.PrintAndLogError(log, err, errors.UpdateDeletedTaskError)
@@ -72,5 +64,21 @@ func updateTask(_ *cobra.Command, args []string) error {
 		return err
 	}
 	fmt.Println(color.WhiteString("Task ID %d", taskData.ID), color.GreenString("updated"))
+	return nil
+}
+
+func undeleteTask(taskData *models.TaskData) error {
+	log := logger.GetLogger("undeleteTask")
+	if taskData == nil {
+		return fmt.Errorf("cannot undelete a task that does not exist")
+	}
+	taskData.DeletedAt.Valid = false
+	err := models.Task(taskData).Update(true)
+	if err != nil {
+		cli.PrintAndLogError(log, err, errors.UndeleteTaskError)
+		return err
+	}
+	fmt.Println(color.WhiteString("Task ID %d", taskData.ID), color.GreenString("undeleted"))
+	log.Info().Msgf("task id %d undeleted", taskData.ID)
 	return nil
 }

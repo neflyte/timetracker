@@ -173,7 +173,7 @@ func (td *TaskData) StopRunningTask() (timesheetData *TimesheetData, err error) 
 	stoptime := new(sql.NullTime)
 	err = stoptime.Scan(time.Now())
 	if err != nil {
-		log.Err(err).Msg("error scanning time.Now() into sql.NullTime")
+		log.Err(err).Msg(errors.ScanNowIntoSQLNullTimeError)
 		return nil, err
 	}
 	timesheetData.StopTime = *stoptime

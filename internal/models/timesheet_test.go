@@ -87,8 +87,8 @@ func TestUnit_Timesheet_Delete_Nominal(t *testing.T) {
 
 	// Create a task
 	td := NewTaskData()
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
 
