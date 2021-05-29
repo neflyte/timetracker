@@ -9,18 +9,25 @@ import (
 	"time"
 )
 
+// TimesheetData is the main timesheet data structure
 type TimesheetData struct {
 	gorm.Model
-	Task      TaskData
-	TaskID    uint
+	// Task is the task object linked to this Timesheet
+	Task TaskData
+	// TaskID is the database ID of the linked task object
+	TaskID uint
+	// StartTime is the time that the task was started at
 	StartTime time.Time `gorm:"not null"`
-	StopTime  sql.NullTime
+	// StopTime is the time that the task was stopped at; if it is NULL, that means the task is still running
+	StopTime sql.NullTime
 }
 
+// TableName implements schema.Tabler
 func (tsd *TimesheetData) TableName() string {
 	return "timesheet"
 }
 
+// Timesheet is the main timesheet function interface
 type Timesheet interface {
 	Create() error
 	Load() error
@@ -32,6 +39,7 @@ type Timesheet interface {
 	String() string
 }
 
+// String implements fmt.Stringer
 func (tsd *TimesheetData) String() string {
 	startTime := tsd.StartTime.String()
 	stopTime := "(running)"
@@ -44,6 +52,7 @@ func (tsd *TimesheetData) String() string {
 	)
 }
 
+// Create creates a new timesheet record
 func (tsd *TimesheetData) Create() error {
 	if tsd.ID != 0 {
 		return errors.ErrInvalidTimesheetState{
@@ -58,6 +67,7 @@ func (tsd *TimesheetData) Create() error {
 	return database.Get().Create(tsd).Error
 }
 
+// Load attempts to load a timesheet by ID
 func (tsd *TimesheetData) Load() error {
 	if tsd.ID == 0 {
 		return errors.ErrInvalidTimesheetState{
@@ -67,6 +77,7 @@ func (tsd *TimesheetData) Load() error {
 	return database.Get().Joins("Task").First(tsd, tsd.ID).Error
 }
 
+// Delete marks a timesheet as deleted
 func (tsd *TimesheetData) Delete() error {
 	if tsd.ID == 0 {
 		return errors.ErrInvalidTimesheetState{
@@ -80,6 +91,7 @@ func (tsd *TimesheetData) Delete() error {
 	return database.Get().Delete(tsd).Error
 }
 
+// LoadAll loads all timesheet records, optionally including deleted timesheets
 func (tsd *TimesheetData) LoadAll(withDeleted bool) ([]TimesheetData, error) {
 	db := database.Get()
 	if withDeleted {
@@ -90,6 +102,7 @@ func (tsd *TimesheetData) LoadAll(withDeleted bool) ([]TimesheetData, error) {
 	return timesheets, err
 }
 
+// SearchOpen returns all open timesheets; there should be only one
 func (tsd *TimesheetData) SearchOpen() ([]TimesheetData, error) {
 	timesheets := make([]TimesheetData, 0)
 	args := map[string]interface{}{
@@ -102,6 +115,7 @@ func (tsd *TimesheetData) SearchOpen() ([]TimesheetData, error) {
 	return timesheets, err
 }
 
+// SearchDateRange returns the timesheets that start on or after the StartTime and end on or before the StopTime
 func (tsd *TimesheetData) SearchDateRange() ([]TimesheetData, error) {
 	timesheets := make([]TimesheetData, 0)
 	if tsd.StopTime.Valid {
@@ -120,6 +134,7 @@ func (tsd *TimesheetData) SearchDateRange() ([]TimesheetData, error) {
 	return timesheets, err
 }
 
+// Update attempts to update the timesheet record in the database
 func (tsd *TimesheetData) Update() error {
 	if tsd.ID == 0 {
 		return errors.ErrInvalidTimesheetState{

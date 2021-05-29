@@ -317,7 +317,7 @@ func (t *timetrackerWindow) doStopTask() {
 	}
 	// Stop the running task
 	log.Debug().Msgf("stopping task %s", runningTS.Task.Synopsis)
-	err := models.Task(new(models.TaskData)).StopRunningTask()
+	_, err := models.Task(new(models.TaskData)).StopRunningTask()
 	if err != nil {
 		log.Err(err).Msg(errors.StopRunningTaskError)
 		dialog.NewError(err, t.Window).Show()
@@ -411,7 +411,7 @@ func (t *timetrackerWindow) maybeStopRunningTask(stopTask bool) {
 		return
 	}
 	td := new(models.TaskData)
-	err := td.StopRunningTask()
+	_, err := td.StopRunningTask()
 	if err != nil {
 		log.Err(err).Msg("error stopping the running task")
 		dialog.NewError(err, t.Window).Show()

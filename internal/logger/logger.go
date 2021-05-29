@@ -14,8 +14,8 @@ const (
 )
 
 var (
-	// RootLogger is the application root logger instance
-	RootLogger zerolog.Logger
+	// rootLogger is the application root logger instance
+	rootLogger zerolog.Logger
 
 	logFileHandle     *os.File
 	logFilePath       string
@@ -37,6 +37,7 @@ func init() {
 	zerolog.TimeFieldFormat = time.RFC3339Nano
 }
 
+// InitLogger initializes the logger system
 func InitLogger(logLevel string, console bool) {
 	var err error
 
@@ -65,9 +66,9 @@ func InitLogger(logLevel string, console bool) {
 	// Create a new root logger
 	if len(logWriters) > 1 {
 		multi := zerolog.MultiLevelWriter(logWriters...)
-		RootLogger = zerolog.New(multi).With().Timestamp().Logger()
+		rootLogger = zerolog.New(multi).With().Timestamp().Logger()
 	} else {
-		RootLogger = zerolog.New(logWriters[0]).With().Timestamp().Logger()
+		rootLogger = zerolog.New(logWriters[0]).With().Timestamp().Logger()
 	}
 	// Set global logger message level
 	lvl, ok := levelMap[logLevel]
@@ -78,6 +79,7 @@ func InitLogger(logLevel string, console bool) {
 	loggerInitialized = true
 }
 
+// CleanupLogger cleans up the logger system before the app exits
 func CleanupLogger() {
 	if loggerInitialized {
 		if logFileHandle != nil {
@@ -91,37 +93,42 @@ func CleanupLogger() {
 	}
 }
 
+// GetLogger returns a new logger with a string field `func` set to the supplied funcName
 func GetLogger(funcName string) zerolog.Logger {
 	if !loggerInitialized {
 		return zerolog.New(&zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.StampMilli}).
 			With().Timestamp().Str("func", funcName).Logger().
 			Level(zerolog.TraceLevel)
 	}
-	return RootLogger.With().Str("func", funcName).Logger()
+	return rootLogger.With().Str("func", funcName).Logger()
 }
 
+// GetStructLogger returns a new logger with a string field `struct` set to the supplied structname
 func GetStructLogger(structName string) zerolog.Logger {
 	if !loggerInitialized {
 		return zerolog.New(&zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.StampMilli}).
 			With().Timestamp().Str("struct", structName).Logger().
 			Level(zerolog.TraceLevel)
 	}
-	return RootLogger.With().Str("struct", structName).Logger()
+	return rootLogger.With().Str("struct", structName).Logger()
 }
 
+// GetPackageLogger returns a new logger with a string field `package` set to the supplied packageName
 func GetPackageLogger(packageName string) zerolog.Logger {
 	if !loggerInitialized {
 		return zerolog.New(&zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.StampMilli}).
 			With().Timestamp().Str("package", packageName).Logger().
 			Level(zerolog.TraceLevel)
 	}
-	return RootLogger.With().Str("package", packageName).Logger()
+	return rootLogger.With().Str("package", packageName).Logger()
 }
 
+// GetFuncLogger returns a new logger based on the supplied logger with a string field `func` set to the supplied funcName
 func GetFuncLogger(existingLog zerolog.Logger, funcName string) zerolog.Logger {
 	return existingLog.With().Str("func", funcName).Logger()
 }
 
+// GetConfigHome attempts to determine the user's configuration files directory
 func GetConfigHome() string {
 	log := GetLogger("GetConfigHome")
 	// Look for XDG_CONFIG_HOME

@@ -7,12 +7,13 @@ import (
 	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
-	"github.com/neflyte/timetracker/internal/utils"
+	"github.com/neflyte/timetracker/internal/ui/cli"
 	"github.com/spf13/cobra"
 	"strconv"
 )
 
 var (
+	// ListCmd represents the command to list tasks
 	ListCmd = &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"l", "ls"},
@@ -28,9 +29,9 @@ func init() {
 
 func listTasks(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("listTasks")
-	tasks, err := models.Task(new(models.TaskData)).LoadAll(listDeletedTasks)
+	tasks, err := models.Task(models.NewTaskData()).LoadAll(listDeletedTasks)
 	if err != nil {
-		utils.PrintAndLogError(errors.ListTaskError, err, log)
+		cli.PrintAndLogError(log, err, errors.ListTaskError)
 		return err
 	}
 	table := simpletable.New()

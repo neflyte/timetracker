@@ -21,8 +21,11 @@ const (
 	UndeleteTaskError = "error undeleting task"
 	// UpdateTaskError represents an error that occurs when updating a task
 	UpdateTaskError = "error updating task"
+	// NoRunningTasksError represents an error that occurs when a running task was expected but not found
+	NoRunningTasksError = "a task is not running"
 )
 
+// ErrInvalidTaskState represents an error that occurs when a task is in an invalid state
 type ErrInvalidTaskState struct {
 	Details string
 }

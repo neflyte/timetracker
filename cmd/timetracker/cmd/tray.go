@@ -31,7 +31,6 @@ func preDoTray(_ *cobra.Command, _ []string) error {
 	userConfigDir, err := os.UserConfigDir()
 	if err != nil {
 		userConfigDir = "."
-		err = nil // Make sure we can't accidentally return a non-nil error in this case
 	} else {
 		userConfigDir = path.Join(userConfigDir, "timetracker")
 	}

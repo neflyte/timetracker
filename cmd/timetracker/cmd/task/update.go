@@ -6,11 +6,12 @@ import (
 	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
-	"github.com/neflyte/timetracker/internal/utils"
+	"github.com/neflyte/timetracker/internal/ui/cli"
 	"github.com/spf13/cobra"
 )
 
 var (
+	// UpdateCmd represents the command that updates an existing task
 	UpdateCmd = &cobra.Command{
 		Use:     "update [task id]",
 		Aliases: []string{"u"},
@@ -36,11 +37,11 @@ func updateTask(_ *cobra.Command, args []string) error {
 		log.Info().Msg("no updates specified; nothing to do")
 		return nil
 	}
-	taskData := new(models.TaskData)
-	taskData.ID, _ = utils.ResolveTask(args[0])
+	taskData := models.NewTaskData()
+	taskData.ID, _ = taskData.Resolve(args[0])
 	err := models.Task(taskData).Load(true)
 	if err != nil {
-		utils.PrintAndLogError(errors.LoadTaskError, err, log)
+		cli.PrintAndLogError(log, err, errors.LoadTaskError)
 		return err
 	}
 	if taskData.DeletedAt.Valid {
@@ -48,7 +49,7 @@ func updateTask(_ *cobra.Command, args []string) error {
 			taskData.DeletedAt.Valid = false
 			err = models.Task(taskData).Update(true)
 			if err != nil {
-				utils.PrintAndLogError(errors.UndeleteTaskError, err, log)
+				cli.PrintAndLogError(log, err, errors.UndeleteTaskError)
 				return err
 			}
 			fmt.Println(color.WhiteString("Task ID %d", taskData.ID), color.GreenString("undeleted"))
@@ -56,7 +57,7 @@ func updateTask(_ *cobra.Command, args []string) error {
 			return nil
 		}
 		err = fmt.Errorf("task id %d is deleted", taskData.ID)
-		utils.PrintAndLogError(errors.UpdateDeletedTaskError, err, log)
+		cli.PrintAndLogError(log, err, errors.UpdateDeletedTaskError)
 		return err
 	}
 	if updateSynopsis != "" {
@@ -67,7 +68,7 @@ func updateTask(_ *cobra.Command, args []string) error {
 	}
 	err = models.Task(taskData).Update(false)
 	if err != nil {
-		utils.PrintAndLogError(errors.UpdateTaskError, err, log)
+		cli.PrintAndLogError(log, err, errors.UpdateTaskError)
 		return err
 	}
 	fmt.Println(color.WhiteString("Task ID %d", taskData.ID), color.GreenString("updated"))

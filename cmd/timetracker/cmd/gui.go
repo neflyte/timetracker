@@ -17,7 +17,7 @@ const (
 var (
 	guiCmd = &cobra.Command{
 		Use:      "gui",
-		Short:    "Start the Timetracker GUI",
+		Short:    "Start the Timetracker GUI app",
 		PreRunE:  preDoGUI,
 		RunE:     doGUI,
 		PostRunE: postDoGUI,

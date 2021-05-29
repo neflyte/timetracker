@@ -39,6 +39,7 @@ func init() {
 	rootCmd.SetVersionTemplate(fmt.Sprintf("timetracker %s", AppVersion))
 }
 
+// Execute is the main entry point for the CLI
 func Execute() {
 	log := logger.GetLogger("Execute")
 	err := rootCmd.Execute()

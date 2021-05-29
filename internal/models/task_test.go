@@ -265,7 +265,7 @@ func TestUnit_Task_LoadAll_WithDeleted(t *testing.T) {
 	require.Nil(t, err)
 	require.Len(t, loadedTasks, len(tasks))
 	for _, task := range tasks {
-		loadedTask := FindTaskBySynopsis(loadedTasks, task.Synopsis)
+		loadedTask := task.FindTaskBySynopsis(loadedTasks, task.Synopsis)
 		require.NotNil(t, loadedTask)
 		require.Equal(t, task.Synopsis, loadedTask.Synopsis)
 		require.Equal(t, task.Description, loadedTask.Description)
@@ -452,6 +452,7 @@ func TestUnit_StopRunningTask_Nominal(t *testing.T) {
 	<-time.After(500 * time.Millisecond)
 
 	// Stop the running task
-	err = Task(new(TaskData)).StopRunningTask()
+	stopped, err := Task(new(TaskData)).StopRunningTask()
 	require.Nil(t, err)
+	require.NotNil(t, stopped)
 }

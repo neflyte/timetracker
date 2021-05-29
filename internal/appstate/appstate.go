@@ -8,6 +8,8 @@ import (
 	"sync"
 )
 
+// TODO: is this package necessary anymore?
+
 const (
 	// KeyAppVersion is the map key for the application version
 	KeyAppVersion = "app_version"
@@ -52,11 +54,12 @@ func Map() *sync.Map {
 	return &syncMap
 }
 
+// Observables returns a map of the available observables
 func Observables() map[string]rxgo.Observable {
 	return observablesMap
 }
 
-func GetStatusError() error {
+/*func GetStatusError() error {
 	log := appstateLog.With().
 		Str("func", "GetStatusError").
 		Str("key", KeyStatusError).
@@ -77,8 +80,9 @@ func SetStatusError(newStatusError error) {
 		Logger()
 	log.Trace().Msgf("storing %#v", newStatusError)
 	syncMap.Store(KeyStatusError, newStatusError)
-}
+}*/
 
+// GetLastState returns the last timesheet load state
 func GetLastState() int {
 	log := appstateLog.With().
 		Str("func", "GetLastState").
@@ -93,6 +97,7 @@ func GetLastState() int {
 	return lstate.(int)
 }
 
+// SetLastState sets the last timesheet load state
 func SetLastState(newLastState int) {
 	log := appstateLog.With().
 		Str("func", "SetLastState").
@@ -102,6 +107,7 @@ func SetLastState(newLastState int) {
 	syncMap.Store(KeyLastState, newLastState)
 }
 
+// GetRunningTimesheet gets the running timesheet object
 func GetRunningTimesheet() *models.TimesheetData {
 	log := appstateLog.With().
 		Str("func", "GetRunningTimesheet").
@@ -120,6 +126,7 @@ func GetRunningTimesheet() *models.TimesheetData {
 	return tsd.(*models.TimesheetData)
 }
 
+// SetRunningTimesheet sets the timesheet object
 func SetRunningTimesheet(newTimesheet *models.TimesheetData) {
 	log := appstateLog.With().
 		Str("func", "SetRunningTimesheet").

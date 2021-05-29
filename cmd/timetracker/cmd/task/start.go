@@ -7,12 +7,13 @@ import (
 	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
-	"github.com/neflyte/timetracker/internal/utils"
+	"github.com/neflyte/timetracker/internal/ui/cli"
 	"github.com/spf13/cobra"
 	"time"
 )
 
 var (
+	// StartCmd represents the command to start a task
 	StartCmd = &cobra.Command{
 		Use:     "start [task id/synopsis]",
 		Aliases: []string{"s"},
@@ -24,8 +25,8 @@ var (
 
 func startTask(_ *cobra.Command, args []string) (err error) {
 	log := logger.GetLogger("startTask")
-	taskData := new(models.TaskData)
-	taskData.ID, taskData.Synopsis = utils.ResolveTask(args[0])
+	taskData := models.NewTaskData()
+	taskData.ID, taskData.Synopsis = taskData.Resolve(args[0])
 	taskdisplay := taskData.Synopsis
 	if taskData.ID > 0 {
 		taskdisplay = fmt.Sprintf("%d", taskData.ID)
@@ -34,14 +35,23 @@ func startTask(_ *cobra.Command, args []string) (err error) {
 	// Load the task to make sure it exists
 	err = models.Task(taskData).Load(false)
 	if err != nil {
-		utils.PrintAndLogError(errors.LoadTaskError, err, log)
+		cli.PrintAndLogError(log, err, errors.LoadTaskError)
 		return err
 	}
 	// Stop any running task
-	err = models.Task(taskData).StopRunningTask()
-	if err != nil {
-		utils.PrintAndLogError(errors.StopRunningTaskError, err, log)
+	stoppedTimesheet, err := models.Task(taskData).StopRunningTask()
+	if err != nil && err.Error() != errors.NoRunningTasksError {
+		cli.PrintAndLogError(log, err, errors.StopRunningTaskError)
 		return err
+	}
+	if stoppedTimesheet != nil {
+		log.Info().Msgf("task id %d (timesheet id %d) stopped\n", stoppedTimesheet.Task.ID, stoppedTimesheet.ID)
+		fmt.Println(
+			color.WhiteString("Task ID %d", stoppedTimesheet.Task.ID),
+			color.YellowString("stopped"),
+			color.WhiteString("at %s", stoppedTimesheet.StopTime.Time.Format(constants.TimestampLayout)),
+			color.BlueString(stoppedTimesheet.StopTime.Time.Sub(stoppedTimesheet.StartTime).Truncate(time.Second).String()),
+		)
 	}
 	// Create a new timesheet for the task
 	timesheetData := new(models.TimesheetData)
@@ -49,7 +59,7 @@ func startTask(_ *cobra.Command, args []string) (err error) {
 	timesheetData.StartTime = time.Now()
 	err = models.Timesheet(timesheetData).Create()
 	if err != nil {
-		utils.PrintAndLogError(fmt.Sprintf("%s for task %s", errors.CreateTimesheetError, taskdisplay), err, log)
+		cli.PrintAndLogError(log, err, "%s for task %s", errors.CreateTimesheetError, taskdisplay)
 		return err
 	}
 	fmt.Println(

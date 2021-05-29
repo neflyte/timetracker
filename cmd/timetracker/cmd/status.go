@@ -7,6 +7,7 @@ import (
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/spf13/cobra"
+	"strings"
 	"time"
 )
 
@@ -32,12 +33,7 @@ func init() {
 
 func status(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("status")
-	defer func() {
-		if trailingNewline {
-			fmt.Println()
-		}
-	}()
-	timesheets, err := models.Timesheet(new(models.TimesheetData)).SearchOpen()
+	timesheets, err := new(models.TimesheetData).SearchOpen()
 	if err != nil {
 		log.Err(err).Msg("error getting running timesheet")
 		fmt.Print(color.RedString(constants.UnicodeHeavyX))
@@ -46,19 +42,30 @@ func status(_ *cobra.Command, _ []string) error {
 		}
 		return err
 	}
+	sb := strings.Builder{}
 	if len(timesheets) == 0 {
 		// No running task
-		fmt.Print(color.GreenString(constants.UnicodeHeavyCheckmark))
+		sb.WriteString(color.GreenString(constants.UnicodeHeavyCheckmark))
 	} else {
 		// Running task...
 		timesheet := timesheets[0]
-		fmt.Print(color.YellowString(constants.UnicodeClock))
+		sb.WriteString(color.YellowString(constants.UnicodeClock))
 		if synopsis || verbose {
-			fmt.Print(" ", color.HiWhiteString(timesheet.Task.Synopsis))
+			sb.WriteString(" " + color.HiWhiteString(timesheet.Task.Synopsis))
 		}
 		if verbose {
-			fmt.Print(" ", color.HiBlueString(time.Since(timesheet.StartTime).Truncate(time.Second).String()))
+			sb.WriteString(" " +
+				color.HiBlueString(
+					time.Since(timesheet.StartTime).
+						Truncate(time.Second).
+						String(),
+				),
+			)
 		}
 	}
+	if trailingNewline {
+		sb.WriteString("\n")
+	}
+	fmt.Print(sb.String())
 	return nil
 }

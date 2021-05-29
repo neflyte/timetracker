@@ -11,6 +11,7 @@ var (
 	updateTSMutex = sync.Mutex{}
 )
 
+// ActionLoop is a goroutine that periodically updates the running timesheet object in the appstate map
 func ActionLoop(quitChannel chan bool) {
 	log := appstateLog.With().Str("func", "ActionLoop").Logger()
 	runningIntf, _ := Map().LoadOrStore(KeyActionLoopStarted, false)
@@ -38,6 +39,7 @@ func ActionLoop(quitChannel chan bool) {
 	}
 }
 
+// UpdateRunningTimesheet gets the latest running timesheet object and sets the appropriate status
 func UpdateRunningTimesheet() {
 	log := appstateLog.With().Str("func", "UpdateRunningTimesheet").Logger()
 	updateTSMutex.Lock()
@@ -48,7 +50,7 @@ func UpdateRunningTimesheet() {
 		log.Trace().Msg("lock released successfully")
 	}()
 	timesheets, err := models.Timesheet(new(models.TimesheetData)).SearchOpen()
-	SetStatusError(err)
+	// SetStatusError(err)
 	if err != nil {
 		SetRunningTimesheet(nil) // Reset running timesheet
 		log.Err(err).Msg("error getting running timesheet")
