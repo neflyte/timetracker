@@ -73,12 +73,12 @@ func (td *TaskData) String() string {
 func (td *TaskData) Create() error {
 	if td.ID != 0 {
 		return errors.ErrInvalidTaskState{
-			Details: "cannot overwrite a task by creating it",
+			Details: errors.OverwriteTaskByCreateError,
 		}
 	}
 	if td.Synopsis == "" {
 		return errors.ErrInvalidTaskState{
-			Details: "cannot create a task with an empty synopsis",
+			Details: errors.EmptySynopsisTaskError,
 		}
 	}
 	return database.Get().Create(td).Error
@@ -88,7 +88,7 @@ func (td *TaskData) Create() error {
 func (td *TaskData) Load(withDeleted bool) error {
 	if td.ID == 0 && td.Synopsis == "" {
 		return errors.ErrInvalidTaskState{
-			Details: "cannot load a task that does not exist",
+			Details: errors.LoadInvalidTaskError,
 		}
 	}
 	db := database.Get()
@@ -103,9 +103,9 @@ func (td *TaskData) Load(withDeleted bool) error {
 
 // Delete marks the task as deleted
 func (td *TaskData) Delete() error {
-	if td.ID <= 0 && td.Synopsis == "" {
+	if td.ID == 0 {
 		return errors.ErrInvalidTaskState{
-			Details: "cannot delete a task that does not exist",
+			Details: errors.DeleteInvalidTaskError,
 		}
 	}
 	err := td.Load(false)
@@ -141,12 +141,12 @@ func (td *TaskData) Search(text string) ([]TaskData, error) {
 func (td *TaskData) Update(withDeleted bool) error {
 	if td.ID == 0 {
 		return errors.ErrInvalidTaskState{
-			Details: "cannot update a task that does not exist",
+			Details: errors.UpdateInvalidTaskError,
 		}
 	}
 	if td.Synopsis == "" {
 		return errors.ErrInvalidTaskState{
-			Details: "cannot update a task to have an empty synopsis",
+			Details: errors.UpdateEmptySynopsisTaskError,
 		}
 	}
 	db := database.Get()

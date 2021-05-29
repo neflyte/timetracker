@@ -23,6 +23,18 @@ const (
 	UpdateTaskError = "error updating task"
 	// NoRunningTasksError represents an error that occurs when a running task was expected but not found
 	NoRunningTasksError = "a task is not running"
+	// OverwriteTaskByCreateError represents an error that occurs when a task is about to be overwritten by creating it again
+	OverwriteTaskByCreateError = "cannot overwrite a task by creating it"
+	// LoadInvalidTaskError represents an error that occurs when an attempt is made to load a task with an invalid (nonexistant) ID
+	LoadInvalidTaskError = "cannot load a task that does not exist"
+	// UpdateInvalidTaskError represents an error that occurs when an attempt is made to update a task with an invalid (nonexistant) ID
+	UpdateInvalidTaskError = "cannot update a task that does not exist"
+	// DeleteInvalidTaskError represents an error that occurs when an attempt is made to delete a task with an invalid (nonexistant) ID
+	DeleteInvalidTaskError = "cannot delete a task that does not exist"
+	// EmptySynopsisTaskError represents an error that occurs when a task synopsis was expected but not found
+	EmptySynopsisTaskError = "cannot create a task with an empty synopsis"
+	// UpdateEmptySynopsisTaskError represents an error that occurs when an attempt is made to update an existing task to have an empty synopsis
+	UpdateEmptySynopsisTaskError = "cannot update a task to have an empty synopsis"
 )
 
 // ErrInvalidTaskState represents an error that occurs when a task is in an invalid state

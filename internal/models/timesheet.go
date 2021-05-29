@@ -56,12 +56,12 @@ func (tsd *TimesheetData) String() string {
 func (tsd *TimesheetData) Create() error {
 	if tsd.ID != 0 {
 		return errors.ErrInvalidTimesheetState{
-			Details: "cannot overwrite a timesheet by creating it",
+			Details: errors.OverwriteTimesheetByCreateError,
 		}
 	}
 	if tsd.Task.ID == 0 {
 		return errors.ErrInvalidTimesheetState{
-			Details: "no task is associated with the timesheet",
+			Details: errors.TimesheetWithoutTaskError,
 		}
 	}
 	return database.Get().Create(tsd).Error
@@ -71,7 +71,7 @@ func (tsd *TimesheetData) Create() error {
 func (tsd *TimesheetData) Load() error {
 	if tsd.ID == 0 {
 		return errors.ErrInvalidTimesheetState{
-			Details: "cannot load a timesheet that does not exist",
+			Details: errors.LoadInvalidTimesheetError,
 		}
 	}
 	return database.Get().Joins("Task").First(tsd, tsd.ID).Error
@@ -81,7 +81,7 @@ func (tsd *TimesheetData) Load() error {
 func (tsd *TimesheetData) Delete() error {
 	if tsd.ID == 0 {
 		return errors.ErrInvalidTimesheetState{
-			Details: "cannot delete a timesheet that does not exist",
+			Details: errors.DeleteInvalidTimesheetError,
 		}
 	}
 	err := tsd.Load()
@@ -138,12 +138,12 @@ func (tsd *TimesheetData) SearchDateRange() ([]TimesheetData, error) {
 func (tsd *TimesheetData) Update() error {
 	if tsd.ID == 0 {
 		return errors.ErrInvalidTimesheetState{
-			Details: "cannot update a timesheet that does not exist",
+			Details: errors.UpdateInvalidTimesheetError,
 		}
 	}
 	if tsd.Task.ID == 0 {
 		return errors.ErrInvalidTimesheetState{
-			Details: "no task is associated with the timesheet",
+			Details: errors.TimesheetWithoutTaskError,
 		}
 	}
 	return database.Get().Save(tsd).Error

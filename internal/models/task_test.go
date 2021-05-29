@@ -10,26 +10,31 @@ import (
 	"time"
 )
 
+const (
+	testTaskSynopsis    = "Task-1"
+	testTaskDescription = "This is a task"
+)
+
 func TestUnit_Task_CreateAndLoad_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
 	database.Set(db)
 
 	// Create a task
-	td := new(TaskData)
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td := NewTaskData()
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
 	require.True(t, td.ID > 0)
 
 	// Load the task we just created
-	td2 := new(TaskData)
+	td2 := NewTaskData()
 	td2.ID = td.ID
 	err = Task(td2).Load(false)
 	require.Nil(t, err)
-	require.Equal(t, "Task-1", td2.Synopsis)
-	require.Equal(t, "This is a task", td2.Description)
+	require.Equal(t, testTaskSynopsis, td2.Synopsis)
+	require.Equal(t, testTaskDescription, td2.Description)
 }
 
 func TestUnit_Task_Load_NotFound(t *testing.T) {
@@ -38,15 +43,15 @@ func TestUnit_Task_Load_NotFound(t *testing.T) {
 	database.Set(db)
 
 	// Create a task
-	td := new(TaskData)
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td := NewTaskData()
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
 	require.True(t, td.ID > 0)
 
 	// Try to load a task that does not exist
-	td2 := new(TaskData)
+	td2 := NewTaskData()
 	td2.ID = 2
 	err = Task(td2).Load(false)
 	require.NotNil(t, err)
@@ -59,14 +64,13 @@ func TestUnit_Task_Create_InvalidID(t *testing.T) {
 	database.Set(db)
 
 	// Create a task with an invalid ID
-	td := new(TaskData)
+	td := NewTaskData()
 	td.ID = 1
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.NotNil(t, err)
-	_, ok := err.(ttErrors.ErrInvalidTaskState)
-	require.True(t, ok)
+	require.True(t, errors.Is(err, ttErrors.ErrInvalidTaskState{Details: ttErrors.OverwriteTaskByCreateError}))
 }
 
 func TestUnit_Task_Create_EmptySynopsis(t *testing.T) {
@@ -75,13 +79,12 @@ func TestUnit_Task_Create_EmptySynopsis(t *testing.T) {
 	database.Set(db)
 
 	// Create a task with an empty synopsis
-	td := new(TaskData)
+	td := NewTaskData()
 	td.Synopsis = ""
-	td.Description = "This is a task"
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.NotNil(t, err)
-	_, ok := err.(ttErrors.ErrInvalidTaskState)
-	require.True(t, ok)
+	require.True(t, errors.Is(err, ttErrors.ErrInvalidTaskState{Details: ttErrors.EmptySynopsisTaskError}))
 }
 
 func TestUnit_Task_Load_BySynopsis_Nominal(t *testing.T) {
@@ -91,7 +94,7 @@ func TestUnit_Task_Load_BySynopsis_Nominal(t *testing.T) {
 
 	// Create some tasks
 	tasks := []TaskData{
-		{Synopsis: "Task-1", Description: "Task number one"},
+		{Synopsis: testTaskSynopsis, Description: testTaskDescription},
 		{Synopsis: "Task-2", Description: "Task number two"},
 		{Synopsis: "Task-3", Description: "Task number three"},
 	}
@@ -101,7 +104,7 @@ func TestUnit_Task_Load_BySynopsis_Nominal(t *testing.T) {
 	}
 
 	// Load the Task-2 task using its synopsis
-	td := new(TaskData)
+	td := NewTaskData()
 	td.Synopsis = "Task-2"
 	err := Task(td).Load(false)
 	require.Nil(t, err)
@@ -117,7 +120,7 @@ func TestUnit_Task_Load_BySynopsis_NotFound(t *testing.T) {
 
 	// Create some tasks
 	tasks := []TaskData{
-		{Synopsis: "Task-1", Description: "Task number one"},
+		{Synopsis: testTaskSynopsis, Description: testTaskDescription},
 		{Synopsis: "Task-2", Description: "Task number two"},
 		{Synopsis: "Task-3", Description: "Task number three"},
 	}
@@ -127,7 +130,7 @@ func TestUnit_Task_Load_BySynopsis_NotFound(t *testing.T) {
 	}
 
 	// Try loading Task-4 which does not exist
-	td := new(TaskData)
+	td := NewTaskData()
 	td.Synopsis = "Task-4"
 	err := Task(td).Load(false)
 	require.NotNil(t, err)
@@ -140,9 +143,9 @@ func TestUnit_Task_Load_WithDeleted(t *testing.T) {
 	database.Set(db)
 
 	// Create a task
-	td := new(TaskData)
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td := NewTaskData()
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
 	require.True(t, td.ID > 0)
@@ -152,12 +155,12 @@ func TestUnit_Task_Load_WithDeleted(t *testing.T) {
 	require.Nil(t, err)
 
 	// Load the task we just deleted
-	td2 := new(TaskData)
+	td2 := NewTaskData()
 	td2.ID = td.ID
 	err = Task(td2).Load(true)
 	require.Nil(t, err)
-	require.Equal(t, "Task-1", td2.Synopsis)
-	require.Equal(t, "This is a task", td2.Description)
+	require.Equal(t, testTaskSynopsis, td2.Synopsis)
+	require.Equal(t, testTaskDescription, td2.Description)
 }
 
 func TestUnit_Task_Load_InvalidIDAndEmptySynopsis(t *testing.T) {
@@ -166,12 +169,11 @@ func TestUnit_Task_Load_InvalidIDAndEmptySynopsis(t *testing.T) {
 	database.Set(db)
 
 	// Load a task with an invalid ID and an empty synopsis
-	td := new(TaskData)
+	td := NewTaskData()
 	td.ID = 0
 	err := Task(td).Load(false)
 	require.NotNil(t, err)
-	_, ok := err.(ttErrors.ErrInvalidTaskState)
-	require.True(t, ok)
+	require.True(t, errors.Is(err, ttErrors.ErrInvalidTaskState{Details: ttErrors.LoadInvalidTaskError}))
 }
 
 func TestUnit_Task_Delete_Nominal(t *testing.T) {
@@ -180,9 +182,9 @@ func TestUnit_Task_Delete_Nominal(t *testing.T) {
 	database.Set(db)
 
 	// Create a task
-	td := new(TaskData)
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td := NewTaskData()
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
 	require.True(t, td.ID > 0)
@@ -192,26 +194,24 @@ func TestUnit_Task_Delete_Nominal(t *testing.T) {
 	require.Nil(t, err)
 
 	// Try to load the task we just deleted
-	td2 := new(TaskData)
+	td2 := NewTaskData()
 	td2.ID = td.ID
 	err = Task(td2).Load(false)
 	require.NotNil(t, err)
 	require.True(t, errors.Is(err, gorm.ErrRecordNotFound))
 }
 
-func TestUnit_Task_Delete_InvalidIDAndEmptySynopsis(t *testing.T) {
+func TestUnit_Task_Delete_InvalidID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
 	database.Set(db)
 
-	// Delete a task with invalid ID and empty synopsis
-	td := new(TaskData)
+	// Delete a task with invalid ID
+	td := NewTaskData()
 	td.ID = 0
-	td.Synopsis = ""
 	err := Task(td).Delete()
 	require.NotNil(t, err)
-	_, ok := err.(ttErrors.ErrInvalidTaskState)
-	require.True(t, ok)
+	require.True(t, errors.Is(err, ttErrors.ErrInvalidTaskState{Details: ttErrors.DeleteInvalidTaskError}))
 }
 
 func TestUnit_Task_LoadAll_Nominal(t *testing.T) {
@@ -221,7 +221,7 @@ func TestUnit_Task_LoadAll_Nominal(t *testing.T) {
 
 	// Create some tasks
 	tasks := []TaskData{
-		{Synopsis: "Task-1", Description: "Task number one"},
+		{Synopsis: testTaskSynopsis, Description: testTaskDescription},
 		{Synopsis: "Task-2", Description: "Task number two"},
 		{Synopsis: "Task-3", Description: "Task number three"},
 	}
@@ -231,7 +231,7 @@ func TestUnit_Task_LoadAll_Nominal(t *testing.T) {
 	}
 
 	// Load all tasks
-	loadedTasks, err := Task(new(TaskData)).LoadAll(false)
+	loadedTasks, err := Task(NewTaskData()).LoadAll(false)
 	require.Nil(t, err)
 	require.Len(t, loadedTasks, len(tasks))
 	for idx, loadedTask := range loadedTasks {
@@ -247,7 +247,7 @@ func TestUnit_Task_LoadAll_WithDeleted(t *testing.T) {
 
 	// Create some tasks
 	tasks := []TaskData{
-		{Synopsis: "Task-1", Description: "Task number one"},
+		{Synopsis: testTaskSynopsis, Description: testTaskDescription},
 		{Synopsis: "Task-2", Description: "Task number two"},
 		{Synopsis: "Task-3", Description: "Task number three"},
 	}
@@ -261,7 +261,7 @@ func TestUnit_Task_LoadAll_WithDeleted(t *testing.T) {
 	require.Nil(t, err)
 
 	// Load all tasks with deleted
-	loadedTasks, err := Task(new(TaskData)).LoadAll(true)
+	loadedTasks, err := Task(NewTaskData()).LoadAll(true)
 	require.Nil(t, err)
 	require.Len(t, loadedTasks, len(tasks))
 	for _, task := range tasks {
@@ -278,27 +278,28 @@ func TestUnit_Task_Search_Nominal(t *testing.T) {
 	database.Set(db)
 
 	// Create test data
-	td := new(TaskData)
-	td.Synopsis = "Foo"
-	td.Description = "blah blah blah"
+	td := NewTaskData()
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
+	require.NotEqual(t, 0, td.ID)
 
 	// Test synopsis
-	tasks, err := Task(new(TaskData)).Search("Fo%")
+	tasks, err := Task(NewTaskData()).Search("%-1")
 	require.Nil(t, err)
 	require.NotNil(t, tasks)
 	require.Len(t, tasks, 1)
-	require.Equal(t, "Foo", tasks[0].Synopsis)
-	require.Equal(t, "blah blah blah", tasks[0].Description)
+	require.Equal(t, testTaskSynopsis, tasks[0].Synopsis)
+	require.Equal(t, testTaskDescription, tasks[0].Description)
 
 	// Test description
-	tasks, err = Task(new(TaskData)).Search("%blah")
+	tasks, err = Task(NewTaskData()).Search("This is a%")
 	require.Nil(t, err)
 	require.NotNil(t, tasks)
 	require.Len(t, tasks, 1)
-	require.Equal(t, "Foo", tasks[0].Synopsis)
-	require.Equal(t, "blah blah blah", tasks[0].Description)
+	require.Equal(t, testTaskSynopsis, tasks[0].Synopsis)
+	require.Equal(t, testTaskDescription, tasks[0].Description)
 }
 
 func TestUnit_Task_Search_NotFound(t *testing.T) {
@@ -307,19 +308,19 @@ func TestUnit_Task_Search_NotFound(t *testing.T) {
 	database.Set(db)
 
 	// Create test data
-	td := new(TaskData)
+	td := NewTaskData()
 	td.Synopsis = "Foo"
 	td.Description = "blah blah blah"
 	err := Task(td).Create()
 	require.Nil(t, err)
 
 	// Test synopsis
-	tasks, err := Task(new(TaskData)).Search("Ba%")
+	tasks, err := Task(NewTaskData()).Search("Ba%")
 	require.Nil(t, err)
 	require.Len(t, tasks, 0)
 
 	// Test description
-	tasks, err = Task(new(TaskData)).Search("%qux%")
+	tasks, err = Task(NewTaskData()).Search("%qux%")
 	require.Nil(t, err)
 	require.Len(t, tasks, 0)
 }
@@ -330,7 +331,7 @@ func TestUnit_Update_Nominal(t *testing.T) {
 	database.Set(db)
 
 	// Create test data
-	td := new(TaskData)
+	td := NewTaskData()
 	td.Synopsis = "Foo"
 	td.Description = "blah blah blah"
 	err := Task(td).Create()
@@ -343,7 +344,7 @@ func TestUnit_Update_Nominal(t *testing.T) {
 	require.Nil(t, err)
 
 	// Reload data
-	reloaded := new(TaskData)
+	reloaded := NewTaskData()
 	reloaded.ID = td.ID
 	err = Task(reloaded).Load(false)
 	require.Nil(t, err)
@@ -357,12 +358,11 @@ func TestUnit_Update_InvalidID(t *testing.T) {
 	database.Set(db)
 
 	// Update test data
-	td := new(TaskData)
+	td := NewTaskData()
 	td.ID = 0
 	err := Task(td).Update(false)
 	require.NotNil(t, err)
-	_, ok := err.(ttErrors.ErrInvalidTaskState)
-	require.True(t, ok)
+	require.True(t, errors.Is(err, ttErrors.ErrInvalidTaskState{Details: ttErrors.UpdateInvalidTaskError}))
 }
 
 func TestUnit_Update_EmptySynopsis(t *testing.T) {
@@ -371,12 +371,12 @@ func TestUnit_Update_EmptySynopsis(t *testing.T) {
 	database.Set(db)
 
 	// Update test data
-	td := new(TaskData)
+	td := NewTaskData()
+	td.ID = 1
 	td.Synopsis = ""
 	err := Task(td).Update(false)
 	require.NotNil(t, err)
-	_, ok := err.(ttErrors.ErrInvalidTaskState)
-	require.True(t, ok)
+	require.True(t, errors.Is(err, ttErrors.ErrInvalidTaskState{Details: ttErrors.UpdateEmptySynopsisTaskError}))
 }
 
 /*func TestUnit_Update_Deleted(t *testing.T) {
@@ -385,7 +385,7 @@ func TestUnit_Update_EmptySynopsis(t *testing.T) {
 	database.Set(db)
 
 	// Create test data
-	td := new(TaskData)
+	td := NewTaskData()
 	td.Synopsis = "Foo"
 	td.Description = "blah blah blah"
 	err := Task(td).Create()
@@ -406,7 +406,7 @@ func TestUnit_Update_EmptySynopsis(t *testing.T) {
 	require.Nil(t, err)
 
 	// Reload data to ensure it didn't update
-	reloaded := new(TaskData)
+	reloaded := NewTaskData()
 	reloaded.ID = td.ID
 	err = Task(reloaded).Load(true)
 	require.Nil(t, err)
@@ -420,7 +420,7 @@ func TestUnit_Update_EmptySynopsis(t *testing.T) {
 	require.Nil(t, err)
 
 	// Reload data to ensure it did update
-	reloaded = new(TaskData)
+	reloaded = NewTaskData()
 	reloaded.ID = td.ID
 	err = Task(reloaded).Load(true)
 	require.Nil(t, err)
@@ -435,8 +435,8 @@ func TestUnit_StopRunningTask_Nominal(t *testing.T) {
 	database.Set(db)
 
 	// Create a task
-	td := new(TaskData)
-	td.Synopsis = "Task-1"
+	td := NewTaskData()
+	td.Synopsis = testTaskSynopsis
 	td.Description = "Task number one"
 	err := Task(td).Create()
 	require.Nil(t, err)
@@ -452,7 +452,7 @@ func TestUnit_StopRunningTask_Nominal(t *testing.T) {
 	<-time.After(500 * time.Millisecond)
 
 	// Stop the running task
-	stopped, err := Task(new(TaskData)).StopRunningTask()
+	stopped, err := Task(NewTaskData()).StopRunningTask()
 	require.Nil(t, err)
 	require.NotNil(t, stopped)
 }
