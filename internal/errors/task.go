@@ -45,3 +45,10 @@ type ErrInvalidTaskState struct {
 func (e ErrInvalidTaskState) Error() string {
 	return fmt.Sprintf("Invalid task state: %s", e.Details)
 }
+
+// ErrNoRunningTask represents an error that occurs when a running task was expected but not found
+type ErrNoRunningTask struct{}
+
+func (e ErrNoRunningTask) Error() string {
+	return NoRunningTasksError
+}

@@ -15,14 +15,16 @@ import (
 )
 
 const (
-	guiOptionStopRunningTask  = "--stop-running-task"
-	guiOptionShowManageWindow = "--manage"
-	guiOptionShowAboutWindow  = "--about"
+	guiOptionStopRunningTask    = "--stop-running-task"
+	guiOptionCreateAndStartTask = "--create-and-start"
+	guiOptionShowManageWindow   = "--manage"
+	guiOptionShowAboutWindow    = "--about"
 )
 
 var (
-	mStatus *systray.MenuItem
-	mManage *systray.MenuItem
+	mStatus         *systray.MenuItem
+	mManage         *systray.MenuItem
+	mCreateAndStart *systray.MenuItem
 	// mLastStarted       *systray.MenuItem
 	// lastStartedItems   []*systray.MenuItem
 	mAbout             *systray.MenuItem
@@ -50,6 +52,7 @@ func onReady() {
 	systray.SetTooltip("Timetracker")
 	systray.SetIcon(icons.Check)
 	mStatus = systray.AddMenuItem("Start new task", "Display a task selector and start a task")
+	mCreateAndStart = systray.AddMenuItem("Create and Start new task", "Display a dialog to input new task details and then start the task")
 	mManage = systray.AddMenuItem("Manage tasks", "Display the Manage Tasks window to add, change, or remove tasks")
 	// TODO: List the top 5 last-started tasks as easy-start options
 	// systray.AddSeparator()
@@ -111,7 +114,9 @@ func updateStatus(tsd *models.TimesheetData) {
 	mStatus.SetTooltip("Stop the running task")
 }
 
-func mainLoop(quitChan chan bool) {
+// FIXME: figure out if there is a way to safely reduce complexity in mainLoop below to remove the nolint directive
+
+func mainLoop(quitChan chan bool) { //nolint:cyclop
 	log := logger.GetFuncLogger(trayLogger, "mainLoop")
 	// Start main loop
 	log.Trace().Msg("starting")
@@ -120,15 +125,11 @@ func mainLoop(quitChan chan bool) {
 		case <-mStatus.ClickedCh:
 			handleStatusClick()
 		case <-mManage.ClickedCh:
-			err := launchGUI(guiOptionShowManageWindow)
-			if err != nil {
-				log.Err(err).Msg("error launching gui to show manage window")
-			}
+			launchGUI(guiOptionShowManageWindow)
 		case <-mAbout.ClickedCh:
-			err := launchGUI(guiOptionShowAboutWindow)
-			if err != nil {
-				log.Err(err).Msg("error launching gui to show about window")
-			}
+			launchGUI(guiOptionShowAboutWindow)
+		case <-mCreateAndStart.ClickedCh:
+			launchGUI(guiOptionCreateAndStartTask)
 		case <-mQuit.ClickedCh:
 			log.Trace().Msg("quit option clicked; calling systray.Quit() and exiting function")
 			systray.Quit()
@@ -140,13 +141,13 @@ func mainLoop(quitChan chan bool) {
 	}
 }
 
-func launchGUI(options ...string) (err error) {
+func launchGUI(options ...string) {
 	log := logger.GetFuncLogger(trayLogger, "launchGUI")
 	log.Debug().Msgf("options=%#v", options)
 	timetrackerExecutable, err := os.Executable()
 	if err != nil {
 		log.Err(err).Msg("error getting path and name of this program")
-		return err
+		return
 	}
 	guiOptions := []string{"gui"}
 	guiOptions = append(guiOptions, options...)
@@ -154,27 +155,20 @@ func launchGUI(options ...string) (err error) {
 	err = guiCmd.Start()
 	if err != nil {
 		log.Err(err).Msgf("error launching gui with Cmd %s", guiCmd.String())
-		return err
+		return
 	}
 	log.Debug().Msg("gui launched successfully")
-	return nil
 }
 
 func handleStatusClick() {
 	log := logger.GetFuncLogger(trayLogger, "handleStatusClick")
 	switch appstate.GetLastState() {
 	case constants.TimesheetStatusRunning:
-		err := launchGUI(guiOptionStopRunningTask)
-		if err != nil {
-			log.Err(err).Msg("error launching gui to stop running task")
-		}
+		launchGUI(guiOptionStopRunningTask)
 	case constants.TimesheetStatusError:
 		log.Error().Msg("IMPLEMENTATION MISSING")
 	case constants.TimesheetStatusIdle:
-		err := launchGUI()
-		if err != nil {
-			log.Err(err).Msg("error launching gui")
-		}
+		launchGUI()
 	}
 }
 

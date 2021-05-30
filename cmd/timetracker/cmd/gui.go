@@ -23,15 +23,17 @@ var (
 		PostRunE: postDoGUI,
 		Args:     cobra.ExactArgs(0),
 	}
-	guiCmdLockfile               lockfile.Lockfile
-	guiCmdLockfilePath           string
-	guiCmdOptionStopRunningTask  *bool
-	guiCmdOptionShowManageWindow *bool
-	guiCmdOptionShowAboutWindow  *bool
+	guiCmdLockfile                       lockfile.Lockfile
+	guiCmdLockfilePath                   string
+	guiCmdOptionStopRunningTask          *bool
+	guiCmdOptionShowCreateAndStartDialog *bool
+	guiCmdOptionShowManageWindow         *bool
+	guiCmdOptionShowAboutWindow          *bool
 )
 
 func init() {
 	guiCmdOptionStopRunningTask = guiCmd.Flags().Bool("stop-running-task", false, "Stops the running task, if any")
+	guiCmdOptionShowCreateAndStartDialog = guiCmd.Flags().Bool("create-and-start", false, "Shows the Create and Start New Task dialog")
 	guiCmdOptionShowManageWindow = guiCmd.Flags().Bool("manage", false, "Shows the Manage Window")
 	guiCmdOptionShowAboutWindow = guiCmd.Flags().Bool("about", false, "Shows the About Window")
 }
@@ -92,6 +94,9 @@ func doGUI(_ *cobra.Command, _ []string) error {
 	}
 	if *guiCmdOptionShowAboutWindow {
 		gui.ShowTimetrackerWindowWithAbout()
+	}
+	if *guiCmdOptionShowCreateAndStartDialog {
+		gui.ShowTimetrackerWindowAndShowCreateAndStartDialog()
 	}
 	// Start the GUI
 	gui.StartGUI(app)

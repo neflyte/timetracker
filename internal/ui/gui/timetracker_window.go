@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"errors"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -9,9 +10,10 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/appstate"
-	"github.com/neflyte/timetracker/internal/errors"
+	tterrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/neflyte/timetracker/internal/ui/gui/dialogs"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
 	"github.com/rs/zerolog"
 	"regexp"
@@ -33,26 +35,28 @@ type timetrackerWindow interface {
 	ShowWithError(err error)
 	ShowWithManageWindow()
 	ShowAndStopRunningTask()
+	ShowAndDisplayCreateAndStartDialog()
 	Hide()
 	Close()
 	Get() timetrackerWindowData
 }
 
 type timetrackerWindowData struct {
-	App            *fyne.App
-	Window         fyne.Window
-	Container      *fyne.Container
-	StatusBox      *fyne.Container
-	SubStatusBox   *fyne.Container
-	ButtonBox      *fyne.Container
-	TaskList       *widgets.Tasklist
-	BtnStartTask   *widget.Button
-	BtnStopTask    *widget.Button
-	BtnManageTasks *widget.Button
-	BtnAbout       *widget.Button
-	BtnQuit        *widget.Button
-	Log            zerolog.Logger
-	mngWindow      manageWindow
+	App                         *fyne.App
+	Window                      fyne.Window
+	Container                   *fyne.Container
+	StatusBox                   *fyne.Container
+	SubStatusBox                *fyne.Container
+	ButtonBox                   *fyne.Container
+	TaskList                    *widgets.Tasklist
+	BtnStartTask                *widget.Button
+	BtnStopTask                 *widget.Button
+	BtnManageTasks              *widget.Button
+	BtnAbout                    *widget.Button
+	BtnQuit                     *widget.Button
+	createNewTaskAndStartDialog *dialogs.CreateAndStartTaskDialog
+	Log                         zerolog.Logger
+	mngWindow                   manageWindow
 
 	LblStatus      *widget.Label
 	LblStartTime   *widget.Label
@@ -78,23 +82,10 @@ func newTimetrackerWindow(app fyne.App) timetrackerWindow {
 func (t *timetrackerWindowData) initWindow() {
 	log := logger.GetFuncLogger(t.Log, "initWindow")
 	log.Debug().Msg("started")
+	t.createNewTaskAndStartDialog = dialogs.NewCreateAndStartTaskDialog(t.createAndStartTaskDialogCallback, t.Window)
 	t.TaskList = widgets.NewTasklist()
-	// t.TaskList.OnChanged = appstate.SetSelectedTask
 	t.TaskList.SelectionBinding().AddListener(binding.NewDataListener(func() {
-		selection, err := t.TaskList.SelectionBinding().Get()
-		if err != nil {
-			log.Err(err).Msg("error getting selection from binding")
-			return
-		}
-		if selection != "" {
-			if appstate.GetRunningTimesheet() == nil {
-				t.BtnStartTask.Enable()
-			} else {
-				t.BtnStartTask.Disable()
-			}
-			return
-		}
-		t.BtnStartTask.Disable()
+		t.tasklistSelectionChanged()
 	}))
 	t.BtnStartTask = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), t.doStartTask)
 	t.BtnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)
@@ -222,29 +213,24 @@ func (t *timetrackerWindowData) setupObservables() {
 			log.Trace().Msg("running timesheet observable is done")
 		},
 	)
-	/*log.Debug().Msg("ObsSelectedTask")
-	appstate.Observables()[appstate.KeySelectedTask].ForEach(
-		func(item interface{}) {
-			selectedTask, ok := item.(string)
-			if ok {
-				if selectedTask != "" {
-					if appstate.GetRunningTimesheet() == nil {
-						t.BtnStartTask.Enable()
-					} else {
-						t.BtnStartTask.Disable()
-					}
-					return
-				}
-				t.BtnStartTask.Disable()
-			}
-		},
-		func(err error) {
-			log.Err(err).Msg("error getting selected task from rxgo observable")
-		},
-		func() {
-			log.Trace().Msg("selected task observable is done")
-		},
-	)*/
+}
+
+func (t *timetrackerWindowData) tasklistSelectionChanged() {
+	log := logger.GetFuncLogger(t.Log, "tasklistSelectionChanged")
+	selection, err := t.TaskList.SelectionBinding().Get()
+	if err != nil {
+		log.Err(err).Msg("error getting selection from binding")
+		return
+	}
+	if selection != "" {
+		if appstate.GetRunningTimesheet() == nil {
+			t.BtnStartTask.Enable()
+		} else {
+			t.BtnStartTask.Disable()
+		}
+		return
+	}
+	t.BtnStartTask.Disable()
 }
 
 func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
@@ -350,7 +336,7 @@ func (t *timetrackerWindowData) doStopTask() {
 	log.Debug().Msgf("stopping task %s", runningTS.Task.Synopsis)
 	_, err := models.Task(new(models.TaskData)).StopRunningTask()
 	if err != nil {
-		log.Err(err).Msg(errors.StopRunningTaskError)
+		log.Err(err).Msg(tterrors.StopRunningTaskError)
 		dialog.NewError(err, t.Window).Show()
 	}
 	// Get a new timesheet and update the appstate
@@ -426,6 +412,12 @@ func (t *timetrackerWindowData) ShowAbout() {
 	t.doAbout()
 }
 
+// ShowAndDisplayCreateAndStartDialog shows the main window and then shows the Create and Start New Task dialog
+func (t *timetrackerWindowData) ShowAndDisplayCreateAndStartDialog() {
+	t.Show()
+	t.createNewTaskAndStartDialog.Show()
+}
+
 // Hide hides the main window and the manage window
 func (t *timetrackerWindowData) Hide() {
 	if t.mngWindow != nil {
@@ -455,4 +447,43 @@ func (t *timetrackerWindowData) maybeStopRunningTask(stopTask bool) {
 		log.Err(err).Msg("error stopping the running task")
 		dialog.NewError(err, t.Window).Show()
 	}
+}
+
+func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart bool) {
+	log := logger.GetFuncLogger(t.Log, "createAndStartTaskDialogCallback")
+	if !createAndStart {
+		return
+	}
+	taskData := t.createNewTaskAndStartDialog.GetTask()
+	if taskData == nil {
+		log.Error().Msg("taskData was nil; this is unexpected")
+		return
+	}
+	// Create the new task
+	err := taskData.Create()
+	if err != nil {
+		log.Err(err).Msgf("error creating new task %s", taskData.String())
+		return
+	}
+	log.Debug().Msgf("created new task %s", taskData.String())
+	t.createNewTaskAndStartDialog.Reset()
+	// Stop the running task
+	stoppedTimesheet, err := taskData.StopRunningTask()
+	if err != nil && !errors.Is(err, tterrors.ErrNoRunningTask{}) {
+		log.Err(err).Msg("error stopping current task")
+		return
+	}
+	if stoppedTimesheet != nil {
+		log.Debug().Msgf("stopped running task %s", stoppedTimesheet.String())
+	}
+	// Start the new task
+	timesheetData := new(models.TimesheetData)
+	timesheetData.Task = *taskData
+	timesheetData.StartTime = time.Now()
+	err = timesheetData.Create()
+	if err != nil {
+		log.Err(err).Msg("error stopping current task")
+		return
+	}
+	log.Debug().Msgf("task %s started at %s", taskData.String(), timesheetData.StartTime.String())
 }

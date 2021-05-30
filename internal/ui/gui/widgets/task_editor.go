@@ -68,8 +68,6 @@ func NewTaskEditor() *TaskEditor {
 	}))
 	te.taskData = models.TaskData{}
 	te.taskDataChannel = make(chan rxgo.Item, taskEditorEventChannelBufferSize)
-	// te.taskSavedObservable = rxgo.FromEventSource(te.taskSavedChannel)
-	// te.editCancelledObservable = rxgo.FromEventSource(te.editCancelledChannel)
 	te.observerablesMap = map[string]rxgo.Observable{
 		TaskEditorTaskSavedEventKey:     rxgo.FromEventSource(te.taskSavedChannel),
 		TaskEditorEditCancelledEventKey: rxgo.FromEventSource(te.editCancelledChannel),
@@ -89,7 +87,6 @@ func (te *TaskEditor) getTask() *models.TaskData {
 
 // SetTask sets the current models.TaskData struct
 func (te *TaskEditor) SetTask(task *models.TaskData) error {
-	// log := logger.GetFuncLogger(te.log, "SetTask")
 	if task != nil {
 		te.taskDataChannel <- rxgo.Of(task)
 		te.taskData = *task

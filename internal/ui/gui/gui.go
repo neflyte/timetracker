@@ -69,6 +69,11 @@ func ShowTimetrackerWindowAndStopRunningTask() {
 	mainWindow.ShowAndStopRunningTask()
 }
 
+// ShowTimetrackerWindowAndShowCreateAndStartDialog shows the main timetracker window and then shows the Create and Start dialog
+func ShowTimetrackerWindowAndShowCreateAndStartDialog() {
+	mainWindow.ShowAndDisplayCreateAndStartDialog()
+}
+
 func guiFunc(appPtr *fyne.App) {
 	log := logger.GetFuncLogger(guiLogger, "guiFunc")
 	if appPtr != nil {

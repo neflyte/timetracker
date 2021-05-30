@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/neflyte/timetracker/internal/database"
-	"github.com/neflyte/timetracker/internal/errors"
+	tterrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
@@ -72,13 +72,13 @@ func (td *TaskData) String() string {
 // Create creates a new task
 func (td *TaskData) Create() error {
 	if td.ID != 0 {
-		return errors.ErrInvalidTaskState{
-			Details: errors.OverwriteTaskByCreateError,
+		return tterrors.ErrInvalidTaskState{
+			Details: tterrors.OverwriteTaskByCreateError,
 		}
 	}
 	if td.Synopsis == "" {
-		return errors.ErrInvalidTaskState{
-			Details: errors.EmptySynopsisTaskError,
+		return tterrors.ErrInvalidTaskState{
+			Details: tterrors.EmptySynopsisTaskError,
 		}
 	}
 	return database.Get().Create(td).Error
@@ -87,8 +87,8 @@ func (td *TaskData) Create() error {
 // Load attempts to load the task specified by ID or Synopsis
 func (td *TaskData) Load(withDeleted bool) error {
 	if td.ID == 0 && td.Synopsis == "" {
-		return errors.ErrInvalidTaskState{
-			Details: errors.LoadInvalidTaskError,
+		return tterrors.ErrInvalidTaskState{
+			Details: tterrors.LoadInvalidTaskError,
 		}
 	}
 	db := database.Get()
@@ -104,8 +104,8 @@ func (td *TaskData) Load(withDeleted bool) error {
 // Delete marks the task as deleted
 func (td *TaskData) Delete() error {
 	if td.ID == 0 {
-		return errors.ErrInvalidTaskState{
-			Details: errors.DeleteInvalidTaskError,
+		return tterrors.ErrInvalidTaskState{
+			Details: tterrors.DeleteInvalidTaskError,
 		}
 	}
 	err := td.Load(false)
@@ -140,13 +140,13 @@ func (td *TaskData) Search(text string) ([]TaskData, error) {
 // Update writes task changes to the database
 func (td *TaskData) Update(withDeleted bool) error {
 	if td.ID == 0 {
-		return errors.ErrInvalidTaskState{
-			Details: errors.UpdateInvalidTaskError,
+		return tterrors.ErrInvalidTaskState{
+			Details: tterrors.UpdateInvalidTaskError,
 		}
 	}
 	if td.Synopsis == "" {
-		return errors.ErrInvalidTaskState{
-			Details: errors.UpdateEmptySynopsisTaskError,
+		return tterrors.ErrInvalidTaskState{
+			Details: tterrors.UpdateEmptySynopsisTaskError,
 		}
 	}
 	db := database.Get()
@@ -166,15 +166,14 @@ func (td *TaskData) StopRunningTask() (timesheetData *TimesheetData, err error) 
 	}
 	// No running tasks, return nil
 	if len(timesheets) == 0 {
-		log.Error().Msg(errors.NoRunningTasksError)
-		return nil, fmt.Errorf(errors.NoRunningTasksError)
+		return nil, tterrors.ErrNoRunningTask{}
 	}
 	timesheetData = &timesheets[0]
 	stoptime := new(sql.NullTime)
 	err = stoptime.Scan(time.Now())
 	if err != nil {
-		log.Err(err).Msg(errors.ScanNowIntoSQLNullTimeError)
-		return nil, err
+		log.Err(err).Msg(tterrors.ScanNowIntoSQLNullTimeError)
+		return nil, tterrors.ErrScanNowIntoSQLNull{Wrapped: err}
 	}
 	timesheetData.StopTime = *stoptime
 	err = Timesheet(timesheetData).Update()
