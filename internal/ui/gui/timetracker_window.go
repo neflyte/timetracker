@@ -292,15 +292,16 @@ func (t *timetrackerWindowData) doStartTask() {
 	}
 	// TODO: convert from selectedTask string to task ID so we can start a new timesheet
 	if taskNameRE.MatchString(selection) {
+		var taskIDInt int
 		matches := taskNameRE.FindStringSubmatch(selection)
 		taskIDString := matches[1]
-		taskIDInt, err := strconv.Atoi(taskIDString)
+		taskIDInt, err = strconv.Atoi(taskIDString)
 		if err != nil {
 			log.Err(err).Msgf("err converting taskIDString '%s' to int", taskIDString)
 			dialog.NewError(err, t.Window).Show()
 			return
 		}
-		taskData := new(models.TaskData)
+		taskData := models.NewTaskData()
 		taskData.ID = uint(taskIDInt)
 		err = models.Task(taskData).Load(false)
 		if err != nil {
@@ -319,29 +320,22 @@ func (t *timetrackerWindowData) doStartTask() {
 		}
 		t.BtnStopTask.Enable()
 		t.BtnStartTask.Disable()
-		appstate.UpdateRunningTimesheet()
+		appstate.SetRunningTimesheet(timesheetData)
 	}
 	log.Trace().Msg("done")
 }
 
 func (t *timetrackerWindowData) doStopTask() {
 	log := logger.GetFuncLogger(t.Log, "doStopTask")
-	log.Trace().Msg("started")
-	runningTS := appstate.GetRunningTimesheet()
-	if runningTS == nil {
-		log.Warn().Msg("no timesheet is running")
-		return
-	}
 	// Stop the running task
-	log.Debug().Msgf("stopping task %s", runningTS.Task.Synopsis)
+	log.Debug().Msg("stopping running task")
 	_, err := models.Task(new(models.TaskData)).StopRunningTask()
-	if err != nil {
+	if err != nil && !errors.Is(err, tterrors.ErrNoRunningTask{}) {
 		log.Err(err).Msg(tterrors.StopRunningTaskError)
 		dialog.NewError(err, t.Window).Show()
 	}
-	// Get a new timesheet and update the appstate
-	appstate.UpdateRunningTimesheet()
-	log.Trace().Msg("done")
+	// Update the appstate
+	appstate.SetRunningTimesheet(nil)
 }
 
 func (t *timetrackerWindowData) doManageTasks() {
@@ -447,6 +441,7 @@ func (t *timetrackerWindowData) maybeStopRunningTask(stopTask bool) {
 		log.Err(err).Msg("error stopping the running task")
 		dialog.NewError(err, t.Window).Show()
 	}
+	appstate.SetRunningTimesheet(nil)
 }
 
 func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart bool) {
@@ -486,4 +481,5 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 		return
 	}
 	log.Debug().Msgf("task %s started at %s", taskData.String(), timesheetData.StartTime.String())
+	appstate.SetRunningTimesheet(timesheetData)
 }

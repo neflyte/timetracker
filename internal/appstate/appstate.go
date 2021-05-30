@@ -85,8 +85,8 @@ func GetRunningTimesheet() *models.TimesheetData {
 	return tsd.(*models.TimesheetData)
 }
 
-// setRunningTimesheet sets the timesheet object
-func setRunningTimesheet(newTimesheet *models.TimesheetData) {
+// SetRunningTimesheet sets the timesheet object
+func SetRunningTimesheet(newTimesheet *models.TimesheetData) {
 	log := appstateLog.With().
 		Str("func", "setRunningTimesheet").
 		Str("key", KeyRunningTimesheet).

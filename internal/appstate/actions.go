@@ -50,7 +50,7 @@ func UpdateRunningTimesheet() {
 	}()
 	timesheets, err := models.Timesheet(new(models.TimesheetData)).SearchOpen()
 	if err != nil {
-		setRunningTimesheet(nil) // Reset running timesheet
+		SetRunningTimesheet(nil) // Reset running timesheet
 		log.Err(err).Msg("error getting running timesheet")
 		if GetLastState() != constants.TimesheetStatusError {
 			setLastState(constants.TimesheetStatusError)
@@ -60,13 +60,13 @@ func UpdateRunningTimesheet() {
 			// No running task
 			log.Trace().Msg("there are no running tasks")
 			if GetLastState() != constants.TimesheetStatusIdle {
-				setRunningTimesheet(nil) // Reset running timesheet
+				SetRunningTimesheet(nil) // Reset running timesheet
 				setLastState(constants.TimesheetStatusIdle)
 			}
 		} else {
 			// Running task...
 			log.Trace().Msgf("there are %d running tasks", len(timesheets))
-			setRunningTimesheet(&timesheets[0])
+			SetRunningTimesheet(&timesheets[0])
 			if GetLastState() != constants.TimesheetStatusRunning {
 				setLastState(constants.TimesheetStatusRunning)
 			}
