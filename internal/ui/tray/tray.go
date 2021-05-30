@@ -19,6 +19,10 @@ const (
 	guiOptionCreateAndStartTask = "--create-and-start"
 	guiOptionShowManageWindow   = "--manage"
 	guiOptionShowAboutWindow    = "--about"
+
+	statusStartTaskTitle       = "Start new task"
+	statusStartTaskDescription = "Display a task selector and start a task"
+	statusStopTaskDescription  = "Stop the running task"
 )
 
 var (
@@ -51,7 +55,7 @@ func onReady() {
 	setTrayTitle("Timetracker")
 	systray.SetTooltip("Timetracker")
 	systray.SetIcon(icons.Check)
-	mStatus = systray.AddMenuItem("Start new task", "Display a task selector and start a task")
+	mStatus = systray.AddMenuItem(statusStartTaskTitle, statusStartTaskDescription)
 	mCreateAndStart = systray.AddMenuItem("Create and Start new task", "Display a dialog to input new task details and then start the task")
 	mManage = systray.AddMenuItem("Manage tasks", "Display the Manage Tasks window to add, change, or remove tasks")
 	// TODO: List the top 5 last-started tasks as easy-start options
@@ -70,8 +74,7 @@ func onReady() {
 			}
 		},
 		func(err error) {
-			systray.SetIcon(icons.Error)
-			mStatus.SetTitle("An error occurred; click for details")
+			log.Err(err).Msg("error from running timesheet observable")
 		},
 		func() {
 			log.Debug().Msg("running timesheet observable is done")
@@ -99,8 +102,8 @@ func updateStatus(tsd *models.TimesheetData) {
 		// No running timesheet
 		log.Trace().Msg("got nil running timesheet item")
 		systray.SetIcon(icons.Check)
-		mStatus.SetTitle("Start new task")
-		mStatus.SetTooltip("Display a task selector and start a task")
+		mStatus.SetTitle(statusStartTaskTitle)
+		mStatus.SetTooltip(statusStartTaskDescription)
 		return
 	}
 	log.Trace().Msgf("got running timesheet object: %s", tsd.String())
@@ -111,7 +114,7 @@ func updateStatus(tsd *models.TimesheetData) {
 		time.Since(tsd.StartTime).Truncate(time.Second).String(),
 	)
 	mStatus.SetTitle(statusText)
-	mStatus.SetTooltip("Stop the running task")
+	mStatus.SetTooltip(statusStopTaskDescription)
 }
 
 // FIXME: figure out if there is a way to safely reduce complexity in mainLoop below to remove the nolint directive
@@ -141,6 +144,7 @@ func mainLoop(quitChan chan bool) { //nolint:cyclop
 	}
 }
 
+// launchGUI launches this executable again with gui-specific parameters
 func launchGUI(options ...string) {
 	log := logger.GetFuncLogger(trayLogger, "launchGUI")
 	log.Debug().Msgf("options=%#v", options)
@@ -173,6 +177,7 @@ func handleStatusClick() {
 }
 
 func setTrayTitle(title string) {
+	// Only set the title if we're not on macOS so we don't see the app name beside the icon in the menu bar
 	if runtime.GOOS != "darwin" {
 		systray.SetTitle(title)
 	}
