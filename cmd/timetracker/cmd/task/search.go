@@ -7,12 +7,13 @@ import (
 	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
-	"github.com/neflyte/timetracker/internal/utils"
+	"github.com/neflyte/timetracker/internal/ui/cli"
 	"github.com/spf13/cobra"
 	"strconv"
 )
 
 var (
+	// SearchCmd represents the command that searches for tasks
 	SearchCmd = &cobra.Command{
 		Use:     "search [search terms]",
 		Aliases: []string{"find"},
@@ -24,9 +25,9 @@ var (
 
 func searchTask(_ *cobra.Command, args []string) error {
 	log := logger.GetLogger("searchTask")
-	tasks, err := models.Task(new(models.TaskData)).Search(args[0])
+	tasks, err := models.Task(models.NewTaskData()).Search(args[0])
 	if err != nil {
-		utils.PrintAndLogError(errors.SearchTaskError, err, log)
+		cli.PrintAndLogError(log, err, errors.SearchTaskError)
 		return err
 	}
 	table := simpletable.New()

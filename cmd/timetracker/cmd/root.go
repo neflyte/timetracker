@@ -15,8 +15,10 @@ const (
 )
 
 var (
-	AppVersion = "" // AppVersion is the application version number
-	rootCmd    = &cobra.Command{
+	// AppVersion is the application version number
+	AppVersion = "dev"
+
+	rootCmd = &cobra.Command{
 		Version:           AppVersion,
 		Use:               "timetracker",
 		Short:             "A simple time tracker",
@@ -33,14 +35,16 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&configFileName, "config", "c", "", "Specify the full path and filename of the database to use")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "logLevel", "l", "info", "Specify the logging level")
 	rootCmd.PersistentFlags().BoolVar(&consoleLogging, "console", false, "Log messages to the console as well as the log file")
-	rootCmd.AddCommand(taskCmd, timesheetCmd, statusCmd, trayCmd)
+	rootCmd.AddCommand(taskCmd, timesheetCmd, statusCmd, trayCmd, guiCmd)
 	rootCmd.SetVersionTemplate(fmt.Sprintf("timetracker %s", AppVersion))
 }
 
+// Execute is the main entry point for the CLI
 func Execute() {
 	log := logger.GetLogger("Execute")
-	if err := rootCmd.Execute(); err != nil {
-		log.Printf("error: %s\n", err)
+	err := rootCmd.Execute()
+	if err != nil {
+		log.Err(err).Msg("error executing root command")
 		os.Exit(1)
 	}
 }
@@ -69,7 +73,7 @@ func initDatabase() {
 		log.Fatal().Msgf("error opening database at %s: %s\n", configFile, err)
 	}
 	log.Printf("database opened")
-	database.DB = db
+	database.Set(db)
 	err = db.AutoMigrate(new(models.TaskData), new(models.TimesheetData))
 	if err != nil {
 		cleanUp(nil, nil)
@@ -83,7 +87,7 @@ func initLogger() {
 }
 
 func cleanUp(_ *cobra.Command, _ []string) {
-	database.Close(database.DB)
-	database.DB = nil
+	database.Close(database.Get())
+	database.Set(nil)
 	logger.CleanupLogger()
 }

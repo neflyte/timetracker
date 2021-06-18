@@ -8,73 +8,92 @@ import (
 )
 
 var (
+	// fyneApp is the main fyne app instance
+	fyneApp fyne.App
+
 	guiInitialized = false
-	FyneApp        fyne.App
-	ttWin          TTWindow
+	mainWindow     timetrackerWindow
+	guiLogger      = logger.GetPackageLogger("gui")
+	guiStarted     = false
 )
 
-func Run() error {
-	StartGUI()
-	ttWin.Get().Window.ShowAndRun()
-	return nil
-}
-
-func StartGUI() {
-	if appstate.GetGUIStarted() {
+// StartGUI starts the GUI app
+func StartGUI(app *fyne.App) {
+	if guiStarted {
 		return
 	}
-	initGUI()
+	guiFunc(app)
 }
 
+// StopGUI quits the GUI app
 func StopGUI() {
-	if !appstate.GetGUIStarted() {
+	if !guiStarted {
 		return
 	}
-	FyneApp.Quit()
+	fyneApp.Quit()
 }
 
-func initGUI() {
-	log := logger.GetLogger("initGUI")
+// InitGUI initializes the GUI app
+func InitGUI() *fyne.App {
+	log := logger.GetFuncLogger(guiLogger, "initGUI")
 	if guiInitialized {
-		log.Debug().Msg("GUI already initialized")
-		return
+		log.Warn().Msg("GUI already initialized")
+		return nil
 	}
 	// Set up fyne
-	log.Trace().Msg("setting up FyneApp")
-	FyneApp = app.New()
+	fyneApp = app.NewWithID("Timetracker")
 	// Create the main timetracker window
-	log.Trace().Msg("creating timetracker window")
-	ttWin = NewTimetrackerWindow(FyneApp)
-	if ttWin != nil {
-		log.Trace().Msg("set ttWin as master")
-		ttWin.Get().Window.SetMaster()
-	}
-	log.Debug().Msg("GUI initialized")
+	mainWindow = newTimetrackerWindow(fyneApp)
+	mainWindow.Get().Window.SetMaster()
 	guiInitialized = true
+	return &fyneApp
 }
 
+// ShowTimetrackerWindow shows the main timetracker window
 func ShowTimetrackerWindow() {
-	if !appstate.GetGUIStarted() {
-		return
-	}
-	ttWin.Show()
+	mainWindow.Show()
 }
 
-func CloseTimetrackerWindow() {
-	if !appstate.GetGUIStarted() {
-		return
-	}
-	ttWin.Close()
+// ShowTimetrackerWindowWithAbout shows the main timetracker window and then shows the about dialog
+func ShowTimetrackerWindowWithAbout() {
+	mainWindow.ShowAbout()
 }
 
-func guiFunc(app *fyne.App) {
-	log := logger.GetLogger("guiFunc")
-	appstate.SetGUIStarted(true)
-	defer appstate.SetGUIStarted(false)
-	if app != nil {
-		log.Trace().Msg("calling app.Run()")
-		(*app).Run()
+// ShowTimetrackerWindowWithManageWindow shows the main timetracker window and then shows the manage window
+func ShowTimetrackerWindowWithManageWindow() {
+	mainWindow.ShowWithManageWindow()
+}
+
+// ShowTimetrackerWindowAndStopRunningTask shows the main timetracker window and then confirms if the running task should be stopped
+func ShowTimetrackerWindowAndStopRunningTask() {
+	mainWindow.ShowAndStopRunningTask()
+}
+
+// ShowTimetrackerWindowAndShowCreateAndStartDialog shows the main timetracker window and then shows the Create and Start dialog
+func ShowTimetrackerWindowAndShowCreateAndStartDialog() {
+	mainWindow.ShowAndDisplayCreateAndStartDialog()
+}
+
+func guiFunc(appPtr *fyne.App) {
+	log := logger.GetFuncLogger(guiLogger, "guiFunc")
+	if appPtr != nil {
+		appInstance := *appPtr
+		// Start ActionLoop
+		actionLoopQuitChan := make(chan bool, 1)
+		go appstate.ActionLoop(actionLoopQuitChan)
+		// Set gui started state
+		guiStarted = true
+		defer func() {
+			guiStarted = false
+		}()
+		// start Fyne
+		log.Trace().Msg("calling appInstance.Run()")
+		appInstance.Run()
 		log.Trace().Msg("fyne exited")
+		// stop actionloop
+		actionLoopQuitChan <- true
+	} else {
+		log.Error().Msg("appPtr was nil; this is unexpected")
 	}
 	log.Trace().Msg("done")
 }

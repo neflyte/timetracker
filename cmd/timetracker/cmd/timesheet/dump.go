@@ -9,13 +9,14 @@ import (
 	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
-	"github.com/neflyte/timetracker/internal/utils"
+	"github.com/neflyte/timetracker/internal/ui/cli"
 	"github.com/spf13/cobra"
 	"strconv"
 	"time"
 )
 
 var (
+	// DumpCmd represents the command that prints all timesheets to the console
 	DumpCmd = &cobra.Command{
 		Use:     "dump",
 		Aliases: []string{"d"},
@@ -53,12 +54,11 @@ func dumpTimesheets(_ *cobra.Command, _ []string) (err error) {
 				Time:  dEnd,
 			},
 		}).SearchDateRange()
-		//db = db.Where("start_time >= ? AND stop_time <= ?", dStart, dEnd)
 	} else {
 		sheets, err = models.Timesheet(new(models.TimesheetData)).LoadAll(false)
 	}
 	if err != nil {
-		utils.PrintAndLogError(errors.ListTimesheetError, err, log)
+		cli.PrintAndLogError(log, err, errors.ListTimesheetError)
 		return err
 	}
 	table := simpletable.New()

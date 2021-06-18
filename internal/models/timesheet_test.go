@@ -14,12 +14,12 @@ import (
 func TestUnit_Timesheet_CreateAndLoad_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task
-	td := new(TaskData)
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td := NewTaskData()
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
 
@@ -45,51 +45,50 @@ func TestUnit_Timesheet_CreateAndLoad_Nominal(t *testing.T) {
 func TestUnit_Timesheet_Create_InvalidID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	tsd := new(TimesheetData)
 	tsd.ID = 1
 	err := Timesheet(tsd).Create()
 	require.NotNil(t, err)
-	_, ok := err.(ttErrors.ErrInvalidTimesheetState)
-	require.True(t, ok)
+	require.True(t, errors.Is(err, ttErrors.ErrInvalidTimesheetState{Details: ttErrors.OverwriteTimesheetByCreateError}))
 }
 
 func TestUnit_Timesheet_Create_InvalidTaskID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	tsd := new(TimesheetData)
 	tsd.Task.ID = 0
 	err := Timesheet(tsd).Create()
 	require.NotNil(t, err)
-	_, ok := err.(ttErrors.ErrInvalidTimesheetState)
-	require.True(t, ok)
+	require.True(t, errors.Is(err, ttErrors.ErrInvalidTimesheetState{Details: ttErrors.TimesheetWithoutTaskError}))
 }
 
 func TestUnit_Timesheet_Load_InvalidID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	tsd := new(TimesheetData)
 	tsd.Task.ID = 0
 	err := Timesheet(tsd).Load()
 	require.NotNil(t, err)
-	_, ok := err.(ttErrors.ErrInvalidTimesheetState)
-	require.True(t, ok)
+	require.True(t, errors.Is(err, ttErrors.ErrInvalidTimesheetState{
+		Details: ttErrors.LoadInvalidTimesheetError,
+	}))
 }
 
 func TestUnit_Timesheet_Delete_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task
-	td := new(TaskData)
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td := NewTaskData()
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
 
@@ -113,18 +112,25 @@ func TestUnit_Timesheet_Delete_Nominal(t *testing.T) {
 	require.True(t, errors.Is(err, gorm.ErrRecordNotFound))
 }
 
+func TestUnit_Timesheet_Delete_InvalidID(t *testing.T) {
+	tsd := new(TimesheetData)
+	err := Timesheet(tsd).Delete()
+	require.NotNil(t, err)
+	require.True(t, errors.Is(err, ttErrors.ErrInvalidTimesheetState{Details: ttErrors.DeleteInvalidTimesheetError}))
+}
+
 func TestUnit_Timesheet_LoadAll_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create two tasks
-	td := new(TaskData)
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td := NewTaskData()
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
-	td2 := new(TaskData)
+	td2 := NewTaskData()
 	td2.Synopsis = "Task-2"
 	td2.Description = "Task number two"
 	err = Task(td2).Create()
@@ -170,12 +176,12 @@ func TestUnit_Timesheet_LoadAll_Nominal(t *testing.T) {
 func TestUnit_Timesheet_SearchOpen_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task
-	td := new(TaskData)
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td := NewTaskData()
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
 
@@ -200,12 +206,12 @@ func TestUnit_Timesheet_SearchOpen_Nominal(t *testing.T) {
 func TestUnit_Timesheet_Update_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	// Create a task
-	td := new(TaskData)
-	td.Synopsis = "Task-1"
-	td.Description = "This is a task"
+	td := NewTaskData()
+	td.Synopsis = testTaskSynopsis
+	td.Description = testTaskDescription
 	err := Task(td).Create()
 	require.Nil(t, err)
 
@@ -234,26 +240,24 @@ func TestUnit_Timesheet_Update_Nominal(t *testing.T) {
 func TestUnit_Timesheet_Update_InvalidID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	tsd := new(TimesheetData)
 	tsd.ID = 0
 	err := Timesheet(tsd).Update()
 	require.NotNil(t, err)
-	_, ok := err.(ttErrors.ErrInvalidTimesheetState)
-	require.True(t, ok)
+	require.True(t, errors.Is(err, ttErrors.ErrInvalidTimesheetState{Details: ttErrors.UpdateInvalidTimesheetError}))
 }
 
 func TestUnit_Timesheet_Update_InvalidTaskID(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
-	database.DB = db
+	database.Set(db)
 
 	tsd := new(TimesheetData)
 	tsd.ID = 1
 	tsd.Task.ID = 0
 	err := Timesheet(tsd).Update()
 	require.NotNil(t, err)
-	_, ok := err.(ttErrors.ErrInvalidTimesheetState)
-	require.True(t, ok)
+	require.True(t, errors.Is(err, ttErrors.ErrInvalidTimesheetState{Details: ttErrors.TimesheetWithoutTaskError}))
 }

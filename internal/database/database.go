@@ -1,7 +1,6 @@
 package database
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/neflyte/timetracker/internal/logger"
 	"gorm.io/driver/sqlite"
@@ -9,21 +8,26 @@ import (
 )
 
 var (
-	DB         *gorm.DB
+	// dbInstance is the singleton database handle
+	dbInstance *gorm.DB
+
 	gormConfig = &gorm.Config{
-		Logger: NewGormLogger(),
+		Logger: newGormLogger(),
 	}
+	databaseLog = logger.GetPackageLogger("database")
 )
 
+// Open opens a new database connection to the specified SQLite database file
 func Open(fileName string) (*gorm.DB, error) {
-	log := logger.GetLogger("Open")
+	log := logger.GetFuncLogger(databaseLog, "Open")
 	dsn := fmt.Sprintf("file:%s?_foreign_keys=1&_journal_mode=WAL&_mode=rwc", fileName)
 	log.Printf("opening sqlite db at %s\n", dsn)
 	return gorm.Open(sqlite.Open(dsn), gormConfig)
 }
 
+// Close closes an open database connection
 func Close(db *gorm.DB) {
-	log := logger.GetLogger("Close")
+	log := logger.GetFuncLogger(databaseLog, "Close")
 	if db != nil {
 		sqldb, err := db.DB()
 		if err != nil {
@@ -38,12 +42,12 @@ func Close(db *gorm.DB) {
 	}
 }
 
-func CloseRows(rows *sql.Rows) {
-	log := logger.GetLogger("CloseRows")
-	if rows != nil {
-		err := rows.Close()
-		if err != nil {
-			log.Printf("error closing rows: %s\n", err)
-		}
-	}
+// Get returns the singleton database connection
+func Get() *gorm.DB {
+	return dbInstance
+}
+
+// Set sets the singleton database connection
+func Set(db *gorm.DB) {
+	dbInstance = db
 }

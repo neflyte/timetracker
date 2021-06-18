@@ -3,26 +3,53 @@ package models
 import (
 	"database/sql"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/database"
-	"github.com/neflyte/timetracker/internal/errors"
+	tterrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
-	"github.com/neflyte/timetracker/internal/utils"
+	"github.com/rs/zerolog"
 	"gorm.io/gorm"
+	"strconv"
 	"time"
 )
 
+// TaskData is the main Task data strucure
 type TaskData struct {
 	gorm.Model
-	Synopsis    string `gorm:"uniqueindex"`
+	// Synopsis is a short title or identifier of the task
+	Synopsis string `gorm:"uniqueindex"`
+	// Description is a longer description of the task
 	Description string
+
+	log zerolog.Logger `gorm:"-"`
 }
 
+// NewTaskData creates a new TaskData structure and returns a pointer to it
+func NewTaskData() *TaskData {
+	return &TaskData{
+		log: logger.GetStructLogger("TaskData"),
+	}
+}
+
+// TableName implements schema.Tabler
 func (td *TaskData) TableName() string {
 	return "task"
 }
 
+// Clone creates a clone of this TaskData object and returns a pointer to it
+func (td *TaskData) Clone() *TaskData {
+	clone := NewTaskData()
+	// Clone GORM fields
+	clone.ID = td.ID
+	clone.CreatedAt = td.CreatedAt
+	clone.UpdatedAt = td.UpdatedAt
+	clone.DeletedAt = td.DeletedAt
+	// Clone TaskData fields
+	clone.Synopsis = td.Synopsis
+	clone.Description = td.Description
+	return clone
+}
+
+// Task is the main interface to task definitions
 type Task interface {
 	Create() error
 	Load(withDeleted bool) error
@@ -30,37 +57,41 @@ type Task interface {
 	LoadAll(withDeleted bool) ([]TaskData, error)
 	Search(text string) ([]TaskData, error)
 	Update(withDeleted bool) error
-	StopRunningTask() error
+	StopRunningTask() (*TimesheetData, error)
 	Clear()
 	String() string
+	FindTaskBySynopsis(tasks []TaskData, synopsis string) *TaskData
+	Resolve(arg string) (uint, string)
 }
 
-// String implements Stringer
+// String implements fmt.Stringer
 func (td *TaskData) String() string {
 	return fmt.Sprintf("[%d] %s: %s", td.ID, td.Synopsis, td.Description)
 }
 
+// Create creates a new task
 func (td *TaskData) Create() error {
 	if td.ID != 0 {
-		return errors.ErrInvalidTaskState{
-			Details: "cannot overwrite a task by creating it",
+		return tterrors.ErrInvalidTaskState{
+			Details: tterrors.OverwriteTaskByCreateError,
 		}
 	}
 	if td.Synopsis == "" {
-		return errors.ErrInvalidTaskState{
-			Details: "cannot create a task with an empty synopsis",
+		return tterrors.ErrInvalidTaskState{
+			Details: tterrors.EmptySynopsisTaskError,
 		}
 	}
-	return database.DB.Create(td).Error
+	return database.Get().Create(td).Error
 }
 
+// Load attempts to load the task specified by ID or Synopsis
 func (td *TaskData) Load(withDeleted bool) error {
 	if td.ID == 0 && td.Synopsis == "" {
-		return errors.ErrInvalidTaskState{
-			Details: "cannot load a task that does not exist",
+		return tterrors.ErrInvalidTaskState{
+			Details: tterrors.LoadInvalidTaskError,
 		}
 	}
-	db := database.DB
+	db := database.Get()
 	if withDeleted {
 		db = db.Unscoped()
 	}
@@ -70,21 +101,23 @@ func (td *TaskData) Load(withDeleted bool) error {
 	return db.Where("synopsis = ?", td.Synopsis).First(td).Error
 }
 
+// Delete marks the task as deleted
 func (td *TaskData) Delete() error {
-	if td.ID <= 0 && td.Synopsis == "" {
-		return errors.ErrInvalidTaskState{
-			Details: "cannot delete a task that does not exist",
+	if td.ID == 0 {
+		return tterrors.ErrInvalidTaskState{
+			Details: tterrors.DeleteInvalidTaskError,
 		}
 	}
 	err := td.Load(false)
 	if err != nil {
 		return err
 	}
-	return database.DB.Delete(td).Error
+	return database.Get().Delete(td).Error
 }
 
+// LoadAll loads all tasks in the database, optionally including deleted tasks
 func (td *TaskData) LoadAll(withDeleted bool) ([]TaskData, error) {
-	db := database.DB
+	db := database.Get()
 	if withDeleted {
 		db = db.Unscoped()
 	}
@@ -93,9 +126,10 @@ func (td *TaskData) LoadAll(withDeleted bool) ([]TaskData, error) {
 	return tasks, err
 }
 
+// Search searches for a task by synopsis or description using SQL LIKE
 func (td *TaskData) Search(text string) ([]TaskData, error) {
 	tasks := make([]TaskData, 0)
-	err := database.DB.
+	err := database.Get().
 		Model(new(TaskData)).
 		Where("synopsis LIKE ? OR description LIKE ?", text, text).
 		Find(&tasks).
@@ -103,58 +137,54 @@ func (td *TaskData) Search(text string) ([]TaskData, error) {
 	return tasks, err
 }
 
+// Update writes task changes to the database
 func (td *TaskData) Update(withDeleted bool) error {
 	if td.ID == 0 {
-		return errors.ErrInvalidTaskState{
-			Details: "cannot update a task that does not exist",
+		return tterrors.ErrInvalidTaskState{
+			Details: tterrors.UpdateInvalidTaskError,
 		}
 	}
 	if td.Synopsis == "" {
-		return errors.ErrInvalidTaskState{
-			Details: "cannot update a task to have an empty synopsis",
+		return tterrors.ErrInvalidTaskState{
+			Details: tterrors.UpdateEmptySynopsisTaskError,
 		}
 	}
-	db := database.DB
+	db := database.Get()
 	if withDeleted {
 		db = db.Unscoped()
 	}
 	return db.Save(td).Error
 }
 
-func (td *TaskData) StopRunningTask() error {
-	log := logger.GetLogger("StopRunningTask")
+// StopRunningTask stops the currently running task, if any
+func (td *TaskData) StopRunningTask() (timesheetData *TimesheetData, err error) {
+	log := logger.GetFuncLogger(td.log, "StopRunningTask")
 	timesheets, err := Timesheet(new(TimesheetData)).SearchOpen()
 	if err != nil {
-		utils.PrintAndLogError(errors.LoadTaskError, err, log)
-		return err
+		log.Err(err).Msg("error searching for open timesheets")
+		return nil, err
 	}
 	// No running tasks, return nil
 	if len(timesheets) == 0 {
-		return nil
+		return nil, tterrors.ErrNoRunningTask{}
 	}
-	timesheetData := &timesheets[0]
+	timesheetData = &timesheets[0]
 	stoptime := new(sql.NullTime)
 	err = stoptime.Scan(time.Now())
 	if err != nil {
-		utils.PrintAndLogError(errors.ScanNowIntoSQLNullTimeError, err, log)
-		return err
+		log.Err(err).Msg(tterrors.ScanNowIntoSQLNullTimeError)
+		return nil, tterrors.ErrScanNowIntoSQLNull{Wrapped: err}
 	}
 	timesheetData.StopTime = *stoptime
 	err = Timesheet(timesheetData).Update()
 	if err != nil {
-		utils.PrintAndLogError(errors.StopRunningTaskError, err, log)
-		return err
+		log.Err(err).Msg("error updating running timesheet")
+		return nil, err
 	}
-	log.Info().Msgf("task id %d (timesheet id %d) stopped\n", timesheetData.Task.ID, timesheetData.ID)
-	fmt.Println(
-		color.WhiteString("Task ID %d", timesheetData.Task.ID),
-		color.YellowString("stopped"),
-		color.WhiteString("at %s", timesheetData.StopTime.Time.Format(constants.TimestampLayout)),
-		color.BlueString(timesheetData.StopTime.Time.Sub(timesheetData.StartTime).Truncate(time.Second).String()),
-	)
-	return nil
+	return
 }
 
+// Clear resets the state of this object to the default, newly-initialized state
 func (td *TaskData) Clear() {
 	td.ID = 0
 	td.Synopsis = ""
@@ -165,11 +195,28 @@ func (td *TaskData) Clear() {
 	td.UpdatedAt = time.Now()
 }
 
-func FindTaskBySynopsis(tasks []TaskData, synopsis string) *TaskData {
+// FindTaskBySynopsis returns a task with a matching synopsis from a slice of tasks
+func (td *TaskData) FindTaskBySynopsis(tasks []TaskData, synopsis string) *TaskData {
 	for _, task := range tasks {
 		if task.Synopsis == synopsis {
 			return &task
 		}
 	}
 	return nil
+}
+
+// Resolve takes a string argument and produces either a taskid (uint) or a synopsis (string)
+func (td *TaskData) Resolve(arg string) (taskid uint, tasksynopsis string) {
+	log := logger.GetFuncLogger(td.log, "Resolve")
+	if arg == "" {
+		return 0, ""
+	}
+	log.Trace().Msgf("arg=%s", arg)
+	id, err := strconv.Atoi(arg)
+	if err != nil {
+		log.Trace().Msgf("error converting arg to number: %s; returning arg", err)
+		return 0, arg
+	}
+	log.Trace().Msgf("returning %d", uint(id))
+	return uint(id), ""
 }

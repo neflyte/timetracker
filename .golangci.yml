@@ -14,17 +14,28 @@ linters:
     - unused
     - varcheck
     - bodyclose
+    - cyclop
     - dogsled
+    - errorlint
+    - exportloopref
+    - goconst
+    - gocritic
     - gomnd
     - gosec
-    - maligned
     - misspell
+    - nilerr
+    - predeclared
+    - revive
     - rowserrcheck
-    - scopelint
+    - stylecheck
     - unconvert
     - unparam
+    - wastedassign
     - whitespace
 linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
   gomnd:
     settings:
       mnd:
@@ -33,10 +44,14 @@ linters-settings:
           - case
           - condition
           - return
+          - assign
+          - operation
   govet:
     check-shadowing: true
-  maligned:
-    suggest-new: true
+  staticcheck:
+    go: "1.15"
+  stylecheck:
+    go: "1.15"
   unparam:
     check-exported: true
   unused:
