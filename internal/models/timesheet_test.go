@@ -261,3 +261,21 @@ func TestUnit_Timesheet_Update_InvalidTaskID(t *testing.T) {
 	require.NotNil(t, err)
 	require.True(t, errors.Is(err, ttErrors.ErrInvalidTimesheetState{Details: ttErrors.TimesheetWithoutTaskError}))
 }
+
+/*func TestUnit_Timesheet_Last5StartedTasks(t *testing.T) {
+	db := MustOpenTestDB(t)
+	defer CloseTestDB(t, db)
+	database.Set(db)
+
+	testTasks := make([]TaskData, 0)
+	for x := 0; x < numberOfTestTasks; x++ {
+		taskData, ok:= TaskFactory.MustCreate().(*TaskData)
+		if !ok {
+			t.Fatal("taskData was not a *TaskData")
+		}
+		if taskData != nil {
+			testTasks = append(testTasks, *taskData)
+		}
+	}
+	t.Logf("created %d tasks", len(testTasks))
+}*/

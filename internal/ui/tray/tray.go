@@ -58,7 +58,7 @@ func onReady() {
 	mStatus = systray.AddMenuItem(statusStartTaskTitle, statusStartTaskDescription)
 	mCreateAndStart = systray.AddMenuItem("Create and Start new task", "Display a dialog to input new task details and then start the task")
 	mManage = systray.AddMenuItem("Manage tasks", "Display the Manage Tasks window to add, change, or remove tasks")
-	// TODO: List the top 5 last-started tasks as easy-start options
+	// TODO: List the last 5 started tasks (deduplicated) as easy-start options
 	// systray.AddSeparator()
 	// mLastStarted = systray.AddMenuItem("Recent tasks", "Select a recently started task to start it again")
 	// lastStartedItems = make([]*systray.MenuItem, 0)

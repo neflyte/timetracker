@@ -1,15 +1,50 @@
 package models
 
 import (
+	"errors"
+	"fmt"
+	"github.com/bluele/factory-go/factory"
+	"github.com/neflyte/timetracker/internal/logger"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	gormLogger "gorm.io/gorm/logger"
 	"os"
 	"testing"
 )
 
 const (
-	TestDSN = "file:test.db?cache=shared&mode=memory"
+	TestDSN           = "file:test.db?cache=shared&mode=memory"
+	numberOfTestTasks = 10
+)
+
+var (
+	TaskFactory = factory.NewFactory(
+		&TaskData{
+			log:      logger.GetStructLogger("TaskData"),
+			testMode: true,
+		},
+	).SeqInt("ID", func(n int) (interface{}, error) {
+		return n, nil
+	}).Attr("Synopsis", func(args factory.Args) (interface{}, error) {
+		task, ok := args.Instance().(*TaskData)
+		if !ok {
+			return nil, errors.New("args.Instance() is not a *TaskData")
+		}
+		return fmt.Sprintf("Task-%d", task.ID), nil
+	}).Attr("Description", func(args factory.Args) (interface{}, error) {
+		task, ok := args.Instance().(*TaskData)
+		if !ok {
+			return nil, errors.New("args.Instance() is not a *TaskData")
+		}
+		return fmt.Sprintf("This is the description for task %s", task.Synopsis), nil
+	}).OnCreate(func(args factory.Args) error {
+		taskData, ok := args.Instance().(*TaskData)
+		if !ok {
+			return errors.New("args.Instance() is not a *TaskData")
+		}
+		task := Task(taskData)
+		return task.Create()
+	})
 )
 
 func TestMain(m *testing.M) {
@@ -18,7 +53,7 @@ func TestMain(m *testing.M) {
 
 func MustOpenTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(TestDSN), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Warn),
+		Logger: gormLogger.Default.LogMode(gormLogger.Warn),
 	})
 	if err != nil {
 		t.Fatalf("error opening test db: %s", err)

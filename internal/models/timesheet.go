@@ -11,7 +11,10 @@ import (
 
 // TimesheetData is the main timesheet data structure
 type TimesheetData struct {
-	gorm.Model
+	ID        int `gorm:"primarykey"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 	// Task is the task object linked to this Timesheet
 	Task TaskData
 	// TaskID is the database ID of the linked task object
@@ -20,6 +23,8 @@ type TimesheetData struct {
 	StartTime time.Time `gorm:"not null"`
 	// StopTime is the time that the task was stopped at; if it is NULL, that means the task is still running
 	StopTime sql.NullTime
+
+	testMode bool `gorm:"-"`
 }
 
 // TableName implements schema.Tabler
@@ -37,6 +42,8 @@ type Timesheet interface {
 	SearchDateRange() ([]TimesheetData, error)
 	Update() error
 	String() string
+	TableName() string
+	Last5StartedTasks() (startedTasks []TaskData, err error)
 }
 
 // String implements fmt.Stringer
@@ -147,4 +154,24 @@ func (tsd *TimesheetData) Update() error {
 		}
 	}
 	return database.Get().Save(tsd).Error
+}
+
+// Last5StartedTasks returns the last 5 started tasks, deduplicated
+func (tsd *TimesheetData) Last5StartedTasks() (startedTasks []TaskData, err error) {
+	startedTasks = make([]TaskData, 0)
+	startedTimesheets := make([]TimesheetData, 0)
+	err = database.Get().
+		Distinct("task_id").
+		Joins("Task").
+		Order("start_time DESC").
+		Limit(5).
+		Find(&startedTimesheets).
+		Error
+	if err != nil {
+		return
+	}
+	for _, startedTimesheet := range startedTimesheets {
+		startedTasks = append(startedTasks, startedTimesheet.Task)
+	}
+	return
 }

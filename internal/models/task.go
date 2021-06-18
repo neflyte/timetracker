@@ -14,19 +14,25 @@ import (
 
 // TaskData is the main Task data strucure
 type TaskData struct {
-	gorm.Model
+	// gorm.Model
+	ID        int `gorm:"primarykey"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index"`
 	// Synopsis is a short title or identifier of the task
 	Synopsis string `gorm:"uniqueindex"`
 	// Description is a longer description of the task
 	Description string
 
-	log zerolog.Logger `gorm:"-"`
+	log      zerolog.Logger `gorm:"-"`
+	testMode bool           `gorm:"-"`
 }
 
 // NewTaskData creates a new TaskData structure and returns a pointer to it
 func NewTaskData() *TaskData {
 	return &TaskData{
-		log: logger.GetStructLogger("TaskData"),
+		log:      logger.GetStructLogger("TaskData"),
+		testMode: false,
 	}
 }
 
@@ -62,6 +68,7 @@ type Task interface {
 	String() string
 	FindTaskBySynopsis(tasks []TaskData, synopsis string) *TaskData
 	Resolve(arg string) (uint, string)
+	TableName() string
 }
 
 // String implements fmt.Stringer
@@ -71,7 +78,7 @@ func (td *TaskData) String() string {
 
 // Create creates a new task
 func (td *TaskData) Create() error {
-	if td.ID != 0 {
+	if td.ID != 0 && !td.testMode {
 		return tterrors.ErrInvalidTaskState{
 			Details: tterrors.OverwriteTaskByCreateError,
 		}

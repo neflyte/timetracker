@@ -5,6 +5,7 @@ go 1.15
 require (
 	fyne.io/fyne/v2 v2.0.3
 	github.com/alexeyco/simpletable v1.0.0
+	github.com/bluele/factory-go v0.0.1
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
 	github.com/elliotchance/pie v1.38.2
 	github.com/fatih/color v1.12.0
