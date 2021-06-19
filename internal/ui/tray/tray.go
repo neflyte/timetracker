@@ -168,6 +168,10 @@ func handleStatusClick() {
 	log := logger.GetFuncLogger(trayLogger, "handleStatusClick")
 	switch appstate.GetLastState() {
 	case constants.TimesheetStatusRunning:
+		/*
+			TODO: Look for some sort of config value to determine if we should bring
+			      up the gui to prompt the user or just stop the task outright
+		*/
 		launchGUI(guiOptionStopRunningTask)
 	case constants.TimesheetStatusError:
 		log.Error().Msg("IMPLEMENTATION MISSING")
