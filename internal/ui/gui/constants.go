@@ -9,6 +9,9 @@ const (
 	minimumWindowHeight = 400.0
 	// manageWindowEventChannelBufferSize is the size of an event channel
 	manageWindowEventChannelBufferSize = 2
+
+	// PrefKeyCloseWindow is the preferences key for the flag which causes the main window to close after creating a new task
+	PrefKeyCloseWindow = "close-window"
 )
 
 var (

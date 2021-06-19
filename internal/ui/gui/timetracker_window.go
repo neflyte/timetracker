@@ -82,7 +82,11 @@ func newTimetrackerWindow(app fyne.App) timetrackerWindow {
 func (t *timetrackerWindowData) initWindow() {
 	log := logger.GetFuncLogger(t.Log, "initWindow")
 	log.Debug().Msg("started")
-	t.createNewTaskAndStartDialog = dialogs.NewCreateAndStartTaskDialog(t.createAndStartTaskDialogCallback, t.Window)
+	if t.App == nil {
+		log.Error().Msg("t.App was nil; THIS IS UNEXPECTED")
+		return
+	}
+	t.createNewTaskAndStartDialog = dialogs.NewCreateAndStartTaskDialog((*t.App).Preferences(), t.createAndStartTaskDialogCallback, t.Window)
 	t.TaskList = widgets.NewTasklist()
 	t.TaskList.SelectionBinding().AddListener(binding.NewDataListener(func() {
 		t.tasklistSelectionChanged()
@@ -153,8 +157,6 @@ func (t *timetrackerWindowData) initWindow() {
 	t.Window.SetContent(t.Container)
 	t.Window.SetFixedSize(true)
 	t.Window.Resize(minimumWindowSize)
-	// Make sure we hide the window instead of closing it, otherwise the app will exit
-	t.Window.SetCloseIntercept(t.Hide)
 	// Set up our observables
 	t.setupObservables()
 	// Load the window's data
@@ -265,9 +267,10 @@ func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
 		if err != nil {
 			log.Err(err).Msgf("error setting running task to %s", runningTS.Task.String())
 		}
-		err = t.BindStartTime.Set(runningTS.StartTime.String())
+		startTimeDisplay := runningTS.StartTime.Format(time.RFC1123Z)
+		err = t.BindStartTime.Set(startTimeDisplay)
 		if err != nil {
-			log.Err(err).Msgf("error setting start time to %s", runningTS.StartTime.String())
+			log.Err(err).Msgf("error setting start time to %s", startTimeDisplay)
 		}
 		t.SubStatusBox.Show()
 	}
@@ -290,7 +293,7 @@ func (t *timetrackerWindowData) doStartTask() {
 		).Show()
 		return
 	}
-	// TODO: convert from selectedTask string to task ID so we can start a new timesheet
+	// TODO: convert from selectedTask string to task ID so we can start a new timesheet (instead of parsing a string)
 	if taskNameRE.MatchString(selection) {
 		var taskIDInt int
 		matches := taskNameRE.FindStringSubmatch(selection)
@@ -318,6 +321,10 @@ func (t *timetrackerWindowData) doStartTask() {
 			dialog.NewError(err, t.Window).Show()
 			return
 		}
+		// Show notification that task started
+		notificationTitle := fmt.Sprintf("Task %s started", taskData.Synopsis)
+		notificationContents := fmt.Sprintf("Started at %s", timesheetData.StartTime.Format(time.Stamp))
+		(*t.App).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
 		t.BtnStopTask.Enable()
 		t.BtnStartTask.Disable()
 		appstate.SetRunningTimesheet(timesheetData)
@@ -329,11 +336,15 @@ func (t *timetrackerWindowData) doStopTask() {
 	log := logger.GetFuncLogger(t.Log, "doStopTask")
 	// Stop the running task
 	log.Debug().Msg("stopping running task")
-	_, err := models.Task(new(models.TaskData)).StopRunningTask()
+	stoppedTimesheet, err := models.Task(new(models.TaskData)).StopRunningTask()
 	if err != nil && !errors.Is(err, tterrors.ErrNoRunningTask{}) {
 		log.Err(err).Msg(tterrors.StopRunningTaskError)
 		dialog.NewError(err, t.Window).Show()
 	}
+	// Show notification that task has stopped
+	notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)
+	notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp))
+	(*t.App).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
 	// Update the appstate
 	appstate.SetRunningTimesheet(nil)
 }
@@ -436,11 +447,15 @@ func (t *timetrackerWindowData) maybeStopRunningTask(stopTask bool) {
 		return
 	}
 	td := new(models.TaskData)
-	_, err := td.StopRunningTask()
+	stoppedTimesheet, err := td.StopRunningTask()
 	if err != nil {
 		log.Err(err).Msg("error stopping the running task")
 		dialog.NewError(err, t.Window).Show()
 	}
+	// Show notification that the task has stopped
+	notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)
+	notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp))
+	(*t.App).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
 	appstate.SetRunningTimesheet(nil)
 }
 
@@ -470,6 +485,10 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 	}
 	if stoppedTimesheet != nil {
 		log.Debug().Msgf("stopped running task %s", stoppedTimesheet.String())
+		// Show notification that task has stopped
+		notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)
+		notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp))
+		(*t.App).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
 	}
 	// Start the new task
 	timesheetData := new(models.TimesheetData)
@@ -480,6 +499,15 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 		log.Err(err).Msg("error stopping current task")
 		return
 	}
+	// Show notification that task has started
+	notificationTitle := fmt.Sprintf("Task %s started", taskData.Synopsis)
+	notificationContents := fmt.Sprintf("Started at %s", timesheetData.StartTime.Format(time.Stamp))
+	(*t.App).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
 	log.Debug().Msgf("task %s started at %s", taskData.String(), timesheetData.StartTime.String())
 	appstate.SetRunningTimesheet(timesheetData)
+	// Check if we should close the main window as well
+	shouldCloseMainWindow := (*t.App).Preferences().BoolWithFallback(PrefKeyCloseWindow, false)
+	if shouldCloseMainWindow {
+		t.Close()
+	}
 }
