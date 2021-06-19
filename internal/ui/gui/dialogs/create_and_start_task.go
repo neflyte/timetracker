@@ -11,28 +11,36 @@ import (
 	"github.com/rs/zerolog"
 )
 
+const (
+	// prefKeyCloseWindow is the preferences key for the flag which causes the main window to close after creating a new task
+	prefKeyCloseWindow = "close-window"
+)
+
 // CreateAndStartTaskDialog is the main data structure for the Create and Start New Task dialog
 type CreateAndStartTaskDialog struct {
-	confirmDialog      dialog.Dialog
-	synopsisLabel      *widget.Label
-	synopsisEntry      *widget.Entry
-	synopsisBinding    binding.String
-	descriptionLabel   *widget.Label
-	descriptionEntry   *widget.Entry
-	descriptionBinding binding.String
-	widgetContainer    *fyne.Container
-	parentWindow       *fyne.Window
-	log                zerolog.Logger
+	confirmDialog       dialog.Dialog
+	synopsisLabel       *widget.Label
+	synopsisEntry       *widget.Entry
+	synopsisBinding     binding.String
+	descriptionLabel    *widget.Label
+	descriptionEntry    *widget.Entry
+	descriptionBinding  binding.String
+	closeWindowCheckbox *widget.Check
+	closeWindowBinding  binding.Bool
+	widgetContainer     *fyne.Container
+	parentWindow        *fyne.Window
+	log                 zerolog.Logger
 }
 
 // NewCreateAndStartTaskDialog creates a new instance of the Create and Start a New Task dialog
-func NewCreateAndStartTaskDialog(cb func(bool), parent fyne.Window) *CreateAndStartTaskDialog {
+func NewCreateAndStartTaskDialog(prefs fyne.Preferences, cb func(bool), parent fyne.Window) *CreateAndStartTaskDialog {
 	newDialog := &CreateAndStartTaskDialog{
 		log:                logger.GetStructLogger("CreateAndStartTaskDialog"),
 		synopsisLabel:      widget.NewLabel("Synopsis:"),
 		descriptionLabel:   widget.NewLabel("Description:"),
 		synopsisBinding:    binding.NewString(),
 		descriptionBinding: binding.NewString(),
+		closeWindowBinding: binding.BindPreferenceBool(prefKeyCloseWindow, prefs),
 		parentWindow:       &parent,
 	}
 	newDialog.synopsisEntry = widget.NewEntryWithData(newDialog.synopsisBinding)
@@ -41,11 +49,13 @@ func NewCreateAndStartTaskDialog(cb func(bool), parent fyne.Window) *CreateAndSt
 	newDialog.descriptionEntry.SetPlaceHolder("enter the task description here")
 	newDialog.descriptionEntry.MultiLine = true
 	newDialog.descriptionEntry.Wrapping = fyne.TextWrapWord
+	newDialog.closeWindowCheckbox = widget.NewCheckWithData("Close window after starting task", newDialog.closeWindowBinding)
 	newDialog.widgetContainer = container.NewVBox(
 		newDialog.synopsisLabel,
 		newDialog.synopsisEntry,
 		newDialog.descriptionLabel,
 		newDialog.descriptionEntry,
+		newDialog.closeWindowCheckbox,
 	)
 	newDialog.confirmDialog = dialog.NewCustomConfirm(
 		"Create and start a new task",
