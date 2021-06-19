@@ -18,11 +18,15 @@ import (
 	"github.com/rs/zerolog"
 	"regexp"
 	"strconv"
+	"sync"
 	"time"
 )
 
 // TODO: rework the UI layout to better contain the components (e.g. use themes and a custom layout, not just a card)
-// TODO: implement an "elapsed time" counter if a task is running
+
+const (
+	taskNameTrimLength = 32
+)
 
 var (
 	taskNameRE = regexp.MustCompile(`^\[([0-9]+)].*$`)
@@ -38,7 +42,7 @@ type timetrackerWindow interface {
 	ShowAndDisplayCreateAndStartDialog()
 	Hide()
 	Close()
-	Get() timetrackerWindowData
+	Get() *timetrackerWindowData
 }
 
 type timetrackerWindowData struct {
@@ -53,7 +57,6 @@ type timetrackerWindowData struct {
 	BtnStopTask                 *widget.Button
 	BtnManageTasks              *widget.Button
 	BtnAbout                    *widget.Button
-	BtnQuit                     *widget.Button
 	createNewTaskAndStartDialog *dialogs.CreateAndStartTaskDialog
 	Log                         zerolog.Logger
 	mngWindow                   manageWindow
@@ -65,14 +68,22 @@ type timetrackerWindowData struct {
 	BindRunningTask binding.String
 	BindStartTime   binding.String
 	BindElapsedTime binding.String
+
+	elapsedTimeTicker       *time.Ticker
+	elapsedTimeRunningMutex sync.RWMutex
+	elapsedTimeRunning      bool
+	elapsedTimeQuitChan     chan bool
 }
 
 // newTimetrackerWindow creates and initializes a new timetracker window
 func newTimetrackerWindow(app fyne.App) timetrackerWindow {
 	ttw := &timetrackerWindowData{
-		App:    &app,
-		Window: app.NewWindow("Timetracker"),
-		Log:    logger.GetStructLogger("timetrackerWindow"),
+		App:                     &app,
+		Window:                  app.NewWindow("Timetracker"),
+		Log:                     logger.GetStructLogger("timetrackerWindow"),
+		elapsedTimeRunningMutex: sync.RWMutex{},
+		elapsedTimeRunning:      false,
+		elapsedTimeQuitChan:     make(chan bool, 1),
 	}
 	ttw.initWindow()
 	return ttw
@@ -95,14 +106,12 @@ func (t *timetrackerWindowData) initWindow() {
 	t.BtnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)
 	t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), t.doManageTasks)
 	t.BtnAbout = widget.NewButton("ABOUT", t.doAbout)
-	t.BtnQuit = widget.NewButton("QUIT", t.doQuit)
 	t.ButtonBox = container.NewCenter(
 		container.NewHBox(
 			t.BtnStartTask,
 			t.BtnStopTask,
 			t.BtnManageTasks,
 			t.BtnAbout,
-			t.BtnQuit,
 		),
 	)
 	t.BindRunningTask = binding.NewString()
@@ -157,6 +166,7 @@ func (t *timetrackerWindowData) initWindow() {
 	t.Window.SetContent(t.Container)
 	t.Window.SetFixedSize(true)
 	t.Window.Resize(minimumWindowSize)
+	t.Window.SetCloseIntercept(t.Close)
 	// Set up our observables
 	t.setupObservables()
 	// Load the window's data
@@ -197,6 +207,8 @@ func (t *timetrackerWindowData) primeWindowData() {
 		} else {
 			t.BtnStartTask.Enable()
 		}
+		// Start elapsed time counter
+		go t.elapsedTimeLoop(runningTS.StartTime, t.elapsedTimeQuitChan)
 	} else {
 		// Task is not running
 		t.BtnStopTask.Disable()
@@ -209,7 +221,7 @@ func (t *timetrackerWindowData) setupObservables() {
 	appstate.Observables()[appstate.KeyRunningTimesheet].ForEach(
 		t.runningTimesheetChanged,
 		func(err error) {
-			log.Err(err).Msg("error getting running timesheet from rxgo observable")
+			log.Err(err).Msg("error getting running timesheet from RxGO observable")
 		},
 		func() {
 			log.Trace().Msg("running timesheet observable is done")
@@ -258,12 +270,18 @@ func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
 				// No task is selected
 				t.BtnStartTask.Disable()
 			}
+			// Stop the elapsed time counter if it's running
+			t.elapsedTimeRunningMutex.RLock()
+			defer t.elapsedTimeRunningMutex.RUnlock()
+			if t.elapsedTimeRunning {
+				t.elapsedTimeQuitChan <- true
+			}
 			return
 		}
 		// A task is running
 		t.BtnStopTask.Enable()
 		t.BtnStartTask.Disable()
-		err := t.BindRunningTask.Set(runningTS.Task.String())
+		err := t.BindRunningTask.Set(t.trimWithEllipsis(runningTS.Task.String(), taskNameTrimLength))
 		if err != nil {
 			log.Err(err).Msgf("error setting running task to %s", runningTS.Task.String())
 		}
@@ -272,6 +290,13 @@ func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
 		if err != nil {
 			log.Err(err).Msgf("error setting start time to %s", startTimeDisplay)
 		}
+		elapsedTimeDisplay := time.Since(runningTS.StartTime).Truncate(time.Second).String()
+		err = t.BindElapsedTime.Set(elapsedTimeDisplay)
+		if err != nil {
+			log.Err(err).Msgf("error setting elapsed time to %s", elapsedTimeDisplay)
+		}
+		// Start the elapsed time counter
+		go t.elapsedTimeLoop(runningTS.StartTime, t.elapsedTimeQuitChan)
 		t.SubStatusBox.Show()
 	}
 }
@@ -353,10 +378,6 @@ func (t *timetrackerWindowData) doManageTasks() {
 	t.mngWindow.Show()
 }
 
-func (t *timetrackerWindowData) doQuit() {
-	StopGUI()
-}
-
 func (t *timetrackerWindowData) doAbout() {
 	appVersion := "??"
 	appVersionIntf, ok := appstate.Map().Load(appstate.KeyAppVersion)
@@ -395,8 +416,7 @@ func (t *timetrackerWindowData) ShowAndStopRunningTask() {
 		return
 	}
 	t.Show()
-	confirmMessage := fmt.Sprintf("Do you want to stop task %s?", openTimesheets[0].Task.Synopsis)
-	dialog.NewConfirm("Stop Running Task", confirmMessage, t.maybeStopRunningTask, t.Window).Show()
+	dialogs.NewStopTaskDialog(openTimesheets[0].Task, (*t.App).Preferences(), t.maybeStopRunningTask, t.Window).Show()
 }
 
 // ShowWithManageWindow shows the main window followed by the Manage window
@@ -433,12 +453,19 @@ func (t *timetrackerWindowData) Hide() {
 
 // Close closes the main window
 func (t *timetrackerWindowData) Close() {
+	// Check if elapsed time counter is running and stop it if it is
+	t.elapsedTimeRunningMutex.RLock()
+	defer t.elapsedTimeRunningMutex.RUnlock()
+	if t.elapsedTimeRunning {
+		t.elapsedTimeQuitChan <- true
+	}
+	// Close the window
 	t.Window.Close()
 }
 
 // Get returns the underlying data structure
-func (t *timetrackerWindowData) Get() timetrackerWindowData {
-	return *t
+func (t *timetrackerWindowData) Get() *timetrackerWindowData {
+	return t
 }
 
 func (t *timetrackerWindowData) maybeStopRunningTask(stopTask bool) {
@@ -457,6 +484,11 @@ func (t *timetrackerWindowData) maybeStopRunningTask(stopTask bool) {
 	notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp))
 	(*t.App).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
 	appstate.SetRunningTimesheet(nil)
+	// Check if we should close the main window
+	shouldCloseMainWindow := (*t.App).Preferences().BoolWithFallback(prefKeyCloseWindowStopTask, false)
+	if shouldCloseMainWindow {
+		t.Close()
+	}
 }
 
 func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart bool) {
@@ -506,8 +538,56 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 	log.Debug().Msgf("task %s started at %s", taskData.String(), timesheetData.StartTime.String())
 	appstate.SetRunningTimesheet(timesheetData)
 	// Check if we should close the main window as well
-	shouldCloseMainWindow := (*t.App).Preferences().BoolWithFallback(PrefKeyCloseWindow, false)
+	shouldCloseMainWindow := (*t.App).Preferences().BoolWithFallback(prefKeyCloseWindow, false)
 	if shouldCloseMainWindow {
 		t.Close()
+	}
+}
+
+func (t *timetrackerWindowData) trimWithEllipsis(toTrim string, trimLength int) string {
+	if len(toTrim) <= trimLength {
+		return toTrim
+	}
+	return toTrim[0:trimLength-2] + `…`
+}
+
+func (t *timetrackerWindowData) elapsedTimeLoop(startTime time.Time, quitChan chan bool) {
+	log := logger.GetFuncLogger(t.Log, "elapsedTimeLoop")
+	t.elapsedTimeRunningMutex.RLock()
+	if t.elapsedTimeRunning {
+		t.elapsedTimeRunningMutex.RUnlock()
+		return
+	}
+	t.elapsedTimeRunningMutex.RUnlock()
+	t.elapsedTimeRunningMutex.Lock()
+	t.elapsedTimeRunning = true
+	t.elapsedTimeRunningMutex.Unlock()
+	defer func() {
+		t.elapsedTimeRunningMutex.Lock()
+		t.elapsedTimeRunning = false
+		t.elapsedTimeRunningMutex.Unlock()
+	}()
+	t.elapsedTimeTicker = time.NewTicker(time.Second)
+	defer t.elapsedTimeTicker.Stop()
+	// Clear the elapsed time display when the loop ends
+	defer func() {
+		err := t.BindElapsedTime.Set("")
+		if err != nil {
+			log.Err(err).Msg("error setting elapsed time display to empty")
+		}
+	}()
+	log.Debug().Msg("loop starting")
+	defer log.Debug().Msg("loop ending")
+	for {
+		select {
+		case <-t.elapsedTimeTicker.C:
+			elapsedTime := time.Since(startTime).Truncate(time.Second).String()
+			err := t.BindElapsedTime.Set(elapsedTime)
+			if err != nil {
+				log.Err(err).Msgf("error setting elapsed time binding to %s: %s", elapsedTime, err.Error())
+			}
+		case <-quitChan:
+			return
+		}
 	}
 }
