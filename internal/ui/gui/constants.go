@@ -10,8 +10,10 @@ const (
 	// manageWindowEventChannelBufferSize is the size of an event channel
 	manageWindowEventChannelBufferSize = 2
 
-	// PrefKeyCloseWindow is the preferences key for the flag which causes the main window to close after creating a new task
-	PrefKeyCloseWindow = "close-window"
+	// prefKeyCloseWindow is the preferences key for the flag which causes the main window to close after creating a new task
+	prefKeyCloseWindow = "close-window"
+	// prefKeyCloseWindowStopTask is the preferences key for the flag which causes the main window to close after creating a new task
+	prefKeyCloseWindowStopTask = "close-window:stop-task"
 )
 
 var (
