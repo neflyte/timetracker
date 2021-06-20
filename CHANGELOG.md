@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Add checkbox option to close main window when stopping a task when invoked from a tray
 - Add elapsed time counter to main window when a task is running
+- Add github.com/gen2brain/beeep for system notifications from tray
+- Tray shows notifications for any errors that occur when getting timesheet status
+- Add options menu in system tray
+- Add option to the tray menu to toggle a confirmation dialog when stopping a running task
 
 ### Changed
 - Trim the active task text, so it doesn't expand the window size

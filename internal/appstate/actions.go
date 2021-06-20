@@ -52,10 +52,12 @@ func UpdateRunningTimesheet() {
 	if err != nil {
 		SetRunningTimesheet(nil) // Reset running timesheet
 		log.Err(err).Msg("error getting running timesheet")
+		setLastError(err)
 		if GetLastState() != constants.TimesheetStatusError {
 			setLastState(constants.TimesheetStatusError)
 		}
 	} else {
+		setLastError(nil)
 		if len(timesheets) == 0 {
 			// No running task
 			log.Trace().Msg("there are no running tasks")
