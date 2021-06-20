@@ -1,6 +1,7 @@
 package appstate
 
 import (
+	"fmt"
 	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
@@ -16,6 +17,8 @@ const (
 
 	// keyLastState is the map key for the last timesheet state
 	keyLastState = "last_state"
+	// keylastError is the map key for the last ActionLoop error
+	keyLastError = "last_error"
 
 	channelBufferSize = 5
 )
@@ -47,13 +50,17 @@ func GetLastState() int {
 		Str("func", "GetLastState").
 		Str("key", keyLastState).
 		Logger()
-	lstate, ok := syncMap.LoadOrStore(keyLastState, constants.TimesheetStatusIdle)
+	lstateIntf, ok := syncMap.LoadOrStore(keyLastState, constants.TimesheetStatusIdle)
 	if !ok {
 		log.Trace().Msg("key not found; storing + loading default")
 		return constants.TimesheetStatusIdle
 	}
-	log.Trace().Msgf("loading %#v", lstate)
-	return lstate.(int)
+	if lstateIntf == nil {
+		// This really shouldn't happen since we specify a default above
+		return constants.TimesheetStatusIdle
+	}
+	log.Trace().Msgf("loading %#v", lstateIntf)
+	return lstateIntf.(int)
 }
 
 // setLastState sets the last timesheet load state
@@ -64,6 +71,39 @@ func setLastState(newLastState int) {
 		Logger()
 	log.Trace().Msgf("storing %#v", newLastState)
 	syncMap.Store(keyLastState, newLastState)
+}
+
+// GetLastError returns the last timesheet status error
+func GetLastError() error {
+	log := appstateLog.With().
+		Str("func", "GetLastError").
+		Str("key", keyLastError).
+		Logger()
+	lastErr, ok := syncMap.LoadOrStore(keyLastError, nil)
+	if !ok {
+		log.Trace().Msg("key not found; storing + loading default")
+		return nil
+	}
+	lastErrString := "(nil)"
+	if lastErr != nil {
+		lastErrString = fmt.Sprintf("%#v", lastErr)
+	}
+	log.Trace().Msgf("loading %s", lastErrString)
+	return lastErr.(error)
+}
+
+// setLastError sets the last timesheet status error
+func setLastError(newLastError error) {
+	log := appstateLog.With().
+		Str("func", "setLastError").
+		Str("key", keyLastError).
+		Logger()
+	lastErrString := "(nil)"
+	if newLastError != nil {
+		lastErrString = newLastError.Error()
+	}
+	log.Trace().Msgf("storing %s", lastErrString)
+	syncMap.Store(keyLastState, newLastError)
 }
 
 // GetRunningTimesheet gets the running timesheet object
