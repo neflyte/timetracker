@@ -15,5 +15,8 @@ var (
 )
 
 func init() {
-	timesheetCmd.AddCommand(timesheet.DumpCmd)
+	timesheetCmd.AddCommand(
+		timesheet.DumpCmd,
+		timesheet.LastStartedCmd,
+	)
 }
