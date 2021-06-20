@@ -8,11 +8,13 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
 	github.com/elliotchance/pie v1.38.2
 	github.com/fatih/color v1.12.0
+	github.com/gen2brain/beeep v0.0.0-20210529141713-5586760f0cc1
 	github.com/getlantern/golog v0.0.0-20201105130739-9586b8bde3a9 // indirect
 	github.com/getlantern/hidden v0.0.0-20201229170000-e66e7f878730 // indirect
 	github.com/getlantern/ops v0.0.0-20200403153110-8476b16edcd6 // indirect
 	github.com/getlantern/systray v1.1.0
 	github.com/go-gl/gl v0.0.0-20210501111010-69f74958bac0 // indirect
+	github.com/gopherjs/gopherjs v0.0.0-20210619142842-05447a1fa367 // indirect
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mattn/go-sqlite3 v1.14.7 // indirect
 	github.com/nightlyone/lockfile v1.0.0
@@ -20,6 +22,7 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/zerolog v1.23.0
 	github.com/spf13/cobra v1.1.3
+	github.com/spf13/viper v1.8.0
 	github.com/srwiley/oksvg v0.0.0-20210320200257-875f767ac39a // indirect
 	github.com/stretchr/objx v0.3.0 // indirect
 	github.com/stretchr/testify v1.7.0
