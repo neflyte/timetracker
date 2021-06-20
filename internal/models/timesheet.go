@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+const (
+	lastStartedTasksDefaultLimit = 5
+)
+
 // TimesheetData is the main timesheet data structure
 type TimesheetData struct {
 	gorm.Model
@@ -37,6 +41,7 @@ type Timesheet interface {
 	SearchDateRange() ([]TimesheetData, error)
 	Update() error
 	String() string
+	LastStartedTasks(limit uint) (startedTasks []TaskData, err error)
 }
 
 // String implements fmt.Stringer
@@ -147,4 +152,36 @@ func (tsd *TimesheetData) Update() error {
 		}
 	}
 	return database.Get().Save(tsd).Error
+}
+
+/*
+SELECT DISTINCT(task_id)
+FROM timesheet
+ORDER BY start_time DESC
+LIMIT 5;
+*/
+
+// LastStartedTasks returns a list of most-recently started tasks. The size of the list is limited
+// by the limit parameter. If a limit of zero is specified, the default value is used.
+func (tsd *TimesheetData) LastStartedTasks(limit uint) (startedTasks []TaskData, err error) {
+	startedTasks = make([]TaskData, 0)
+	taskLimit := uint(lastStartedTasksDefaultLimit)
+	if limit > 0 {
+		taskLimit = limit
+	}
+	taskTimesheets := make([]TimesheetData, 0)
+	err = database.Get().
+		Distinct("task_id").
+		Joins("Task").
+		Order("start_time desc").
+		Limit(int(taskLimit)).
+		Find(&taskTimesheets).
+		Error
+	if err != nil {
+		return
+	}
+	for _, taskTimesheet := range taskTimesheets {
+		startedTasks = append(startedTasks, taskTimesheet.Task)
+	}
+	return
 }
