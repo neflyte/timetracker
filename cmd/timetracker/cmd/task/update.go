@@ -37,48 +37,48 @@ func updateTask(_ *cobra.Command, args []string) error {
 		log.Info().Msg("no updates specified; nothing to do")
 		return nil
 	}
-	taskData := models.NewTaskData()
-	taskData.ID, _ = taskData.Resolve(args[0])
-	err := models.Task(taskData).Load(true)
+	task := models.NewTask()
+	task.Data().ID, _ = task.Resolve(args[0])
+	err := task.Load(true)
 	if err != nil {
 		cli.PrintAndLogError(log, err, errors.LoadTaskError)
 		return err
 	}
-	if taskData.DeletedAt.Valid {
+	if task.Data().DeletedAt.Valid {
 		if updateUndelete {
-			return undeleteTask(taskData)
+			return undeleteTask(task.Data())
 		}
-		err = fmt.Errorf("task id %d is deleted", taskData.ID)
+		err = fmt.Errorf("task id %d is deleted", task.Data().ID)
 		cli.PrintAndLogError(log, err, errors.UpdateDeletedTaskError)
 		return err
 	}
 	if updateSynopsis != "" {
-		taskData.Synopsis = updateSynopsis
+		task.Data().Synopsis = updateSynopsis
 	}
 	if updateDescription != "" {
-		taskData.Description = updateDescription
+		task.Data().Description = updateDescription
 	}
-	err = models.Task(taskData).Update(false)
+	err = task.Update(false)
 	if err != nil {
 		cli.PrintAndLogError(log, err, errors.UpdateTaskError)
 		return err
 	}
-	fmt.Println(color.WhiteString("Task ID %d", taskData.ID), color.GreenString("updated"))
+	fmt.Println(color.WhiteString("Task ID %d", task.Data().ID), color.GreenString("updated"))
 	return nil
 }
 
-func undeleteTask(taskData *models.TaskData) error {
+func undeleteTask(task models.Task) error {
 	log := logger.GetLogger("undeleteTask")
-	if taskData == nil {
+	if task == nil {
 		return fmt.Errorf("cannot undelete a task that does not exist")
 	}
-	taskData.DeletedAt.Valid = false
-	err := models.Task(taskData).Update(true)
+	task.Data().DeletedAt.Valid = false
+	err := task.Update(true)
 	if err != nil {
 		cli.PrintAndLogError(log, err, errors.UndeleteTaskError)
 		return err
 	}
-	fmt.Println(color.WhiteString("Task ID %d", taskData.ID), color.GreenString("undeleted"))
-	log.Info().Msgf("task id %d undeleted", taskData.ID)
+	fmt.Println(color.WhiteString("Task ID %d", task.Data().ID), color.GreenString("undeleted"))
+	log.Info().Msgf("task id %d undeleted", task.Data().ID)
 	return nil
 }

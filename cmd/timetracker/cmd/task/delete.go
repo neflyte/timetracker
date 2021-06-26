@@ -23,14 +23,14 @@ var (
 
 func deleteTask(_ *cobra.Command, args []string) error {
 	log := logger.GetLogger("deleteTask")
-	taskData := models.NewTaskData()
-	taskData.ID, taskData.Synopsis = taskData.Resolve(args[0])
-	err := models.Task(taskData).Delete()
+	task := models.NewTask()
+	task.Data().ID, task.Data().Synopsis = task.Resolve(args[0])
+	err := task.Delete()
 	if err != nil {
 		// fmt.Sprintf("%s; task=%#v", errors.DeleteTaskError, taskData)
-		cli.PrintAndLogError(log, err, "%s; task=%#v", errors.DeleteTaskError, taskData)
+		cli.PrintAndLogError(log, err, "%s; task=%#v", errors.DeleteTaskError, task.Data())
 		return err
 	}
-	fmt.Println(color.WhiteString("Task ID %d ", taskData.ID), color.RedString("deleted"))
+	fmt.Println(color.WhiteString("Task ID %d ", task.Data().ID), color.RedString("deleted"))
 	return nil
 }

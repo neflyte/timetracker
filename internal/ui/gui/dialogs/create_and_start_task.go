@@ -86,10 +86,10 @@ func (c *CreateAndStartTaskDialog) GetTask() *models.TaskData {
 		log.Err(err).Msg("error getting description from binding")
 		return nil
 	}
-	taskData := models.NewTaskData()
-	taskData.Synopsis = synopsis
-	taskData.Description = description
-	return taskData
+	task := models.NewTask()
+	task.Data().Synopsis = synopsis
+	task.Data().Description = description
+	return task.Data()
 }
 
 // Reset clears the dialog fields for further re-use

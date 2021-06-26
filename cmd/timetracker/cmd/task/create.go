@@ -39,29 +39,28 @@ func init() {
 
 func createTask(_ *cobra.Command, args []string) error {
 	log := logger.GetLogger("createTask")
-	taskData := models.NewTaskData()
+	task := models.NewTask()
 	if len(args) > 0 {
-		taskData.Synopsis = args[0]
+		task.Data().Synopsis = args[0]
 	}
 	if taskSynopsis != "" {
-		taskData.Synopsis = taskSynopsis
+		task.Data().Synopsis = taskSynopsis
 	}
 	if len(args) > 1 {
-		taskData.Description = args[1]
+		task.Data().Description = args[1]
 	}
 	if taskDescription != "" {
-		taskData.Description = taskDescription
+		task.Data().Description = taskDescription
 	}
-	task := models.Task(taskData)
 	err := task.Create()
 	if err != nil {
 		cli.PrintAndLogError(log, err, errors.CreateTaskError)
 		return err
 	}
-	fmt.Println(color.WhiteString("Task ID %d", taskData.ID), color.GreenString("created"))
+	fmt.Println(color.WhiteString("Task ID %d", task.Data().ID), color.GreenString("created"))
 	if taskStartAfterCreate {
 		// TODO: Move this code to a common spot
-		taskdisplay := strconv.Itoa(int(taskData.ID))
+		taskdisplay := strconv.Itoa(int(task.Data().ID))
 		var stoppedTimesheet *models.TimesheetData
 		stoppedTimesheet, err = task.StopRunningTask()
 		if err != nil {
@@ -78,7 +77,7 @@ func createTask(_ *cobra.Command, args []string) error {
 			)
 		}
 		timesheetData := new(models.TimesheetData)
-		timesheetData.Task = *taskData
+		timesheetData.Task = *task.Data()
 		timesheetData.StartTime = time.Now()
 		err = models.Timesheet(timesheetData).Create()
 		if err != nil {
@@ -86,9 +85,9 @@ func createTask(_ *cobra.Command, args []string) error {
 			return err
 		}
 		fmt.Println(
-			color.WhiteString("Task ID %d ", taskData.ID),
-			color.CyanString(taskData.Synopsis),
-			color.MagentaString("(%s) ", taskData.Description),
+			color.WhiteString("Task ID %d ", task.Data().ID),
+			color.CyanString(task.Data().Synopsis),
+			color.MagentaString("(%s) ", task.Data().Description),
 			color.GreenString("started"),
 			color.WhiteString("at %s", timesheetData.StartTime.Format(constants.TimestampLayout)),
 		)

@@ -8,11 +8,12 @@ import (
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 	"strconv"
 	"time"
 )
 
-// TaskData is the main Task data strucure
+// TaskData is the main Task data structure
 type TaskData struct {
 	gorm.Model
 	// Synopsis is a short title or identifier of the task
@@ -20,14 +21,21 @@ type TaskData struct {
 	// Description is a longer description of the task
 	Description string
 
+	// log is the struct logger
 	log zerolog.Logger `gorm:"-"`
 }
 
-// NewTaskData creates a new TaskData structure and returns a pointer to it
-func NewTaskData() *TaskData {
+// NewTask creates a new TaskData structure and returns a Task interface to it
+func NewTask() Task {
 	return &TaskData{
 		log: logger.GetStructLogger("TaskData"),
 	}
+}
+
+// NewTaskWithData returns a new Task interfaced based on the supplied TaskData struct
+func NewTaskWithData(data TaskData) Task {
+	data.log = logger.GetStructLogger("TaskData")
+	return &data
 }
 
 // TableName implements schema.Tabler
@@ -35,22 +43,25 @@ func (td *TaskData) TableName() string {
 	return "task"
 }
 
-// Clone creates a clone of this TaskData object and returns a pointer to it
-func (td *TaskData) Clone() *TaskData {
-	clone := NewTaskData()
+// Clone creates a clone of this TaskData object and returns the clone
+func (td *TaskData) Clone() Task {
+	clone := NewTask()
 	// Clone GORM fields
-	clone.ID = td.ID
-	clone.CreatedAt = td.CreatedAt
-	clone.UpdatedAt = td.UpdatedAt
-	clone.DeletedAt = td.DeletedAt
+	clone.Data().ID = td.ID
+	clone.Data().CreatedAt = td.CreatedAt
+	clone.Data().UpdatedAt = td.UpdatedAt
+	clone.Data().DeletedAt = td.DeletedAt
 	// Clone TaskData fields
-	clone.Synopsis = td.Synopsis
-	clone.Description = td.Description
+	clone.Data().Synopsis = td.Synopsis
+	clone.Data().Description = td.Description
 	return clone
 }
 
 // Task is the main interface to task definitions
 type Task interface {
+	fmt.Stringer
+	schema.Tabler
+	Data() *TaskData
 	Create() error
 	Load(withDeleted bool) error
 	Delete() error
@@ -59,9 +70,14 @@ type Task interface {
 	Update(withDeleted bool) error
 	StopRunningTask() (*TimesheetData, error)
 	Clear()
-	String() string
 	FindTaskBySynopsis(tasks []TaskData, synopsis string) *TaskData
 	Resolve(arg string) (uint, string)
+	Clone() Task
+}
+
+// Data returns the underlying struct of the interface
+func (td *TaskData) Data() *TaskData {
+	return td
 }
 
 // String implements fmt.Stringer
@@ -159,7 +175,7 @@ func (td *TaskData) Update(withDeleted bool) error {
 // StopRunningTask stops the currently running task, if any
 func (td *TaskData) StopRunningTask() (timesheetData *TimesheetData, err error) {
 	log := logger.GetFuncLogger(td.log, "StopRunningTask")
-	timesheets, err := Timesheet(new(TimesheetData)).SearchOpen()
+	timesheets, err := NewTimesheet().SearchOpen()
 	if err != nil {
 		log.Err(err).Msg("error searching for open timesheets")
 		return nil, err
@@ -176,7 +192,8 @@ func (td *TaskData) StopRunningTask() (timesheetData *TimesheetData, err error) 
 		return nil, tterrors.ErrScanNowIntoSQLNull{Wrapped: err}
 	}
 	timesheetData.StopTime = *stoptime
-	err = Timesheet(timesheetData).Update()
+	timesheet := NewTimesheetWithData(*timesheetData)
+	err = timesheet.Update()
 	if err != nil {
 		log.Err(err).Msg("error updating running timesheet")
 		return nil, err

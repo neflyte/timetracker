@@ -23,7 +23,7 @@ type TasklistItem struct {
 	log                zerolog.Logger
 	synopsisBinding    binding.String
 	descriptionBinding binding.String
-	taskData           *models.TaskData
+	taskData           models.Task
 }
 
 // NewTasklistItem creates a new tasklistItem widget
@@ -33,7 +33,7 @@ func NewTasklistItem() *TasklistItem {
 	item.log = logger.GetStructLogger("TasklistItem")
 	item.synopsisBinding = binding.NewString()
 	item.descriptionBinding = binding.NewString()
-	item.taskData = models.NewTaskData()
+	item.taskData = models.NewTask()
 	return item
 }
 
@@ -48,7 +48,7 @@ func (i *TasklistItem) SetTask(newTask *models.TaskData) error {
 	if newTask == nil {
 		return errors.New("nil values are not accepted")
 	}
-	i.taskData = newTask
+	i.taskData = models.NewTaskWithData(*newTask)
 	err := i.synopsisBinding.Set(i.trimWithEllipsis(newTask.Synopsis, synopsisTrimLength))
 	if err != nil {
 		return err
