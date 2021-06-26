@@ -25,21 +25,21 @@ var (
 
 func startTask(_ *cobra.Command, args []string) (err error) {
 	log := logger.GetLogger("startTask")
-	taskData := models.NewTaskData()
-	taskData.ID, taskData.Synopsis = taskData.Resolve(args[0])
-	taskdisplay := taskData.Synopsis
-	if taskData.ID > 0 {
-		taskdisplay = fmt.Sprintf("%d", taskData.ID)
+	taskData := models.NewTask()
+	taskData.Data().ID, taskData.Data().Synopsis = taskData.Resolve(args[0])
+	taskdisplay := taskData.Data().Synopsis
+	if taskData.Data().ID > 0 {
+		taskdisplay = fmt.Sprintf("%d", taskData.Data().ID)
 	}
 	log.Debug().Msgf("taskdisplay=%s", taskdisplay)
 	// Load the task to make sure it exists
-	err = models.Task(taskData).Load(false)
+	err = taskData.Load(false)
 	if err != nil {
 		cli.PrintAndLogError(log, err, errors.LoadTaskError)
 		return err
 	}
 	// Stop any running task
-	stoppedTimesheet, err := models.Task(taskData).StopRunningTask()
+	stoppedTimesheet, err := taskData.StopRunningTask()
 	if err != nil && err.Error() != errors.NoRunningTasksError {
 		cli.PrintAndLogError(log, err, errors.StopRunningTaskError)
 		return err
@@ -54,20 +54,20 @@ func startTask(_ *cobra.Command, args []string) (err error) {
 		)
 	}
 	// Create a new timesheet for the task
-	timesheetData := new(models.TimesheetData)
-	timesheetData.Task = *taskData
-	timesheetData.StartTime = time.Now()
-	err = models.Timesheet(timesheetData).Create()
+	timesheet := models.NewTimesheet()
+	timesheet.Data().Task = *taskData.Data()
+	timesheet.Data().StartTime = time.Now()
+	err = timesheet.Create()
 	if err != nil {
 		cli.PrintAndLogError(log, err, "%s for task %s", errors.CreateTimesheetError, taskdisplay)
 		return err
 	}
 	fmt.Println(
-		color.WhiteString("Task ID %d ", taskData.ID),
-		color.CyanString(taskData.Synopsis),
-		color.MagentaString("(%s) ", taskData.Description),
+		color.WhiteString("Task ID %d ", taskData.Data().ID),
+		color.CyanString(taskData.Data().Synopsis),
+		color.MagentaString("(%s) ", taskData.Data().Description),
 		color.GreenString("started"),
-		color.WhiteString("at %s", timesheetData.StartTime.Format(constants.TimestampLayout)),
+		color.WhiteString("at %s", timesheet.Data().StartTime.Format(constants.TimestampLayout)),
 	)
 	return nil
 }

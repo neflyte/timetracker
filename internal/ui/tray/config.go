@@ -39,7 +39,8 @@ func init() {
 	// Ensure the config file exists
 	err = viper.SafeWriteConfig()
 	if err != nil {
-		_, isConfigExistsErr := err.(viper.ConfigFileAlreadyExistsError)
+		var viperAlreadyExistsError viper.ConfigFileAlreadyExistsError
+		isConfigExistsErr := errors.Is(err, viperAlreadyExistsError)
 		if !isConfigExistsErr {
 			fmt.Printf("*  error creating config file: %s\n", err.Error())
 		}

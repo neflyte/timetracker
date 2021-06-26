@@ -30,7 +30,7 @@ type TaskEditor struct {
 	taskDescription        string
 	taskSynopsisBinding    binding.String
 	taskDescriptionBinding binding.String
-	taskData               models.TaskData
+	taskData               models.Task
 
 	taskDataChannel      chan rxgo.Item
 	taskSavedChannel     chan rxgo.Item
@@ -66,7 +66,7 @@ func NewTaskEditor() *TaskEditor {
 		te.log.Trace().Msgf("setting te.taskDescription=%s from binding datalistener", editDescription)
 		te.taskDescription = editDescription
 	}))
-	te.taskData = models.TaskData{}
+	te.taskData = models.NewTask()
 	te.taskDataChannel = make(chan rxgo.Item, taskEditorEventChannelBufferSize)
 	te.observerablesMap = map[string]rxgo.Observable{
 		TaskEditorTaskSavedEventKey:     rxgo.FromEventSource(te.taskSavedChannel),
@@ -82,14 +82,14 @@ func (te *TaskEditor) Observables() map[string]rxgo.Observable {
 
 // getTask returns the current models.TaskData struct
 func (te *TaskEditor) getTask() *models.TaskData {
-	return &te.taskData
+	return te.taskData.Data()
 }
 
 // SetTask sets the current models.TaskData struct
 func (te *TaskEditor) SetTask(task *models.TaskData) error {
 	if task != nil {
 		te.taskDataChannel <- rxgo.Of(task)
-		te.taskData = *task
+		te.taskData = models.NewTaskWithData(*task)
 		err := te.taskSynopsisBinding.Set(task.Synopsis)
 		if err != nil {
 			return err
@@ -108,9 +108,9 @@ func (te *TaskEditor) GetDirtyTask() *models.TaskData {
 		return te.getTask()
 	}
 	dirty := te.taskData.Clone()
-	dirty.Synopsis = te.taskSynopsis
-	dirty.Description = te.taskDescription
-	return dirty
+	dirty.Data().Synopsis = te.taskSynopsis
+	dirty.Data().Description = te.taskDescription
+	return dirty.Data()
 }
 
 // IsDirty determines if the editor fields have been modified from their original values
@@ -118,19 +118,19 @@ func (te *TaskEditor) IsDirty() bool {
 	log := logger.GetFuncLogger(te.log, "IsDirty")
 	log.Trace().Msgf(
 		"te.taskData.Synopsis=%s, te.taskSynopsis=%s",
-		te.taskData.Synopsis,
+		te.taskData.Data().Synopsis,
 		te.taskSynopsis,
 	)
-	if te.taskData.Synopsis != te.taskSynopsis {
+	if te.taskData.Data().Synopsis != te.taskSynopsis {
 		log.Debug().Msg("synopsis is different; returning true")
 		return true
 	}
 	log.Trace().Msgf(
 		"te.taskData.Description=%s, te.taskDescription=%s",
-		te.taskData.Description,
+		te.taskData.Data().Description,
 		te.taskDescription,
 	)
-	if te.taskData.Description != te.taskDescription {
+	if te.taskData.Data().Description != te.taskDescription {
 		log.Debug().Msg("description is different; returning true")
 		return true
 	}
@@ -204,7 +204,7 @@ type taskEditorRenderer struct {
 	closeButton          *widget.Button
 	fieldContainer       *fyne.Container
 	buttonContainer      *fyne.Container
-	taskData             models.TaskData
+	taskData             models.Task
 	taskDataObservable   rxgo.Observable
 	taskSavedChannel     chan rxgo.Item
 	editCancelledChannel chan rxgo.Item
@@ -250,15 +250,15 @@ func (r *taskEditorRenderer) taskDataChanged(item interface{}) {
 	if ok {
 		log.Trace().Msgf("setting taskData from observable (cloned); taskData=%s", newTaskData.String())
 		cloned := newTaskData.Clone()
-		r.taskData = *cloned
+		r.taskData = models.NewTaskWithData(*cloned.Data())
 	}
 }
 
 func (r *taskEditorRenderer) doSaveTask() {
 	dirtyTask := r.taskData.Clone()
-	dirtyTask.Synopsis = r.synopsisEntry.Text
-	dirtyTask.Description = r.descriptionEntry.Text
-	r.taskSavedChannel <- rxgo.Of(*dirtyTask)
+	dirtyTask.Data().Synopsis = r.synopsisEntry.Text
+	dirtyTask.Data().Description = r.descriptionEntry.Text
+	r.taskSavedChannel <- rxgo.Of(*dirtyTask.Data())
 }
 
 func (r *taskEditorRenderer) doCancelEdit() {
@@ -284,11 +284,11 @@ func (r *taskEditorRenderer) updateButtonStates() {
 
 func (r *taskEditorRenderer) isDirty() bool {
 	log := logger.GetFuncLogger(r.log, "isDirty")
-	if r.taskData.Synopsis != r.synopsisEntry.Text {
+	if r.taskData.Data().Synopsis != r.synopsisEntry.Text {
 		log.Debug().Msg("synopsis is different; returning true")
 		return true
 	}
-	if r.taskData.Description != r.descriptionEntry.Text {
+	if r.taskData.Data().Description != r.descriptionEntry.Text {
 		log.Debug().Msg("description is different; returning true")
 		return true
 	}

@@ -24,8 +24,7 @@ func init() {
 }
 
 func doLastStarted(_ *cobra.Command, _ []string) (err error) {
-	tsd := new(models.TimesheetData)
-	lastStartedTasks, err := tsd.LastStartedTasks(taskLimit)
+	lastStartedTasks, err := models.NewTimesheet().LastStartedTasks(taskLimit)
 	if err != nil {
 		return
 	}

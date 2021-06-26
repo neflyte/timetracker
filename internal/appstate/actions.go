@@ -48,7 +48,7 @@ func UpdateRunningTimesheet() {
 		updateTSMutex.Unlock()
 		log.Trace().Msg("lock released successfully")
 	}()
-	timesheets, err := models.Timesheet(new(models.TimesheetData)).SearchOpen()
+	timesheets, err := models.NewTimesheet().SearchOpen()
 	if err != nil {
 		SetRunningTimesheet(nil) // Reset running timesheet
 		log.Err(err).Msg("error getting running timesheet")

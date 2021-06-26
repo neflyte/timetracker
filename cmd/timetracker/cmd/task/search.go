@@ -25,7 +25,7 @@ var (
 
 func searchTask(_ *cobra.Command, args []string) error {
 	log := logger.GetLogger("searchTask")
-	tasks, err := models.Task(models.NewTaskData()).Search(args[0])
+	tasks, err := models.NewTask().Search(args[0])
 	if err != nil {
 		cli.PrintAndLogError(log, err, errors.SearchTaskError)
 		return err

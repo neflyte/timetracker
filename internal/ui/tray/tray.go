@@ -1,11 +1,13 @@
 package tray
 
 import (
+	"errors"
 	"fmt"
 	"github.com/gen2brain/beeep"
 	"github.com/getlantern/systray"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/constants"
+	tterrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/icons"
@@ -25,6 +27,8 @@ const (
 	statusStartTaskTitle       = "Start new task"
 	statusStartTaskDescription = "Display a task selector and start a task"
 	statusStopTaskDescription  = "Stop the running task"
+
+	recentlyStartedTasks = 5
 )
 
 var (
@@ -33,13 +37,14 @@ var (
 	mCreateAndStart            *systray.MenuItem
 	mTrayOptions               *systray.MenuItem
 	mTrayOptionConfirmStopTask *systray.MenuItem
-	// mLastStarted       *systray.MenuItem
-	// lastStartedItems   []*systray.MenuItem
-	mAbout             *systray.MenuItem
-	mQuit              *systray.MenuItem
-	trayQuitChan       chan bool
-	actionLoopQuitChan chan bool
-	trayLogger         = logger.GetPackageLogger("tray")
+	mLastStarted               *systray.MenuItem
+	lastStartedItems           [recentlyStartedTasks]*systray.MenuItem
+	lastStartedItemSynopses    [recentlyStartedTasks]string
+	mAbout                     *systray.MenuItem
+	mQuit                      *systray.MenuItem
+	trayQuitChan               chan bool
+	actionLoopQuitChan         chan bool
+	trayLogger                 = logger.GetPackageLogger("tray")
 )
 
 // Run starts the systray app
@@ -75,10 +80,13 @@ func onReady() {
 		"Prompt for confirmation when stopping a running task",
 		viper.GetBool(keyStopTaskConfirm),
 	)
-	// TODO: List the top 5 last-started tasks as easy-start options
-	// systray.AddSeparator()
-	// mLastStarted = systray.AddMenuItem("Recent tasks", "Select a recently started task to start it again")
-	// lastStartedItems = make([]*systray.MenuItem, 0)
+	// List the top 5 last-started tasks as easy-start options
+	systray.AddSeparator()
+	mLastStarted = systray.AddMenuItem("Recent tasks", "Select a recently started task to start it again")
+	for x := 0; x < recentlyStartedTasks; x++ {
+		lastStartedItems[x] = mLastStarted.AddSubMenuItem("--", "")
+		lastStartedItemSynopses[x] = ""
+	}
 	systray.AddSeparator()
 	mAbout = systray.AddMenuItem("About Timetracker", "About the Timetracker app")
 	mQuit = systray.AddMenuItem("Quit", "Quit the Timetracker tray app")
@@ -127,17 +135,43 @@ func updateStatus(tsd *models.TimesheetData) {
 		systray.SetIcon(icons.Check)
 		mStatus.SetTitle(statusStartTaskTitle)
 		mStatus.SetTooltip(statusStartTaskDescription)
-		return
+	} else {
+		log.Trace().Msgf("got running timesheet object: %s", tsd.String())
+		systray.SetIcon(icons.Running)
+		statusText := fmt.Sprintf(
+			"Stop task %s (%s)",
+			tsd.Task.Synopsis,
+			time.Since(tsd.StartTime).Truncate(time.Second).String(),
+		)
+		mStatus.SetTitle(statusText)
+		mStatus.SetTooltip(statusStopTaskDescription)
 	}
-	log.Trace().Msgf("got running timesheet object: %s", tsd.String())
-	systray.SetIcon(icons.Running)
-	statusText := fmt.Sprintf(
-		"Stop task %s (%s)",
-		tsd.Task.Synopsis,
-		time.Since(tsd.StartTime).Truncate(time.Second).String(),
-	)
-	mStatus.SetTitle(statusText)
-	mStatus.SetTooltip(statusStopTaskDescription)
+	// Last 5 started tasks
+	lastStartedTasks, err := new(models.TimesheetData).LastStartedTasks(recentlyStartedTasks)
+	if err != nil {
+		log.Err(err).Msg("error loading recently-started tasks")
+	} else {
+		log.Debug().Msgf("len(lastStartedTasks)=%d", len(lastStartedTasks))
+		// Hide entries we don't need
+		if len(lastStartedTasks) < recentlyStartedTasks {
+			log.Debug().Msgf("len(lastStartedTasks) < recentlyStartedTasks; %d < %d", len(lastStartedTasks), recentlyStartedTasks)
+			for x := recentlyStartedTasks - 1; x > len(lastStartedItems)-1; x-- {
+				log.Debug().Msgf("hiding item at index %d; item=%s", x, lastStartedItems[x].String())
+				lastStartedItems[x].SetTitle("--")
+				lastStartedItems[x].SetTooltip("")
+				lastStartedItems[x].Hide()
+				lastStartedItemSynopses[x] = ""
+			}
+		}
+		// Fill in the entries we have
+		for x := 0; x < len(lastStartedTasks); x++ {
+			log.Debug().Msgf("showing item at index %d; synopsis=%s", x, lastStartedTasks[x].Synopsis)
+			lastStartedItems[x].Show()
+			lastStartedItems[x].SetTitle(lastStartedTasks[x].Synopsis)
+			lastStartedItems[x].SetTooltip(fmt.Sprintf("Start task %s", lastStartedTasks[x].Synopsis))
+			lastStartedItemSynopses[x] = lastStartedTasks[x].Synopsis
+		}
+	}
 }
 
 // FIXME: figure out if there is a way to safely reduce complexity in mainLoop below to remove the nolint directive
@@ -161,6 +195,18 @@ func mainLoop(quitChan chan bool) { //nolint:cyclop
 			} else {
 				mTrayOptionConfirmStopTask.Uncheck()
 			}
+		// BEGIN Last started tasks
+		case <-lastStartedItems[0].ClickedCh:
+			handleLastStartedClick(0)
+		case <-lastStartedItems[1].ClickedCh:
+			handleLastStartedClick(1)
+		case <-lastStartedItems[2].ClickedCh:
+			handleLastStartedClick(2) //nolint:gomnd
+		case <-lastStartedItems[3].ClickedCh:
+			handleLastStartedClick(3) //nolint:gomnd
+		case <-lastStartedItems[4].ClickedCh:
+			handleLastStartedClick(4) //nolint:gomnd
+		// END Last started tasks
 		case <-mAbout.ClickedCh:
 			launchGUI(guiOptionShowAboutWindow)
 		case <-mCreateAndStart.ClickedCh:
@@ -205,29 +251,7 @@ func handleStatusClick() {
 			launchGUI(guiOptionStopRunningTask)
 			return
 		}
-		// Stop the task
-		td := new(models.TaskData)
-		stoppedTimesheet, err := td.StopRunningTask()
-		if err != nil {
-			log.Err(err).Msg("error stopping the running task")
-			err = beeep.Alert(
-				"Error Stopping Task",
-				fmt.Sprintf("Error stopping the running task: %s", err.Error()),
-				"",
-			)
-			if err != nil {
-				log.Err(err).Msg("error sending notification for stop task error")
-			}
-			return
-		}
-		// Show notification that the task has stopped
-		notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)
-		notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp))
-		err = beeep.Notify(notificationTitle, notificationContents, "")
-		if err != nil {
-			log.Err(err).Msg("error sending notification about stopped task")
-		}
-		appstate.SetRunningTimesheet(nil)
+		stopRunningTask()
 	case constants.TimesheetStatusError:
 		lastError := appstate.GetLastError()
 		if lastError == nil {
@@ -248,4 +272,87 @@ func setTrayTitle(title string) {
 	if runtime.GOOS != "darwin" {
 		systray.SetTitle(title)
 	}
+}
+
+func handleLastStartedClick(index uint) {
+	log := logger.GetFuncLogger(trayLogger, "handleLastStartedClick").
+		With().
+		Uint("index", index).
+		Logger()
+	// Request to handle an index beyond what we have; do nothing
+	if index >= recentlyStartedTasks {
+		return
+	}
+	// Get the synopsis from the menu item
+	taskSyn := lastStartedItemSynopses[index]
+	// Ensure the task exists
+	task := models.NewTask()
+	task.Data().Synopsis = taskSyn
+	err := task.Load(false)
+	if err != nil {
+		log.Err(err).Msgf("error loading task with synopsis %s: %s", taskSyn, err.Error())
+		return
+	}
+	log.Debug().Msgf("loaded task ID %d (%s)", task.Data().ID, task.Data().Synopsis)
+	// Stop the current task if any
+	stopRunningTask()
+	// Start the new task
+	err = startTask(task.Data())
+	if err != nil {
+		log.Err(err).Msgf("error starting task %s: %s", task.Data().Synopsis, err.Error())
+	}
+}
+
+func stopRunningTask() {
+	log := logger.GetFuncLogger(trayLogger, "stopRunningTask")
+	// Stop the task
+	stoppedTimesheet, err := models.NewTask().StopRunningTask()
+	if err != nil {
+		stoppedTimesheet = nil
+		if !errors.Is(err, tterrors.ErrNoRunningTask{}) {
+			log.Err(err).Msg("error stopping the running task")
+			err = beeep.Alert(
+				"Error Stopping Task",
+				fmt.Sprintf("Error stopping the running task: %s", err.Error()),
+				"",
+			)
+			if err != nil {
+				log.Err(err).Msg("error sending notification for stop task error")
+			}
+			return
+		}
+	}
+	// Show notification that the task has stopped
+	if stoppedTimesheet != nil {
+		notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)
+		notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp))
+		err = beeep.Notify(notificationTitle, notificationContents, "")
+		if err != nil {
+			log.Err(err).Msg("error sending notification about stopped task")
+		}
+		appstate.SetRunningTimesheet(nil)
+	}
+}
+
+func startTask(taskData *models.TaskData) (err error) {
+	log := logger.GetFuncLogger(trayLogger, "startTask")
+	if taskData == nil {
+		return errors.New("cannot start a nil task")
+	}
+	timesheet := models.NewTimesheet()
+	timesheet.Data().Task = *taskData
+	timesheet.Data().StartTime = time.Now()
+	err = timesheet.Create()
+	if err != nil {
+		return
+	}
+	// Show notification that task started
+	notificationTitle := fmt.Sprintf("Task %s started", taskData.Synopsis)
+	notificationContents := fmt.Sprintf("Started at %s", timesheet.Data().StartTime.Format(time.Stamp))
+	err = beeep.Notify(notificationTitle, notificationContents, "")
+	if err != nil {
+		log.Err(err).Msg("error sending notification about started task")
+	}
+	appstate.SetRunningTimesheet(timesheet.Data())
+	return
 }

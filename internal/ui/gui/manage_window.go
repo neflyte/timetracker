@@ -142,7 +142,7 @@ func (m *manageWindowData) Close() {
 
 func (m *manageWindowData) refreshTasks() {
 	log := logger.GetFuncLogger(m.Log, "refreshTasks")
-	tasks, err := models.Task(new(models.TaskData)).LoadAll(false)
+	tasks, err := models.NewTask().LoadAll(false)
 	if err != nil {
 		log.Err(err).Msg("error reading all tasks")
 		return
@@ -227,38 +227,38 @@ func (m *manageWindowData) saveChanges(dirtyTask models.TaskData) error {
 	log := logger.GetFuncLogger(m.Log, "saveChanges")
 	if m.isEditing && m.TaskEditor.IsDirty() {
 		log.Debug().Msgf("dirtyTask=%s", dirtyTask.String())
-		td := new(models.TaskData)
+		task := models.NewTask()
 		// Re-load the task record first if it exists
 		if dirtyTask.ID > 0 {
-			td.Synopsis = dirtyTask.Synopsis
+			task.Data().Synopsis = dirtyTask.Synopsis
 			log.Debug().Msgf("re-loading record for task ID %d (%s)", dirtyTask.ID, dirtyTask.Synopsis)
-			err := td.Load(false)
+			err := task.Load(false)
 			if err != nil {
 				dialog.NewError(err, m.Window).Show()
 				log.Err(err).Msgf("error loading task with synopsis %s", dirtyTask.Synopsis)
 				return err
 			}
 		}
-		td.Synopsis = dirtyTask.Synopsis
-		td.Description = dirtyTask.Description
-		if td.ID > 0 {
-			log.Trace().Msgf("updating record for task ID %d (%s)", td.ID, td.Synopsis)
-			err := td.Update(false)
+		task.Data().Synopsis = dirtyTask.Synopsis
+		task.Data().Description = dirtyTask.Description
+		if task.Data().ID > 0 {
+			log.Trace().Msgf("updating record for task ID %d (%s)", task.Data().ID, task.Data().Synopsis)
+			err := task.Update(false)
 			if err != nil {
 				dialog.NewError(err, m.Window).Show()
-				log.Err(err).Msgf("error updating task %s", td.String())
+				log.Err(err).Msgf("error updating task %s", task.String())
 				return err
 			}
-			log.Debug().Msgf("record for task ID %d (%s) updated successfully", td.ID, td.Synopsis)
+			log.Debug().Msgf("record for task ID %d (%s) updated successfully", task.Data().ID, task.Data().Synopsis)
 		} else {
-			log.Trace().Msgf("creating new task record (%s)", td.Synopsis)
-			err := td.Create()
+			log.Trace().Msgf("creating new task record (%s)", task.Data().Synopsis)
+			err := task.Create()
 			if err != nil {
 				dialog.NewError(err, m.Window).Show()
-				log.Err(err).Msgf("error creating task %s", td.String())
+				log.Err(err).Msgf("error creating task %s", task.String())
 				return err
 			}
-			log.Debug().Msgf("new task record (%s) created successfully", td.Synopsis)
+			log.Debug().Msgf("new task record (%s) created successfully", task.Data().Synopsis)
 		}
 		m.refreshTasks()
 		return nil
@@ -274,7 +274,7 @@ func (m *manageWindowData) doneEditing() {
 	m.isEditing = false
 	m.ListTasks.Unselect(m.selectedTaskID)
 	m.selectedTaskID = noSelectionIndex
-	err := m.TaskEditor.SetTask(new(models.TaskData))
+	err := m.TaskEditor.SetTask(models.NewTask().Data())
 	if err != nil {
 		log.Err(err).Msg("error setting task to empty task")
 	}
@@ -298,15 +298,15 @@ func (m *manageWindowData) taskWasSelected(id widget.ListItemID) {
 	m.isEditing = true
 	m.TaskEditor.Show()
 	taskSyn := m.taskList[id]
-	td := new(models.TaskData)
-	td.Synopsis = taskSyn
-	err := td.Load(false)
+	task := models.NewTask()
+	task.Data().Synopsis = taskSyn
+	err := task.Load(false)
 	if err != nil {
 		dialog.NewError(err, m.Window).Show()
 		log.Err(err).Msgf("error loading task with synopsis %s", taskSyn)
 		return
 	}
-	err = m.TaskEditor.SetTask(td)
+	err = m.TaskEditor.SetTask(task.Data())
 	if err != nil {
 		log.Err(err).Msg("error setting task")
 	}
@@ -327,7 +327,7 @@ func (m *manageWindowData) createNewTask() {
 	m.selectedTaskID = -1
 	m.isEditing = true
 	m.TaskEditor.Show()
-	err := m.TaskEditor.SetTask(new(models.TaskData))
+	err := m.TaskEditor.SetTask(models.NewTask().Data())
 	if err != nil {
 		log.Err(err).Msg("error setting empty task")
 	}
@@ -351,9 +351,9 @@ func (m *manageWindowData) listTasksUpdateItem(item binding.DataItem, canvasObje
 		return
 	}
 	log = log.With().Str("taskSyn", taskSyn).Logger()
-	td := new(models.TaskData)
-	td.Synopsis = taskSyn
-	err = td.Load(false)
+	task := models.NewTask()
+	task.Data().Synopsis = taskSyn
+	err = task.Load(false)
 	if err != nil {
 		log.Err(err).Msgf("error loading task with synopsis %s", taskSyn)
 		return
@@ -363,8 +363,8 @@ func (m *manageWindowData) listTasksUpdateItem(item binding.DataItem, canvasObje
 		log.Error().Msgf("error getting tasklistItem widget; got %s", reflect.TypeOf(canvasObject).String())
 		return
 	}
-	log.Trace().Msgf("setting task=%s", td.String())
-	err = tasklistItem.SetTask(td)
+	log.Trace().Msgf("setting task=%s", task.String())
+	err = tasklistItem.SetTask(task.Data())
 	if err != nil {
 		log.Err(err).Msg("error setting task on tasklistItem")
 	}
