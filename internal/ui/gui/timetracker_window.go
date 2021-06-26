@@ -15,9 +15,9 @@ import (
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/gui/dialogs"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
+	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/rs/zerolog"
 	"regexp"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -25,11 +25,14 @@ import (
 // TODO: rework the UI layout to better contain the components (e.g. use themes and a custom layout, not just a card)
 
 const (
+	// taskNameTrimLength is the maximum length of the task name string before trimming
 	taskNameTrimLength = 32
 )
 
 var (
-	taskNameRE = regexp.MustCompile(`^\[([0-9]+)].*$`)
+	// taskNameRE is a regular expression used to split the Synopsis from the Description in
+	// the Tasklist widget
+	taskNameRE = regexp.MustCompile(`^(.*): .*$`)
 )
 
 // timetrackerWindow is the main timetracker GUI window interface
@@ -45,6 +48,7 @@ type timetrackerWindow interface {
 	Get() *timetrackerWindowData
 }
 
+// timetrackerWindowData is the struct underlying the timetrackerWindow interface
 type timetrackerWindowData struct {
 	App                         *fyne.App
 	Window                      fyne.Window
@@ -116,9 +120,6 @@ func (t *timetrackerWindowData) initWindow() {
 	)
 	t.BindRunningTask = binding.NewString()
 	t.LblStatus = widget.NewLabelWithData(t.BindRunningTask)
-	t.LblStatus.TextStyle = fyne.TextStyle{
-		Monospace: true,
-	}
 	t.BindStartTime = binding.NewString()
 	t.LblStartTime = widget.NewLabelWithData(t.BindStartTime)
 	t.BindElapsedTime = binding.NewString()
@@ -281,7 +282,7 @@ func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
 		// A task is running
 		t.BtnStopTask.Enable()
 		t.BtnStartTask.Disable()
-		err := t.BindRunningTask.Set(t.trimWithEllipsis(runningTS.Task.String(), taskNameTrimLength))
+		err := t.BindRunningTask.Set(utils.TrimWithEllipsis(runningTS.Task.String(), taskNameTrimLength))
 		if err != nil {
 			log.Err(err).Msgf("error setting running task to %s", runningTS.Task.String())
 		}
@@ -320,20 +321,13 @@ func (t *timetrackerWindowData) doStartTask() {
 	}
 	// TODO: convert from selectedTask string to task ID so we can start a new timesheet (instead of parsing a string)
 	if taskNameRE.MatchString(selection) {
-		var taskIDInt int
 		matches := taskNameRE.FindStringSubmatch(selection)
-		taskIDString := matches[1]
-		taskIDInt, err = strconv.Atoi(taskIDString)
-		if err != nil {
-			log.Err(err).Msgf("err converting taskIDString '%s' to int", taskIDString)
-			dialog.NewError(err, t.Window).Show()
-			return
-		}
+		taskSynopsisString := matches[1]
 		task := models.NewTask()
-		task.Data().ID = uint(taskIDInt)
+		task.Data().Synopsis = taskSynopsisString
 		err = task.Load(false)
 		if err != nil {
-			log.Err(err).Msgf("error loading task id %d", task.Data().ID)
+			log.Err(err).Msgf("error loading task with synopsis '%s'", task.Data().Synopsis)
 			dialog.NewError(err, t.Window).Show()
 			return
 		}
@@ -542,13 +536,7 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 	}
 }
 
-func (t *timetrackerWindowData) trimWithEllipsis(toTrim string, trimLength int) string {
-	if len(toTrim) <= trimLength {
-		return toTrim
-	}
-	return toTrim[0:trimLength-2] + `…`
-}
-
+// elapsedTimeLoop is a loop that draws the elapsed time since the running task was started
 func (t *timetrackerWindowData) elapsedTimeLoop(startTime time.Time, quitChan chan bool) {
 	log := logger.GetFuncLogger(t.Log, "elapsedTimeLoop")
 	t.elapsedTimeRunningMutex.RLock()

@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/rs/zerolog"
 )
 
@@ -37,11 +38,6 @@ func NewTasklistItem() *TasklistItem {
 	return item
 }
 
-// getTask returns the current models.TaskData struct
-/*func (i *TasklistItem) getTask() *models.TaskData {
-	return i.taskData
-}*/
-
 // SetTask sets the current models.TaskData struct
 func (i *TasklistItem) SetTask(newTask *models.TaskData) error {
 	// log := logger.GetFuncLogger(i.log, "SetTask")
@@ -49,22 +45,15 @@ func (i *TasklistItem) SetTask(newTask *models.TaskData) error {
 		return errors.New("nil values are not accepted")
 	}
 	i.taskData = models.NewTaskWithData(*newTask)
-	err := i.synopsisBinding.Set(i.trimWithEllipsis(newTask.Synopsis, synopsisTrimLength))
+	err := i.synopsisBinding.Set(utils.TrimWithEllipsis(newTask.Synopsis, synopsisTrimLength))
 	if err != nil {
 		return err
 	}
-	err = i.descriptionBinding.Set(i.trimWithEllipsis(newTask.Description, descriptionTrimLength))
+	err = i.descriptionBinding.Set(utils.TrimWithEllipsis(newTask.Description, descriptionTrimLength))
 	if err != nil {
 		return err
 	}
 	return nil
-}
-
-func (i *TasklistItem) trimWithEllipsis(toTrim string, trimLength int) string {
-	if len(toTrim) <= trimLength {
-		return toTrim
-	}
-	return toTrim[0:trimLength-2] + `…`
 }
 
 // CreateRenderer creates and returns a new fyne.WidgetRenderer
