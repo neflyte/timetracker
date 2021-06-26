@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/errors"
+	"github.com/neflyte/timetracker/internal/logger"
+	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 	"time"
 )
@@ -24,6 +26,24 @@ type TimesheetData struct {
 	StartTime time.Time `gorm:"not null"`
 	// StopTime is the time that the task was stopped at; if it is NULL, that means the task is still running
 	StopTime sql.NullTime
+
+	// log is the struct logger
+	log zerolog.Logger `gorm:"-"`
+}
+
+// NewTimesheet returns an new, initialized Timesheet interface
+func NewTimesheet() Timesheet {
+	return &TimesheetData{
+		Task:     TaskData{},
+		StopTime: sql.NullTime{},
+		log:      logger.GetStructLogger("TimesheetData"),
+	}
+}
+
+// NewTimesheetWithData returns a new Timesheet interface based on the supplied TimesheetData struct
+func NewTimesheetWithData(data TimesheetData) Timesheet {
+	data.log = logger.GetStructLogger("TimesheetData")
+	return &data
 }
 
 // TableName implements schema.Tabler
@@ -33,6 +53,7 @@ func (tsd *TimesheetData) TableName() string {
 
 // Timesheet is the main timesheet function interface
 type Timesheet interface {
+	Data() *TimesheetData
 	Create() error
 	Load() error
 	Delete() error
@@ -42,6 +63,11 @@ type Timesheet interface {
 	Update() error
 	String() string
 	LastStartedTasks(limit uint) (startedTasks []TaskData, err error)
+}
+
+// Data returns the struct underlying the interface
+func (tsd *TimesheetData) Data() *TimesheetData {
+	return tsd
 }
 
 // String implements fmt.Stringer
@@ -155,8 +181,13 @@ func (tsd *TimesheetData) Update() error {
 }
 
 /*
-SELECT DISTINCT(task_id)
-FROM timesheet
+SELECT task_id
+FROM (
+     SELECT task_id, start_time
+     FROM timesheet
+     ORDER BY start_time DESC
+)
+GROUP BY task_id
 ORDER BY start_time DESC
 LIMIT 5;
 */
@@ -169,19 +200,44 @@ func (tsd *TimesheetData) LastStartedTasks(limit uint) (startedTasks []TaskData,
 	if limit > 0 {
 		taskLimit = limit
 	}
-	taskTimesheets := make([]TimesheetData, 0)
+	taskIDs := make([]uint, 0)
+	subquery := database.Get().
+		Model(tsd).
+		Select("task_id", "start_time").
+		Order("start_time DESC")
 	err = database.Get().
-		Distinct("task_id").
-		Joins("Task").
-		Order("start_time desc").
+		Table("(?) as data", subquery).
+		Select("task_id").
+		Group("task_id").
+		Order("start_time DESC").
 		Limit(int(taskLimit)).
-		Find(&taskTimesheets).
+		Find(&taskIDs).
 		Error
 	if err != nil {
 		return
 	}
-	for _, taskTimesheet := range taskTimesheets {
-		startedTasks = append(startedTasks, taskTimesheet.Task)
+	unorderedStartedTasks := make([]TaskData, 0)
+	err = database.Get().
+		Model(new(TaskData)).
+		Find(&unorderedStartedTasks, taskIDs).
+		Error
+	if err != nil {
+		return
+	}
+	for _, taskID := range taskIDs {
+		task := findTaskByID(unorderedStartedTasks, taskID)
+		if task != nil {
+			startedTasks = append(startedTasks, *task)
+		}
 	}
 	return
+}
+
+func findTaskByID(tasks []TaskData, id uint) *TaskData {
+	for _, task := range tasks {
+		if task.ID == id {
+			return &task
+		}
+	}
+	return nil
 }

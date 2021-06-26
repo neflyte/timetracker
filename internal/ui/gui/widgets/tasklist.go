@@ -23,6 +23,7 @@ type Tasklist struct {
 	selectionBinding binding.String
 }
 
+// NewTasklist creates a new instance of a Tasklist widget
 func NewTasklist() *Tasklist {
 	tl := &Tasklist{
 		log:              logger.GetStructLogger("Tasklist"),

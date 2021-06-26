@@ -25,7 +25,7 @@ var (
 
 func stopTask(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("stopTask")
-	timesheetData, err := models.Task(models.NewTaskData()).StopRunningTask()
+	timesheetData, err := models.NewTask().StopRunningTask()
 	if err != nil {
 		cli.PrintAndLogError(log, err, errors.StopRunningTaskError)
 		return err

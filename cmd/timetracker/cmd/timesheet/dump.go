@@ -47,15 +47,15 @@ func dumpTimesheets(_ *cobra.Command, _ []string) (err error) {
 		if err != nil {
 			return err
 		}
-		sheets, err = models.Timesheet(&models.TimesheetData{
-			StartTime: dStart,
-			StopTime: sql.NullTime{
-				Valid: true,
-				Time:  dEnd,
-			},
-		}).SearchDateRange()
+		timesheet := models.NewTimesheet()
+		timesheet.Data().StartTime = dStart
+		timesheet.Data().StopTime = sql.NullTime{
+			Valid: true,
+			Time:  dEnd,
+		}
+		sheets, err = timesheet.SearchDateRange()
 	} else {
-		sheets, err = models.Timesheet(new(models.TimesheetData)).LoadAll(false)
+		sheets, err = models.NewTimesheet().LoadAll(false)
 	}
 	if err != nil {
 		cli.PrintAndLogError(log, err, errors.ListTimesheetError)
