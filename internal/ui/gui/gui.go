@@ -25,14 +25,6 @@ func StartGUI(app *fyne.App) {
 	guiFunc(app)
 }
 
-// StopGUI quits the GUI app
-func StopGUI() {
-	if !guiStarted {
-		return
-	}
-	fyneApp.Quit()
-}
-
 // InitGUI initializes the GUI app
 func InitGUI() *fyne.App {
 	log := logger.GetFuncLogger(guiLogger, "initGUI")

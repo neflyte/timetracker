@@ -1,18 +1,21 @@
 package widgets
 
 import (
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
 	"github.com/elliotchance/pie/pie"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/rs/zerolog"
 )
 
 const (
 	// tasklistMinWidth is the minimum width of the widget in pixels
-	tasklistMinWidth = 350
+	tasklistMinWidth              = 500
+	tasklistDescriptionTrimLength = 48
 )
 
 // Tasklist is an extended widget.Select object that adds data binding for displaying a list of tasks
@@ -71,7 +74,7 @@ func (t *Tasklist) selectionChanged(selection string) {
 
 func (t *Tasklist) refreshTaskList() {
 	log := logger.GetFuncLogger(t.log, "refreshTaskList")
-	td := new(models.TaskData)
+	td := models.NewTask()
 	tasks, err := td.LoadAll(false)
 	if err != nil {
 		log.Err(err).Msg("unable to load task list")
@@ -80,7 +83,11 @@ func (t *Tasklist) refreshTaskList() {
 	log.Trace().Msgf("len(tasks)=%d", len(tasks))
 	taskStrings := make([]string, len(tasks))
 	for idx, task := range tasks {
-		taskStrings[idx] = task.String()
+		taskStrings[idx] = fmt.Sprintf(
+			"%s: %s",
+			task.Synopsis,
+			utils.TrimWithEllipsis(task.Description, tasklistDescriptionTrimLength),
+		)
 	}
 	log.Trace().Msgf("taskStrings=%#v", taskStrings)
 	err = t.listBinding.Set(taskStrings)

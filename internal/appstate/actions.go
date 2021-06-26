@@ -26,7 +26,7 @@ func ActionLoop(quitChannel chan bool) {
 		actionLoopRunning = false
 	}()
 	for {
-		UpdateRunningTimesheet()
+		updateRunningTimesheet()
 		log.Trace().Msgf("delaying %d seconds until next action loop", constants.ActionLoopDelaySeconds)
 		select {
 		case <-quitChannel:
@@ -38,9 +38,9 @@ func ActionLoop(quitChannel chan bool) {
 	}
 }
 
-// UpdateRunningTimesheet gets the latest running timesheet object and sets the appropriate status
-func UpdateRunningTimesheet() {
-	log := logger.GetFuncLogger(appstateLog, "UpdateRunningTimesheet")
+// updateRunningTimesheet gets the latest running timesheet object and sets the appropriate status
+func updateRunningTimesheet() {
+	log := logger.GetFuncLogger(appstateLog, "updateRunningTimesheet")
 	updateTSMutex.Lock()
 	log.Trace().Msg("lock acquired successfully")
 	defer func() {

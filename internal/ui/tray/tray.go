@@ -129,25 +129,40 @@ func onExit() {
 
 func updateStatus(tsd *models.TimesheetData) {
 	log := logger.GetFuncLogger(trayLogger, "updateStatus")
-	if tsd == nil {
-		// No running timesheet
-		log.Trace().Msg("got nil running timesheet item")
-		systray.SetIcon(icons.Check)
-		mStatus.SetTitle(statusStartTaskTitle)
-		mStatus.SetTooltip(statusStartTaskDescription)
+	// Check if last status was error and show the error icon
+	lastState := appstate.GetLastState()
+	if lastState == constants.TimesheetStatusError {
+		log.Trace().Msgf("got error for lastState")
+		// Get the error
+		lastStateError := appstate.GetLastError()
+		if lastStateError != nil {
+			log.Trace().Msgf("got error: %s", lastStateError.Error())
+		}
+		systray.SetIcon(icons.Error)
+		mStatus.SetTitle("Error (click for details)")
+		mStatus.SetTooltip("An error occurred; click for more details")
 	} else {
-		log.Trace().Msgf("got running timesheet object: %s", tsd.String())
-		systray.SetIcon(icons.Running)
-		statusText := fmt.Sprintf(
-			"Stop task %s (%s)",
-			tsd.Task.Synopsis,
-			time.Since(tsd.StartTime).Truncate(time.Second).String(),
-		)
-		mStatus.SetTitle(statusText)
-		mStatus.SetTooltip(statusStopTaskDescription)
+		// Check the supplied timesheet
+		if tsd == nil {
+			// No running timesheet
+			log.Trace().Msg("got nil running timesheet item")
+			systray.SetIcon(icons.Check)
+			mStatus.SetTitle(statusStartTaskTitle)
+			mStatus.SetTooltip(statusStartTaskDescription)
+		} else {
+			log.Trace().Msgf("got running timesheet object: %s", tsd.String())
+			systray.SetIcon(icons.Running)
+			statusText := fmt.Sprintf(
+				"Stop task %s (%s)",
+				tsd.Task.Synopsis,
+				time.Since(tsd.StartTime).Truncate(time.Second).String(),
+			)
+			mStatus.SetTitle(statusText)
+			mStatus.SetTooltip(statusStopTaskDescription)
+		}
 	}
 	// Last 5 started tasks
-	lastStartedTasks, err := new(models.TimesheetData).LastStartedTasks(recentlyStartedTasks)
+	lastStartedTasks, err := models.NewTimesheet().LastStartedTasks(recentlyStartedTasks)
 	if err != nil {
 		log.Err(err).Msg("error loading recently-started tasks")
 	} else {
@@ -187,14 +202,7 @@ func mainLoop(quitChan chan bool) { //nolint:cyclop
 		case <-mManage.ClickedCh:
 			launchGUI(guiOptionShowManageWindow)
 		case <-mTrayOptionConfirmStopTask.ClickedCh:
-			shouldConfirmStopTask := viper.GetBool(keyStopTaskConfirm)
-			newConfirmValue := !shouldConfirmStopTask
-			viper.Set(keyStopTaskConfirm, newConfirmValue)
-			if newConfirmValue {
-				mTrayOptionConfirmStopTask.Check()
-			} else {
-				mTrayOptionConfirmStopTask.Uncheck()
-			}
+			toggleConfirmStopTask()
 		// BEGIN Last started tasks
 		case <-lastStartedItems[0].ClickedCh:
 			handleLastStartedClick(0)
@@ -355,4 +363,15 @@ func startTask(taskData *models.TaskData) (err error) {
 	}
 	appstate.SetRunningTimesheet(timesheet.Data())
 	return
+}
+
+func toggleConfirmStopTask() {
+	shouldConfirmStopTask := viper.GetBool(keyStopTaskConfirm)
+	newConfirmValue := !shouldConfirmStopTask
+	viper.Set(keyStopTaskConfirm, newConfirmValue)
+	if newConfirmValue {
+		mTrayOptionConfirmStopTask.Check()
+	} else {
+		mTrayOptionConfirmStopTask.Uncheck()
+	}
 }
