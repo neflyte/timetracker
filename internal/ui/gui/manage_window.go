@@ -57,6 +57,7 @@ func newManageWindow(app fyne.App) manageWindow {
 		taskList:               make([]string, 0),
 		selectedTaskID:         noSelectionIndex,
 		taskListChangedChannel: make(chan rxgo.Item, manageWindowEventChannelBufferSize),
+		TaskEditor:             widgets.NewTaskEditor(),
 	}
 	mw.initWindow()
 	return mw
@@ -68,7 +69,6 @@ func (m *manageWindowData) initWindow() {
 	// setup bindings
 	m.BindTaskList = binding.BindStringList(&m.taskList)
 	// setup widgets
-	m.TaskEditor = widgets.NewTaskEditor()
 	m.ListTasks = widget.NewListWithData(m.BindTaskList, m.listTasksCreateItem, m.listTasksUpdateItem)
 	m.ListTasks.OnSelected = m.taskWasSelected
 	m.AddTaskButton = widget.NewButtonWithIcon("NEW", theme.ContentAddIcon(), m.createNewTask)
