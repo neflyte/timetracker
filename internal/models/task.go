@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/neflyte/timetracker/internal/database"
 	tterrors "github.com/neflyte/timetracker/internal/errors"
@@ -64,15 +65,15 @@ type Task interface {
 	Data() *TaskData
 	Create() error
 	Load(withDeleted bool) error
+	Update(withDeleted bool) error
 	Delete() error
+	Clear()
+	Clone() Task
 	LoadAll(withDeleted bool) ([]TaskData, error)
 	Search(text string) ([]TaskData, error)
-	Update(withDeleted bool) error
 	StopRunningTask() (*TimesheetData, error)
-	Clear()
 	FindTaskBySynopsis(tasks []TaskData, synopsis string) *TaskData
 	Resolve(arg string) (uint, string)
-	Clone() Task
 }
 
 // Data returns the underlying struct of the interface
@@ -97,7 +98,14 @@ func (td *TaskData) Create() error {
 			Details: tterrors.EmptySynopsisTaskError,
 		}
 	}
-	return database.Get().Create(td).Error
+	tx := database.Get().Begin()
+	err := tx.Create(td).Error
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
 }
 
 // Load attempts to load the task specified by ID or Synopsis
@@ -128,7 +136,14 @@ func (td *TaskData) Delete() error {
 	if err != nil {
 		return err
 	}
-	return database.Get().Delete(td).Error
+	tx := database.Get().Begin()
+	err = tx.Delete(td).Error
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
 }
 
 // LoadAll loads all tasks in the database, optionally including deleted tasks
@@ -168,8 +183,18 @@ func (td *TaskData) Update(withDeleted bool) error {
 	db := database.Get()
 	if withDeleted {
 		db = db.Unscoped()
+	} else {
+		if td.DeletedAt.Valid {
+			return errors.New("cannot update a deleted task")
+		}
 	}
-	return db.Save(td).Error
+	tx := db.Begin()
+	err := tx.Save(td).Error
+	if err != nil {
+		return err
+	}
+	tx.Commit()
+	return nil
 }
 
 // StopRunningTask stops the currently running task, if any
