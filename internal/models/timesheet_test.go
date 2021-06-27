@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"github.com/bluele/factory-go/factory"
@@ -9,7 +10,6 @@ import (
 	ttErrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
-	"math/rand"
 	"testing"
 	"time"
 )
@@ -36,17 +36,19 @@ var (
 			if len(availableTaskIDs) == 0 {
 				return nil, errors.New("task IDs list is empty; this is unexpected")
 			}
-			randomIndex := rand.Intn(len(availableTaskIDs) - 1) //nolint:gosec
+			randomIndex := rnd.Intn(len(availableTaskIDs) - 1)
 			return availableTaskIDs[randomIndex], nil
 		}).
 		Attr("StartTime", func(_ factory.Args) (interface{}, error) {
 			// time.Now() minus random hours from 0-3 and random minutes from 1-59
-			randMinutes := rand.Intn(59) //nolint:gosec
+			randHours := rnd.Intn(3)
+			randMinutes := rnd.Intn(59)
 			if randMinutes == 0 {
 				randMinutes = 1
 			}
 			timesheetStartTime := time.Now().
-				Add(-time.Hour * time.Duration(rand.Intn(3))). //nolint:gosec
+				Truncate(time.Second).
+				Add(-time.Hour * time.Duration(randHours)).
 				Add(-time.Minute * time.Duration(randMinutes))
 			return timesheetStartTime, nil
 		}).
@@ -56,12 +58,13 @@ var (
 			if !castOK {
 				return nil, errors.New("arg was not *TimesheetData; this is unexpected")
 			}
-			randMinutes := rand.Intn(59) //nolint:gosec
+			randHours := rnd.Intn(3)
+			randMinutes := rnd.Intn(59)
 			if randMinutes == 0 {
 				randMinutes = 1
 			}
 			timesheetStopTime := tsdPtr.StartTime.
-				Add(time.Hour * time.Duration(rand.Intn(3))). //nolint:gosec
+				Add(time.Hour * time.Duration(randHours)).
 				Add(time.Minute * time.Duration(randMinutes))
 			stopTimeNulltime := sql.NullTime{
 				Time:  timesheetStopTime,
@@ -338,4 +341,64 @@ func TestUnit_Timesheet_Update_InvalidTaskID(t *testing.T) {
 	err := tsd.Update()
 	require.NotNil(t, err)
 	require.True(t, errors.Is(err, ttErrors.ErrInvalidTimesheetState{Details: ttErrors.TimesheetWithoutTaskError}))
+}
+
+func TestUnit_Timesheet_TaskReport(t *testing.T) {
+	db := MustOpenTestDB(t)
+	defer CloseTestDB(t, db)
+	database.Set(db)
+
+	// Create 10 tasks
+	taskFactoryCtx := context.WithValue(context.Background(), taskFactoryDatabaseKey, db)
+	const numTasks = 10
+	createdTasks := make([]*TaskData, numTasks)
+	createdTaskIDs := make([]uint, numTasks)
+	for x := 0; x < numTasks; x++ {
+		taskIntf, err := TaskFactory.CreateWithContext(taskFactoryCtx)
+		require.Nil(t, err)
+		require.NotNil(t, taskIntf)
+		task, castOK := taskIntf.(*TaskData)
+		require.True(t, castOK)
+		createdTasks[x] = task
+		createdTaskIDs[x] = task.ID
+	}
+
+	// Create some timesheets for random tasks
+	timesheetFactoryCtx := context.WithValue(context.Background(), timesheetFactoryDatabaseKey, db)
+	timesheetFactoryCtx = context.WithValue(timesheetFactoryCtx, timesheetFactoryTaskIDsKey, createdTaskIDs)
+	const numTimesheets = 100
+	createdTimesheets := make([]*TimesheetData, numTimesheets)
+	for x := 0; x < numTimesheets; x++ {
+		timesheetIntf, err := TimesheetFactory.CreateWithContext(timesheetFactoryCtx)
+		require.Nil(t, err)
+		require.NotNil(t, timesheetIntf)
+		timesheet, castOK := timesheetIntf.(*TimesheetData)
+		require.True(t, castOK)
+		// Reload the timesheet so we get the task
+		ts := NewTimesheetWithData(*timesheet)
+		err = ts.Load()
+		require.Nil(t, err)
+		createdTimesheets[x] = ts.Data()
+	}
+
+	// Get a task report for today
+	timeNow := time.Now().Truncate(time.Second)
+	ts := NewTimesheet()
+	reportTasks, err := ts.TaskReport(
+		timeNow.AddDate(0, 0, -1),
+		timeNow.AddDate(0, 0, 1),
+		false,
+	)
+	require.Nil(t, err)
+	require.NotNil(t, reportTasks)
+	require.NotEqual(t, 0, len(reportTasks))
+	t.Logf("start date\tsynopsis\tduration")
+	for _, reportTask := range reportTasks {
+		t.Logf(
+			"%s\t%s\t%s",
+			reportTask.StartDate.Time.Format(constants.TimestampDateLayout),
+			reportTask.TaskSynopsis,
+			reportTask.Duration().String(),
+		)
+	}
 }

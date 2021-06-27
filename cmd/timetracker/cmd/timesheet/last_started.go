@@ -9,6 +9,8 @@ import (
 	"strconv"
 )
 
+const defaultTaskLimit = 5
+
 var (
 	// LastStartedCmd represents the command that prints the last x started tasks
 	LastStartedCmd = &cobra.Command{
@@ -20,7 +22,7 @@ var (
 )
 
 func init() {
-	LastStartedCmd.Flags().UintVar(&taskLimit, "limit", 5, "the number of tasks to return; must be greater than zero")
+	LastStartedCmd.Flags().UintVar(&taskLimit, "limit", defaultTaskLimit, "the number of tasks to return; must be greater than zero")
 }
 
 func doLastStarted(_ *cobra.Command, _ []string) (err error) {

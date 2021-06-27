@@ -20,6 +20,9 @@ const (
 	testTaskSynopsis    = "Task-1"
 	testTaskDescription = "This is a task"
 
+	synopsisBar        = "Bar"
+	descriptionQuxQuux = "qux quux"
+
 	taskFactoryDatabaseKey taskFactoryContextKey = 0
 )
 
@@ -401,8 +404,8 @@ func TestUnit_Update_Nominal(t *testing.T) {
 	require.Nil(t, err)
 
 	// Update test data
-	td.Data().Synopsis = "Bar"
-	td.Data().Description = "qux quux"
+	td.Data().Synopsis = synopsisBar
+	td.Data().Description = descriptionQuxQuux
 	err = td.Update(false)
 	require.Nil(t, err)
 
@@ -411,8 +414,8 @@ func TestUnit_Update_Nominal(t *testing.T) {
 	reloaded.Data().ID = td.Data().ID
 	err = reloaded.Load(false)
 	require.Nil(t, err)
-	require.Equal(t, "Bar", reloaded.Data().Synopsis)
-	require.Equal(t, "qux quux", reloaded.Data().Description)
+	require.Equal(t, synopsisBar, reloaded.Data().Synopsis)
+	require.Equal(t, descriptionQuxQuux, reloaded.Data().Description)
 }
 
 func TestUnit_Update_InvalidID(t *testing.T) {
@@ -463,8 +466,8 @@ func TestUnit_Update_Deleted(t *testing.T) {
 	require.Nil(t, err)
 
 	// Update test data without deleted flag
-	td.Data().Synopsis = "Bar"
-	td.Data().Description = "qux quux"
+	td.Data().Synopsis = synopsisBar
+	td.Data().Description = descriptionQuxQuux
 	err = td.Update(false)
 	require.NotNil(t, err)
 
@@ -473,12 +476,12 @@ func TestUnit_Update_Deleted(t *testing.T) {
 	reloaded.Data().ID = td.Data().ID
 	err = reloaded.Load(true)
 	require.Nil(t, err)
-	require.NotEqual(t, "Bar", reloaded.Data().Synopsis)
-	require.NotEqual(t, "qux quux", reloaded.Data().Description)
+	require.NotEqual(t, synopsisBar, reloaded.Data().Synopsis)
+	require.NotEqual(t, descriptionQuxQuux, reloaded.Data().Description)
 
 	// Update test data WITH deleted flag
-	td.Data().Synopsis = "Bar"
-	td.Data().Description = "qux quux"
+	td.Data().Synopsis = synopsisBar
+	td.Data().Description = descriptionQuxQuux
 	err = td.Update(true)
 	require.Nil(t, err)
 
@@ -487,8 +490,8 @@ func TestUnit_Update_Deleted(t *testing.T) {
 	reloaded.Data().ID = td.Data().ID
 	err = reloaded.Load(true)
 	require.Nil(t, err)
-	require.Equal(t, "Bar", reloaded.Data().Synopsis)
-	require.Equal(t, "qux quux", reloaded.Data().Description)
+	require.Equal(t, synopsisBar, reloaded.Data().Synopsis)
+	require.Equal(t, descriptionQuxQuux, reloaded.Data().Description)
 }
 
 // StopRunningTask

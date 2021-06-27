@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	keyStopTaskConfirm = "stop-task-confirm"
+	keyStopTaskConfirm  = "stop-task-confirm"
+	configDirectoryMode = 0755
 )
 
 func init() {
@@ -25,7 +26,7 @@ func init() {
 	} else {
 		userTimetrackerConfDir := path.Join(userConfDir, "timetracker")
 		// Make sure the directory exists before we add it
-		mkdirErr := os.MkdirAll(userTimetrackerConfDir, 0755)
+		mkdirErr := os.MkdirAll(userTimetrackerConfDir, configDirectoryMode)
 		if mkdirErr != nil {
 			fmt.Printf("*  error creating configuration directory '%s': %s\n", userTimetrackerConfDir, mkdirErr.Error())
 		} else {
@@ -40,8 +41,8 @@ func init() {
 	err = viper.SafeWriteConfig()
 	if err != nil {
 		var viperAlreadyExistsError viper.ConfigFileAlreadyExistsError
-		isConfigExistsErr := errors.Is(err, viperAlreadyExistsError)
-		if !isConfigExistsErr {
+		errOk := errors.As(err, &viperAlreadyExistsError)
+		if !errOk {
 			fmt.Printf("*  error creating config file: %s\n", err.Error())
 		}
 	}

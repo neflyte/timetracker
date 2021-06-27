@@ -12,6 +12,7 @@ import (
 
 const (
 	defaultDatabaseFileName = "timetracker.db"
+	configDirectoryMode     = 0755
 )
 
 var (
@@ -60,9 +61,9 @@ func initDatabase() {
 		} else {
 			userConfigDir = path.Join(userConfigDir, "timetracker")
 			// Make sure this directory exists...
-			err := os.MkdirAll(userConfigDir, 0755)
-			if err != nil {
-				log.Fatal().Msgf("error creating configuration directory: %s\n", err)
+			mkdirErr := os.MkdirAll(userConfigDir, configDirectoryMode)
+			if mkdirErr != nil {
+				log.Fatal().Msgf("error creating configuration directory: %s", mkdirErr.Error())
 			}
 		}
 		configFile = path.Join(userConfigDir, defaultDatabaseFileName)
