@@ -12,13 +12,17 @@ import (
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
+	"github.com/patrickmn/go-cache"
 	"github.com/reactivex/rxgo/v2"
 	"github.com/rs/zerolog"
 	"reflect"
+	"time"
 )
 
 const (
-	noSelectionIndex = widget.ListItemID(-1)
+	noSelectionIndex                = widget.ListItemID(-1)
+	listTasksCacheExpirationSeconds = 10
+	listTasksCachePurgeSeconds      = 30
 )
 
 type manageWindow interface {
@@ -47,6 +51,8 @@ type manageWindowData struct {
 
 	isEditing      bool
 	selectedTaskID widget.ListItemID
+
+	listTasksCache *cache.Cache
 }
 
 func newManageWindow(app fyne.App) manageWindow {
@@ -58,6 +64,10 @@ func newManageWindow(app fyne.App) manageWindow {
 		selectedTaskID:         noSelectionIndex,
 		taskListChangedChannel: make(chan rxgo.Item, manageWindowEventChannelBufferSize),
 		TaskEditor:             widgets.NewTaskEditor(),
+		listTasksCache: cache.New(
+			listTasksCacheExpirationSeconds*time.Second,
+			listTasksCachePurgeSeconds*time.Second,
+		),
 	}
 	mw.initWindow()
 	return mw
@@ -133,11 +143,13 @@ func (m *manageWindowData) Hide() {
 	}
 	m.TaskEditor.Hide()
 	m.Window.Hide()
+	m.listTasksCache.Flush()
 }
 
 // Close closes the manage window
 func (m *manageWindowData) Close() {
 	m.Window.Close()
+	m.listTasksCache.Flush()
 }
 
 func (m *manageWindowData) refreshTasks() {
@@ -339,6 +351,7 @@ func (m *manageWindowData) listTasksCreateItem() fyne.CanvasObject {
 }
 
 func (m *manageWindowData) listTasksUpdateItem(item binding.DataItem, canvasObject fyne.CanvasObject) {
+	var task models.Task
 	log := logger.GetFuncLogger(m.Log, "listTasksUpdateItem")
 	taskSynopsisBinding, ok := item.(binding.String)
 	if !ok {
@@ -351,12 +364,29 @@ func (m *manageWindowData) listTasksUpdateItem(item binding.DataItem, canvasObje
 		return
 	}
 	log = log.With().Str("taskSyn", taskSyn).Logger()
-	task := models.NewTask()
-	task.Data().Synopsis = taskSyn
-	err = task.Load(false)
-	if err != nil {
-		log.Err(err).Msgf("error loading task with synopsis %s", taskSyn)
-		return
+	// Check if it's in the cache first
+	cachedTaskData, found := m.listTasksCache.Get(taskSyn)
+	if found {
+		cachedTaskDataPtr, castOK := cachedTaskData.(*models.TaskData)
+		if castOK && cachedTaskDataPtr != nil {
+			task = models.NewTaskWithData(*cachedTaskDataPtr)
+		} else {
+			log.Error().Msgf("cachedTaskDataPtr is nil; THIS IS UNEXPECTED; cachedTaskData=%#v", cachedTaskData)
+			task = nil
+		}
+	}
+	// If it's not in the cache then load it from the database and add it to the cache
+	if task == nil {
+		log.Trace().Msgf("task with synopsis %s is not in cache; loading from database", taskSyn)
+		task = models.NewTask()
+		task.Data().Synopsis = taskSyn
+		err = task.Load(false)
+		if err != nil {
+			log.Err(err).Msgf("error loading task with synopsis %s", taskSyn)
+			return
+		}
+		// Cache loaded task
+		m.listTasksCache.Set(task.Data().Synopsis, task.Data(), cache.DefaultExpiration)
 	}
 	tasklistItem, ok := canvasObject.(*widgets.TasklistItem)
 	if !ok {

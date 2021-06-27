@@ -18,6 +18,7 @@ require (
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mattn/go-sqlite3 v1.14.7 // indirect
 	github.com/nightlyone/lockfile v1.0.0
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/reactivex/rxgo/v2 v2.5.0
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/zerolog v1.23.0
