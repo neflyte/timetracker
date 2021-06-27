@@ -35,7 +35,7 @@ func preDoTray(_ *cobra.Command, _ []string) error {
 		userConfigDir = path.Join(userConfigDir, "timetracker")
 	}
 	if userConfigDir != "." {
-		err = os.MkdirAll(userConfigDir, 0755)
+		err = os.MkdirAll(userConfigDir, configDirectoryMode)
 		if err != nil {
 			log.Err(err).Msgf("error creating directories for pidfile; userConfigDir=%s", userConfigDir)
 			return err

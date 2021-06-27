@@ -183,10 +183,8 @@ func (td *TaskData) Update(withDeleted bool) error {
 	db := database.Get()
 	if withDeleted {
 		db = db.Unscoped()
-	} else {
-		if td.DeletedAt.Valid {
-			return errors.New("cannot update a deleted task")
-		}
+	} else if td.DeletedAt.Valid {
+		return errors.New("cannot update a deleted task")
 	}
 	tx := db.Begin()
 	err := tx.Save(td).Error

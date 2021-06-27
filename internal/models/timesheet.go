@@ -3,8 +3,9 @@ package models
 import (
 	"database/sql"
 	"fmt"
+	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/database"
-	"github.com/neflyte/timetracker/internal/errors"
+	ttErrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
@@ -63,9 +64,9 @@ type Timesheet interface {
 	Delete() error
 	LoadAll(withDeleted bool) ([]TimesheetData, error)
 	SearchOpen() ([]TimesheetData, error)
-	SearchDateRange() ([]TimesheetData, error)
+	SearchDateRange(withDeleted bool) ([]TimesheetData, error)
 	LastStartedTasks(limit uint) (startedTasks []TaskData, err error)
-	TaskReport(startDate, endDate time.Time) (reportData []TaskReportData, err error)
+	TaskReport(startDate, endDate time.Time, withDeleted bool) (reportData []TaskReportData, err error)
 }
 
 // Data returns the struct underlying the interface
@@ -81,7 +82,7 @@ func (tsd *TimesheetData) String() string {
 		stopTime = tsd.StopTime.Time.String()
 	}
 	return fmt.Sprintf(
-		"TimesheetData[ Task=%s, StartTime=%s, StopTime=%s ]",
+		"TimesheetData{Task=%s, StartTime=%s, StopTime=%s}",
 		tsd.Task.String(), startTime, stopTime,
 	)
 }
@@ -89,13 +90,13 @@ func (tsd *TimesheetData) String() string {
 // Create creates a new timesheet record
 func (tsd *TimesheetData) Create() error {
 	if tsd.ID != 0 {
-		return errors.ErrInvalidTimesheetState{
-			Details: errors.OverwriteTimesheetByCreateError,
+		return ttErrors.ErrInvalidTimesheetState{
+			Details: ttErrors.OverwriteTimesheetByCreateError,
 		}
 	}
 	if tsd.Task.ID == 0 {
-		return errors.ErrInvalidTimesheetState{
-			Details: errors.TimesheetWithoutTaskError,
+		return ttErrors.ErrInvalidTimesheetState{
+			Details: ttErrors.TimesheetWithoutTaskError,
 		}
 	}
 	tx := database.Get().Begin()
@@ -111,8 +112,8 @@ func (tsd *TimesheetData) Create() error {
 // Load attempts to load a timesheet by ID
 func (tsd *TimesheetData) Load() error {
 	if tsd.ID == 0 {
-		return errors.ErrInvalidTimesheetState{
-			Details: errors.LoadInvalidTimesheetError,
+		return ttErrors.ErrInvalidTimesheetState{
+			Details: ttErrors.LoadInvalidTimesheetError,
 		}
 	}
 	return database.Get().
@@ -124,8 +125,8 @@ func (tsd *TimesheetData) Load() error {
 // Delete marks a timesheet as deleted
 func (tsd *TimesheetData) Delete() error {
 	if tsd.ID == 0 {
-		return errors.ErrInvalidTimesheetState{
-			Details: errors.DeleteInvalidTimesheetError,
+		return ttErrors.ErrInvalidTimesheetState{
+			Details: ttErrors.DeleteInvalidTimesheetError,
 		}
 	}
 	err := tsd.Load()
@@ -168,18 +169,20 @@ func (tsd *TimesheetData) SearchOpen() ([]TimesheetData, error) {
 }
 
 // SearchDateRange returns the timesheets that start on or after the StartTime and end on or before the StopTime
-func (tsd *TimesheetData) SearchDateRange() ([]TimesheetData, error) {
+func (tsd *TimesheetData) SearchDateRange(withDeleted bool) ([]TimesheetData, error) {
 	timesheets := make([]TimesheetData, 0)
+	db := database.Get()
+	if withDeleted {
+		db = db.Unscoped()
+	}
 	if tsd.StopTime.Valid {
-		err := database.Get().
-			Joins("Task").
+		err := db.Joins("Task").
 			Where("start_time >= ? AND stop_time <= ?", tsd.StartTime, tsd.StopTime.Time).
 			Find(&timesheets).
 			Error
 		return timesheets, err
 	}
-	err := database.Get().
-		Joins("Task").
+	err := db.Joins("Task").
 		Where("start_time >= ?", tsd.StartTime).
 		Find(&timesheets).
 		Error
@@ -189,13 +192,13 @@ func (tsd *TimesheetData) SearchDateRange() ([]TimesheetData, error) {
 // Update attempts to update the timesheet record in the database
 func (tsd *TimesheetData) Update() error {
 	if tsd.ID == 0 {
-		return errors.ErrInvalidTimesheetState{
-			Details: errors.UpdateInvalidTimesheetError,
+		return ttErrors.ErrInvalidTimesheetState{
+			Details: ttErrors.UpdateInvalidTimesheetError,
 		}
 	}
 	if tsd.Task.ID == 0 {
-		return errors.ErrInvalidTimesheetState{
-			Details: errors.TimesheetWithoutTaskError,
+		return ttErrors.ErrInvalidTimesheetState{
+			Details: ttErrors.TimesheetWithoutTaskError,
 		}
 	}
 	tx := database.Get().Begin()
@@ -207,18 +210,6 @@ func (tsd *TimesheetData) Update() error {
 	tx.Commit()
 	return nil
 }
-
-/*
-SELECT task_id
-FROM (
-     SELECT task_id, start_time
-     FROM timesheet
-     ORDER BY start_time DESC
-)
-GROUP BY task_id
-ORDER BY start_time DESC
-LIMIT 5;
-*/
 
 // LastStartedTasks returns a list of most-recently started tasks. The size of the list is limited
 // by the limit parameter. If a limit of zero is specified, the default value is used.
@@ -261,6 +252,7 @@ func (tsd *TimesheetData) LastStartedTasks(limit uint) (startedTasks []TaskData,
 	return
 }
 
+// findTaskByID attempts to fina a task with the specified ID in the specified slice of tasks
 func findTaskByID(tasks []TaskData, id uint) *TaskData {
 	for _, task := range tasks {
 		if task.ID == id {
@@ -270,45 +262,78 @@ func findTaskByID(tasks []TaskData, id uint) *TaskData {
 	return nil
 }
 
-// Basic task report
-/*
-SELECT
-       task_id,
-       task.synopsis,
-       task.description,
-       DATE(start_time) AS start_date,
-       STRFTIME('%s', stop_time) - STRFTIME('%s', start_time) AS duration_seconds
-FROM timesheet
-    JOIN task ON task_id = task.id
-WHERE start_time >= DATETIME('2021-06-01')
-    AND stop_time <= DATETIME('now')
-GROUP BY task_id, DATE(start_time)
-ORDER BY DATE(start_time) DESC;
-*/
-
+// TaskReportData is a struct that contains a single entry of a Task Report
 type TaskReportData struct {
-	Task            TaskData
 	TaskID          uint
-	StartDate       time.Time
+	TaskSynopsis    string
+	TaskDescription string
+	StartDate       sql.NullTime
 	DurationSeconds int
 }
 
-func (tsd *TimesheetData) TaskReport(startDate, endDate time.Time) (reportData []TaskReportData, err error) {
+// NewTaskReportData returns a pointer to a new instance of the TaskReportData struct
+func NewTaskReportData() *TaskReportData {
+	return &TaskReportData{
+		StartDate: sql.NullTime{},
+	}
+}
+
+// String implements fmt.Stringer
+func (trd *TaskReportData) String() string {
+	trdDuration := time.Second * time.Duration(trd.DurationSeconds)
+	return fmt.Sprintf(
+		"[%d] %s: %s; %s -> %s",
+		trd.TaskID,
+		trd.TaskSynopsis,
+		trd.TaskDescription,
+		trd.StartDate.Time.Format(constants.TimestampDateLayout),
+		trdDuration.String(),
+	)
+}
+
+// Duration returns the DurationSeconds property as a time.Duration
+func (trd *TaskReportData) Duration() time.Duration {
+	return time.Second * time.Duration(trd.DurationSeconds)
+}
+
+// TaskReport returns a list of tasks and their aggregated durations between the two supplied dates
+func (tsd *TimesheetData) TaskReport(startDate, endDate time.Time, withDeleted bool) (reportData []TaskReportData, err error) {
+	var rows *sql.Rows
+
 	reportData = make([]TaskReportData, 0)
-	err = database.Get().
-		Model(tsd).
-		Joins("Task").
-		Select(
-			"task_id",
-			"task.synopsis",
-			"task.description",
-			"DATE(start_time) AS start_date",
-			"STRFTIME('%s', stop_time) - STRFTIME('%s', start_time) AS duration_seconds",
-		).
-		Where("start_time >= ? AND stop_time <= ? AND stop_time IS NOT NULL", startDate, endDate).
-		Group("task_id, DATE(start_time)").
-		Order("DATE(start_time) DESC").
-		Find(&reportData).
-		Error
+	db := database.Get()
+	if withDeleted {
+		db = db.Unscoped()
+	}
+	// TODO: Move the SQL statement to an appropriate constant
+	rows, err = db.Raw(
+		`SELECT 
+	ts.task_id AS task_id,
+	t.synopsis AS task_synopsis,
+	t.description AS task_description,
+	ts.start_time AS start_date,
+	STRFTIME('%s', ts.stop_time) - STRFTIME('%s', ts.start_time) AS duration_seconds 
+FROM timesheet ts JOIN task t ON ts.task_id = t.id 
+WHERE ts.start_time >= ? AND ts.stop_time <= ? AND ts.stop_time IS NOT NULL 
+GROUP BY ts.task_id, DATE(ts.start_time) 
+ORDER BY DATE(ts.start_time) ASC`,
+		startDate,
+		endDate).
+		Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer database.CloseRows(rows)
+	for rows.Next() {
+		if rows.Err() != nil {
+			return nil, fmt.Errorf("error moving to next row of results %w", rows.Err())
+		}
+		taskReportData := NewTaskReportData()
+		err = database.Get().ScanRows(rows, taskReportData)
+		if err != nil {
+			return nil, err
+		}
+		reportData = append(reportData, *taskReportData)
+	}
 	return
 }

@@ -18,6 +18,7 @@ clean: clean-coverage
 	if [ -d dist ]; then rm -Rf dist; fi
 
 lint:
+	go vet ./...
 	golangci-lint run
 
 test: clean-coverage
