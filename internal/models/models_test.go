@@ -4,12 +4,18 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"math/rand"
 	"os"
 	"testing"
+	"time"
 )
 
 const (
 	TestDSN = "file:test.db?cache=shared&mode=memory"
+)
+
+var (
+	rnd = rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
 )
 
 func TestMain(m *testing.M) {

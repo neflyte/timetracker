@@ -18,5 +18,6 @@ func init() {
 	timesheetCmd.AddCommand(
 		timesheet.DumpCmd,
 		timesheet.LastStartedCmd,
+		timesheet.ReportCmd,
 	)
 }

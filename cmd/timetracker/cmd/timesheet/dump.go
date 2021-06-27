@@ -1,11 +1,12 @@
 package timesheet
 
 import (
+	"errors"
 	"fmt"
 	"github.com/alexeyco/simpletable"
 	"github.com/fatih/color"
 	"github.com/neflyte/timetracker/internal/constants"
-	"github.com/neflyte/timetracker/internal/errors"
+	ttErrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/cli"
@@ -34,33 +35,31 @@ func init() {
 }
 
 func dumpTimesheets(_ *cobra.Command, _ []string) (err error) {
-	// TODO: implement support for deleted timesheets
 	log := logger.GetLogger("dumpTimesheets")
-	var sheets []models.TimesheetData
-	if startDate != "" && endDate != "" {
-		var dStart, dEnd time.Time
-		dStart, err = time.Parse(constants.TimestampDateLayout, startDate)
-		if err != nil {
-			return err
-		}
-		dEnd, err = time.Parse(constants.TimestampDateLayout, endDate)
-		if err != nil {
-			return err
-		}
-		timesheet := models.NewTimesheet()
-		timesheet.Data().StartTime = dStart
-		/*timesheet.Data().StopTime = sql.NullTime{
-			Valid: true,
-			Time:  dEnd,
-		}*/
-		// dEnd is guaranteed to be a valid time.Time so it should Scan() without error
-		_ = timesheet.Data().StopTime.Scan(dEnd) //nolint:errcheck
-		sheets, err = timesheet.SearchDateRange()
-	} else {
-		sheets, err = models.NewTimesheet().LoadAll(false)
+	if startDate == "" || endDate == "" {
+		return errors.New("both start date and end date must be specified")
 	}
+	var sheets []models.TimesheetData
+	var dStart, dEnd time.Time
+	dStart, err = time.Parse(constants.TimestampDateLayout, startDate)
 	if err != nil {
-		cli.PrintAndLogError(log, err, errors.ListTimesheetError)
+		cli.PrintAndLogError(log, err, "error parsing %s as a start date", startDate)
+		return err
+	}
+	dEnd, err = time.Parse(constants.TimestampDateLayout, endDate)
+	if err != nil {
+		cli.PrintAndLogError(log, err, "error parsing %s as an end date", endDate)
+		return err
+	}
+	timesheet := models.NewTimesheet()
+	timesheet.Data().StartTime = dStart
+	err = timesheet.Data().StopTime.Scan(dEnd)
+	if err != nil {
+		return err
+	}
+	sheets, err = timesheet.SearchDateRange(withDeleted)
+	if err != nil {
+		cli.PrintAndLogError(log, err, ttErrors.ListTimesheetError)
 		return err
 	}
 	table := simpletable.New()

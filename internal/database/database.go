@@ -1,6 +1,7 @@
 package database
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/neflyte/timetracker/internal/logger"
 	"gorm.io/driver/sqlite"
@@ -50,4 +51,15 @@ func Get() *gorm.DB {
 // Set sets the singleton database connection
 func Set(db *gorm.DB) {
 	dbInstance = db
+}
+
+// CloseRows closes a sql.Rows object and logs any errors that occurred
+func CloseRows(rows *sql.Rows) {
+	log := logger.GetFuncLogger(databaseLog, "CloseRows")
+	if rows != nil {
+		err := rows.Close()
+		if err != nil {
+			log.Err(err).Msg("error closing sql rows")
+		}
+	}
 }

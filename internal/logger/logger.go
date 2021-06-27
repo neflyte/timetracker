@@ -10,7 +10,9 @@ import (
 )
 
 const (
-	logFileName = "timetracker.log"
+	logFileName      = "timetracker.log"
+	logDirectoryMode = 0755
+	logFileMode      = 0644
 )
 
 var (
@@ -46,12 +48,12 @@ func InitLogger(logLevel string, console bool) {
 	}
 	configHome := getConfigHome()
 	logPath = path.Join(configHome, "timetracker")
-	err = os.MkdirAll(logPath, 0755)
+	err = os.MkdirAll(logPath, logDirectoryMode)
 	if err != nil {
-		fmt.Printf("")
+		fmt.Printf("*  error creating log directory %s: %s\n", logPath, err.Error())
 	}
 	logFilePath = path.Join(logPath, logFileName)
-	logFileHandle, err = os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+	logFileHandle, err = os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_RDWR, logFileMode)
 	if err != nil {
 		logFileHandle = nil
 	}
@@ -85,7 +87,7 @@ func CleanupLogger() {
 		if logFileHandle != nil {
 			err := logFileHandle.Close()
 			if err != nil {
-				fmt.Printf("*  error cleaning up logger: %s\n", err)
+				fmt.Printf("*  error cleaning up logger: %s\n", err.Error())
 			}
 			logFileHandle = nil
 		}
