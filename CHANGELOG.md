@@ -4,9 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.1-alpha3] - TBA
+## [0.3.1-alpha3] - 2021-06-27
 ### Added
 - Add CLI command to display a list of recently-started tasks
+- Error state handling in system tray (again)
+- TaskData object cache in Manage Window for tasks list widget to reduce database calls
+
+### Changed
+- Transition to using interfaces for models with access to the underlying struct
+- Increase minimum size of GUI windows to 640x480
+- Increase width of Tasklist widget
 
 ## [0.3.1-alpha2] - 2021-06-19
 ### Added
