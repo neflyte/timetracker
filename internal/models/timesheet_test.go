@@ -1,14 +1,92 @@
 package models
 
 import (
+	"database/sql"
 	"errors"
+	"github.com/bluele/factory-go/factory"
 	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/database"
 	ttErrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
+	"math/rand"
 	"testing"
 	"time"
+)
+
+type timesheetFactoryKey int8
+
+const (
+	timesheetFactoryTaskIDsKey  timesheetFactoryKey = 0
+	timesheetFactoryDatabaseKey timesheetFactoryKey = 1
+)
+
+var (
+	TimesheetFactory = factory.NewFactory(new(TimesheetData)).
+		Attr("TaskID", func(args factory.Args) (interface{}, error) {
+			// Pick a random task ID from the list
+			availableTaskIDsIntf := args.Context().Value(timesheetFactoryTaskIDsKey)
+			if availableTaskIDsIntf == nil {
+				return nil, errors.New("got nil task IDs list from context")
+			}
+			availableTaskIDs, castOK := availableTaskIDsIntf.([]uint)
+			if !castOK {
+				return nil, errors.New("task IDs list is not a []uint; this is unexpected")
+			}
+			if len(availableTaskIDs) == 0 {
+				return nil, errors.New("task IDs list is empty; this is unexpected")
+			}
+			randomIndex := rand.Intn(len(availableTaskIDs) - 1) //nolint:gosec
+			return availableTaskIDs[randomIndex], nil
+		}).
+		Attr("StartTime", func(_ factory.Args) (interface{}, error) {
+			// time.Now() minus random hours from 0-3 and random minutes from 1-59
+			randMinutes := rand.Intn(59) //nolint:gosec
+			if randMinutes == 0 {
+				randMinutes = 1
+			}
+			timesheetStartTime := time.Now().
+				Add(-time.Hour * time.Duration(rand.Intn(3))). //nolint:gosec
+				Add(-time.Minute * time.Duration(randMinutes))
+			return timesheetStartTime, nil
+		}).
+		Attr("StopTime", func(args factory.Args) (interface{}, error) {
+			// StartTime plus random hours from 0-3 and random minutes from 1-59
+			tsdPtr, castOK := args.Instance().(*TimesheetData)
+			if !castOK {
+				return nil, errors.New("arg was not *TimesheetData; this is unexpected")
+			}
+			randMinutes := rand.Intn(59) //nolint:gosec
+			if randMinutes == 0 {
+				randMinutes = 1
+			}
+			timesheetStopTime := tsdPtr.StartTime.
+				Add(time.Hour * time.Duration(rand.Intn(3))). //nolint:gosec
+				Add(time.Minute * time.Duration(randMinutes))
+			stopTimeNulltime := sql.NullTime{
+				Time:  timesheetStopTime,
+				Valid: true,
+			}
+			return stopTimeNulltime, nil
+		}).
+		OnCreate(func(args factory.Args) error {
+			dbIntf := args.Context().Value(timesheetFactoryDatabaseKey)
+			if dbIntf == nil {
+				return errors.New("db in context is nil; this is unexpected")
+			}
+			db, dbOK := dbIntf.(*gorm.DB)
+			if !dbOK {
+				return errors.New("db in context was not *gorm.DB; this is unexpected")
+			}
+			tx := db.Begin()
+			err := tx.Create(args.Instance()).Error
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			tx.Commit()
+			return nil
+		})
 )
 
 func TestUnit_Timesheet_CreateAndLoad_Nominal(t *testing.T) {

@@ -9,11 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add CLI command to display a list of recently-started tasks
 - Error state handling in system tray (again)
 - TaskData object cache in Manage Window for tasks list widget to reduce database calls
+- Enabled database transactions for creating or updating entities
+- Add github.com/bluele/factory-go to support entity testing
+- Add github.com/gofrs/uuid for UUID support
 
 ### Changed
 - Transition to using interfaces for models with access to the underlying struct
 - Increase minimum size of GUI windows to 640x480
 - Increase width of Tasklist widget
+- Update minimum Golang version from 1.15 to 1.16
+- Update github.com/spf13/viper from v1.8.0 to v1.8.1
 
 ## [0.3.1-alpha2] - 2021-06-19
 ### Added
