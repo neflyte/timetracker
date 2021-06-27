@@ -8,6 +8,7 @@ import (
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 	"time"
 )
 
@@ -53,16 +54,18 @@ func (tsd *TimesheetData) TableName() string {
 
 // Timesheet is the main timesheet function interface
 type Timesheet interface {
+	fmt.Stringer
+	schema.Tabler
 	Data() *TimesheetData
 	Create() error
 	Load() error
+	Update() error
 	Delete() error
 	LoadAll(withDeleted bool) ([]TimesheetData, error)
 	SearchOpen() ([]TimesheetData, error)
 	SearchDateRange() ([]TimesheetData, error)
-	Update() error
-	String() string
 	LastStartedTasks(limit uint) (startedTasks []TaskData, err error)
+	TaskReport(startDate, endDate time.Time) (reportData []TaskReportData, err error)
 }
 
 // Data returns the struct underlying the interface
@@ -95,7 +98,14 @@ func (tsd *TimesheetData) Create() error {
 			Details: errors.TimesheetWithoutTaskError,
 		}
 	}
-	return database.Get().Create(tsd).Error
+	tx := database.Get().Begin()
+	err := tx.Create(tsd).Error
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
 }
 
 // Load attempts to load a timesheet by ID
@@ -105,7 +115,10 @@ func (tsd *TimesheetData) Load() error {
 			Details: errors.LoadInvalidTimesheetError,
 		}
 	}
-	return database.Get().Joins("Task").First(tsd, tsd.ID).Error
+	return database.Get().
+		Joins("Task").
+		First(tsd, tsd.ID).
+		Error
 }
 
 // Delete marks a timesheet as deleted
@@ -119,7 +132,9 @@ func (tsd *TimesheetData) Delete() error {
 	if err != nil {
 		return err
 	}
-	return database.Get().Delete(tsd).Error
+	return database.Get().
+		Delete(tsd).
+		Error
 }
 
 // LoadAll loads all timesheet records, optionally including deleted timesheets
@@ -129,7 +144,9 @@ func (tsd *TimesheetData) LoadAll(withDeleted bool) ([]TimesheetData, error) {
 		db = db.Unscoped()
 	}
 	timesheets := make([]TimesheetData, 0)
-	err := db.Joins("Task").Find(&timesheets).Error
+	err := db.Joins("Task").
+		Find(&timesheets).
+		Error
 	return timesheets, err
 }
 
@@ -142,7 +159,11 @@ func (tsd *TimesheetData) SearchOpen() ([]TimesheetData, error) {
 	if tsd.Task.ID > 0 {
 		args["task_id"] = tsd.Task.ID
 	}
-	err := database.Get().Joins("Task").Where(args).Find(&timesheets).Error
+	err := database.Get().
+		Joins("Task").
+		Where(args).
+		Find(&timesheets).
+		Error
 	return timesheets, err
 }
 
@@ -177,7 +198,14 @@ func (tsd *TimesheetData) Update() error {
 			Details: errors.TimesheetWithoutTaskError,
 		}
 	}
-	return database.Get().Save(tsd).Error
+	tx := database.Get().Begin()
+	err := tx.Save(tsd).Error
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+	return nil
 }
 
 /*
@@ -240,4 +268,47 @@ func findTaskByID(tasks []TaskData, id uint) *TaskData {
 		}
 	}
 	return nil
+}
+
+// Basic task report
+/*
+SELECT
+       task_id,
+       task.synopsis,
+       task.description,
+       DATE(start_time) AS start_date,
+       STRFTIME('%s', stop_time) - STRFTIME('%s', start_time) AS duration_seconds
+FROM timesheet
+    JOIN task ON task_id = task.id
+WHERE start_time >= DATETIME('2021-06-01')
+    AND stop_time <= DATETIME('now')
+GROUP BY task_id, DATE(start_time)
+ORDER BY DATE(start_time) DESC;
+*/
+
+type TaskReportData struct {
+	Task            TaskData
+	TaskID          uint
+	StartDate       time.Time
+	DurationSeconds int
+}
+
+func (tsd *TimesheetData) TaskReport(startDate, endDate time.Time) (reportData []TaskReportData, err error) {
+	reportData = make([]TaskReportData, 0)
+	err = database.Get().
+		Model(tsd).
+		Joins("Task").
+		Select(
+			"task_id",
+			"task.synopsis",
+			"task.description",
+			"DATE(start_time) AS start_date",
+			"STRFTIME('%s', stop_time) - STRFTIME('%s', start_time) AS duration_seconds",
+		).
+		Where("start_time >= ? AND stop_time <= ? AND stop_time IS NOT NULL", startDate, endDate).
+		Group("task_id, DATE(start_time)").
+		Order("DATE(start_time) DESC").
+		Find(&reportData).
+		Error
+	return
 }

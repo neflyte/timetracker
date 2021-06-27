@@ -1,7 +1,11 @@
 package models
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"github.com/bluele/factory-go/factory"
+	"github.com/gofrs/uuid"
 	"github.com/neflyte/timetracker/internal/database"
 	ttErrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/stretchr/testify/require"
@@ -10,10 +14,66 @@ import (
 	"time"
 )
 
+type taskFactoryContextKey int8
+
 const (
 	testTaskSynopsis    = "Task-1"
 	testTaskDescription = "This is a task"
+
+	taskFactoryDatabaseKey taskFactoryContextKey = 0
 )
+
+var (
+	TaskFactory = factory.NewFactory(new(TaskData)).
+		Attr("Synopsis", func(_ factory.Args) (interface{}, error) {
+			// Use a v4 UUID as the task synopsis
+			synuuid, err := uuid.NewV4()
+			if err != nil {
+				return nil, err
+			}
+			return synuuid.String(), nil
+		}).
+		Attr("Description", func(args factory.Args) (interface{}, error) {
+			taskData, ok := args.Instance().(*TaskData)
+			if !ok {
+				return nil, errors.New("args for Description was not *TaskData; this is unexpected")
+			}
+			return fmt.Sprintf("description for task %s", taskData.Synopsis), nil
+		}).
+		OnCreate(func(args factory.Args) error {
+			dbIntf := args.Context().Value(taskFactoryDatabaseKey)
+			if dbIntf == nil {
+				return errors.New("db in context is nil; this is unexpected")
+			}
+			db, dbOK := dbIntf.(*gorm.DB)
+			if !dbOK {
+				return errors.New("db in context was not *gorm.DB; this is unexpected")
+			}
+			tx := db.Begin()
+			err := tx.Create(args.Instance()).Error
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+			tx.Commit()
+			return nil
+		})
+)
+
+func TestUnit_TaskFactory_Create(t *testing.T) {
+	db := MustOpenTestDB(t)
+	defer CloseTestDB(t, db)
+	database.Set(db)
+
+	ctx := context.WithValue(context.Background(), taskFactoryDatabaseKey, db)
+	taskDataIntf, err := TaskFactory.CreateWithContext(ctx)
+	require.Nil(t, err)
+	require.NotNil(t, taskDataIntf)
+	taskData, taskDataOK := taskDataIntf.(*TaskData)
+	require.True(t, taskDataOK, "taskDataIntf was not *TaskData; taskDataIntf=%#v", taskDataIntf)
+	require.NotEqual(t, 0, taskData.ID)
+	t.Logf("created task %s", taskData.String())
+}
 
 func TestUnit_Task_CreateAndLoad_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
@@ -312,8 +372,8 @@ func TestUnit_Task_Search_NotFound(t *testing.T) {
 
 	// Create test data
 	td := NewTask()
-	td.Data().Synopsis = "Foo"
-	td.Data().Description = "blah blah blah"
+	td.Data().Synopsis = testTaskSynopsis
+	td.Data().Description = testTaskDescription
 	err := td.Create()
 	require.Nil(t, err)
 
@@ -382,54 +442,54 @@ func TestUnit_Update_EmptySynopsis(t *testing.T) {
 	require.True(t, errors.Is(err, ttErrors.ErrInvalidTaskState{Details: ttErrors.UpdateEmptySynopsisTaskError}))
 }
 
-/*func TestUnit_Update_Deleted(t *testing.T) {
+func TestUnit_Update_Deleted(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
 	database.Set(db)
 
 	// Create test data
 	td := NewTask()
-	td.Synopsis = "Foo"
-	td.Description = "blah blah blah"
-	err := Task(td).Create()
+	td.Data().Synopsis = "Foo"
+	td.Data().Description = "blah blah blah"
+	err := td.Create()
 	require.Nil(t, err)
 
 	// Delete test data
-	err = Task(td).Delete()
+	err = td.Delete()
 	require.Nil(t, err)
 
 	// Reload the data
-	err = Task(td).Load(true)
+	err = td.Load(true)
 	require.Nil(t, err)
 
 	// Update test data without deleted flag
-	td.Synopsis = "Bar"
-	td.Description = "qux quux"
-	err = Task(td).Update(false)
-	require.Nil(t, err)
+	td.Data().Synopsis = "Bar"
+	td.Data().Description = "qux quux"
+	err = td.Update(false)
+	require.NotNil(t, err)
 
 	// Reload data to ensure it didn't update
 	reloaded := NewTask()
-	reloaded.ID = td.ID
-	err = Task(reloaded).Load(true)
+	reloaded.Data().ID = td.Data().ID
+	err = reloaded.Load(true)
 	require.Nil(t, err)
-	require.NotEqual(t, "Bar", reloaded.Synopsis)
-	require.NotEqual(t, "qux quux", reloaded.Description)
+	require.NotEqual(t, "Bar", reloaded.Data().Synopsis)
+	require.NotEqual(t, "qux quux", reloaded.Data().Description)
 
 	// Update test data WITH deleted flag
-	td.Synopsis = "Bar"
-	td.Description = "qux quux"
-	err = Task(td).Update(true)
+	td.Data().Synopsis = "Bar"
+	td.Data().Description = "qux quux"
+	err = td.Update(true)
 	require.Nil(t, err)
 
 	// Reload data to ensure it did update
 	reloaded = NewTask()
-	reloaded.ID = td.ID
-	err = Task(reloaded).Load(true)
+	reloaded.Data().ID = td.Data().ID
+	err = reloaded.Load(true)
 	require.Nil(t, err)
-	require.Equal(t, "Bar", reloaded.Synopsis)
-	require.Equal(t, "qux quux", reloaded.Description)
-}*/
+	require.Equal(t, "Bar", reloaded.Data().Synopsis)
+	require.Equal(t, "qux quux", reloaded.Data().Description)
+}
 
 // StopRunningTask
 func TestUnit_StopRunningTask_Nominal(t *testing.T) {

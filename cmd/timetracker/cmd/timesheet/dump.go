@@ -1,7 +1,6 @@
 package timesheet
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/alexeyco/simpletable"
 	"github.com/fatih/color"
@@ -35,6 +34,7 @@ func init() {
 }
 
 func dumpTimesheets(_ *cobra.Command, _ []string) (err error) {
+	// TODO: implement support for deleted timesheets
 	log := logger.GetLogger("dumpTimesheets")
 	var sheets []models.TimesheetData
 	if startDate != "" && endDate != "" {
@@ -49,10 +49,12 @@ func dumpTimesheets(_ *cobra.Command, _ []string) (err error) {
 		}
 		timesheet := models.NewTimesheet()
 		timesheet.Data().StartTime = dStart
-		timesheet.Data().StopTime = sql.NullTime{
+		/*timesheet.Data().StopTime = sql.NullTime{
 			Valid: true,
 			Time:  dEnd,
-		}
+		}*/
+		// dEnd is guaranteed to be a valid time.Time so it should Scan() without error
+		_ = timesheet.Data().StopTime.Scan(dEnd) //nolint:errcheck
 		sheets, err = timesheet.SearchDateRange()
 	} else {
 		sheets, err = models.NewTimesheet().LoadAll(false)
