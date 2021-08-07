@@ -16,9 +16,17 @@ const (
 	prefKeyCloseWindow = "close-window"
 )
 
-// CreateAndStartTaskDialog is the main data structure for the Create and Start New Task dialog
-type CreateAndStartTaskDialog struct {
-	confirmDialog       dialog.Dialog
+// CreateAndStartTaskDialog is the main interface for the Create and Start New Task dialog
+type CreateAndStartTaskDialog interface {
+	dialogBase
+	GetTask() *models.TaskData
+	Reset()
+}
+
+// createAndStartTaskDialogData is the main data structure for the Create and Start New Task dialog
+type createAndStartTaskDialogData struct {
+	dialog.Dialog
+
 	synopsisLabel       *widget.Label
 	synopsisEntry       *widget.Entry
 	synopsisBinding     binding.String
@@ -30,51 +38,56 @@ type CreateAndStartTaskDialog struct {
 	widgetContainer     *fyne.Container
 	parentWindow        *fyne.Window
 	log                 zerolog.Logger
+	callbackFunc        func(bool)
 }
 
 // NewCreateAndStartTaskDialog creates a new instance of the Create and Start a New Task dialog
-func NewCreateAndStartTaskDialog(prefs fyne.Preferences, cb func(bool), parent fyne.Window) *CreateAndStartTaskDialog {
-	newDialog := &CreateAndStartTaskDialog{
-		log:                logger.GetStructLogger("CreateAndStartTaskDialog"),
+func NewCreateAndStartTaskDialog(prefs fyne.Preferences, cb func(bool), parent fyne.Window) CreateAndStartTaskDialog {
+	newDialog := &createAndStartTaskDialogData{
+		log:                logger.GetStructLogger("createAndStartTaskDialogData"),
 		synopsisLabel:      widget.NewLabel("Synopsis:"),
 		descriptionLabel:   widget.NewLabel("Description:"),
 		synopsisBinding:    binding.NewString(),
 		descriptionBinding: binding.NewString(),
 		closeWindowBinding: binding.BindPreferenceBool(prefKeyCloseWindow, prefs),
 		parentWindow:       &parent,
+		callbackFunc:       cb,
 	}
-	newDialog.synopsisEntry = widget.NewEntryWithData(newDialog.synopsisBinding)
-	newDialog.synopsisEntry.SetPlaceHolder("enter the task synopsis here")
-	newDialog.descriptionEntry = widget.NewEntryWithData(newDialog.descriptionBinding)
-	newDialog.descriptionEntry.SetPlaceHolder("enter the task description here")
-	newDialog.descriptionEntry.MultiLine = true
-	newDialog.descriptionEntry.Wrapping = fyne.TextWrapWord
-	newDialog.closeWindowCheckbox = widget.NewCheckWithData("Close window after starting task", newDialog.closeWindowBinding)
-	newDialog.widgetContainer = container.NewVBox(
-		newDialog.synopsisLabel,
-		newDialog.synopsisEntry,
-		newDialog.descriptionLabel,
-		newDialog.descriptionEntry,
-		newDialog.closeWindowCheckbox,
-	)
-	newDialog.confirmDialog = dialog.NewCustomConfirm(
-		"Create and start a new task",
-		"CREATE AND START",
-		"CLOSE",
-		newDialog.widgetContainer,
-		cb,
-		parent,
-	)
+	err := newDialog.Init()
+	if err != nil {
+		newDialog.log.Err(err).Msg("error initializing dialog")
+	}
 	return newDialog
 }
 
-// Show shows the dialog on the screen
-func (c *CreateAndStartTaskDialog) Show() {
-	c.confirmDialog.Show()
+func (c *createAndStartTaskDialogData) Init() error {
+	c.synopsisEntry = widget.NewEntryWithData(c.synopsisBinding)
+	c.synopsisEntry.SetPlaceHolder("enter the task synopsis here")
+	c.descriptionEntry = widget.NewEntryWithData(c.descriptionBinding)
+	c.descriptionEntry.SetPlaceHolder("enter the task description here")
+	c.descriptionEntry.MultiLine = true
+	c.descriptionEntry.Wrapping = fyne.TextWrapWord
+	c.closeWindowCheckbox = widget.NewCheckWithData("Close window after starting task", c.closeWindowBinding)
+	c.widgetContainer = container.NewVBox(
+		c.synopsisLabel,
+		c.synopsisEntry,
+		c.descriptionLabel,
+		c.descriptionEntry,
+		c.closeWindowCheckbox,
+	)
+	c.Dialog = dialog.NewCustomConfirm(
+		"Create and start a new task",
+		"CREATE AND START",
+		"CLOSE",
+		c.widgetContainer,
+		c.callbackFunc,
+		*c.parentWindow,
+	)
+	return nil
 }
 
 // GetTask returns the model.TaskData representing the newly input task details
-func (c *CreateAndStartTaskDialog) GetTask() *models.TaskData {
+func (c *createAndStartTaskDialogData) GetTask() *models.TaskData {
 	log := logger.GetFuncLogger(c.log, "GetTask")
 	synopsis, err := c.synopsisBinding.Get()
 	if err != nil {
@@ -93,7 +106,7 @@ func (c *CreateAndStartTaskDialog) GetTask() *models.TaskData {
 }
 
 // Reset clears the dialog fields for further re-use
-func (c *CreateAndStartTaskDialog) Reset() {
+func (c *createAndStartTaskDialogData) Reset() {
 	log := logger.GetFuncLogger(c.log, "Reset")
 	err := c.synopsisBinding.Set("")
 	if err != nil {

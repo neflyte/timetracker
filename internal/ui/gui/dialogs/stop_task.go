@@ -17,42 +17,54 @@ const (
 	prefKeyCloseWindowStopTask = "close-window:stop-task"
 )
 
-// StopTaskDialog is the main data structure for the Stop Task dialog
-type StopTaskDialog struct {
-	confirmDialog       dialog.Dialog
+// StopTaskDialog is the main interface for the Stop Task dialog
+type StopTaskDialog interface {
+	dialogBase
+}
+
+// stopTaskDialogData is the main data structure for the Stop Task dialog
+type stopTaskDialogData struct {
+	dialog.Dialog
+
 	messageLabel        *widget.Label
 	closeWindowCheckbox *widget.Check
 	closeWindowBinding  binding.Bool
 	widgetContainer     *fyne.Container
 	parentWindow        *fyne.Window
 	log                 zerolog.Logger
+	callbackFunc        func(bool)
 }
 
 // NewStopTaskDialog creates a new instance of the Stop Task dialog
-func NewStopTaskDialog(task models.TaskData, prefs fyne.Preferences, cb func(bool), parent fyne.Window) *StopTaskDialog {
-	newDialog := &StopTaskDialog{
-		log:                logger.GetStructLogger("CreateAndStartTaskDialog"),
+func NewStopTaskDialog(task models.TaskData, prefs fyne.Preferences, cb func(bool), parent fyne.Window) StopTaskDialog {
+	newDialog := &stopTaskDialogData{
+		log:                logger.GetStructLogger("createAndStartTaskDialogData"),
 		closeWindowBinding: binding.BindPreferenceBool(prefKeyCloseWindowStopTask, prefs),
 		parentWindow:       &parent,
 		messageLabel:       widget.NewLabel(fmt.Sprintf("Do you want to stop task %s?", task.Synopsis)),
+		callbackFunc:       cb,
 	}
-	newDialog.closeWindowCheckbox = widget.NewCheckWithData("Close window after stopping task", newDialog.closeWindowBinding)
-	newDialog.widgetContainer = container.NewVBox(
-		newDialog.messageLabel,
-		newDialog.closeWindowCheckbox,
-	)
-	newDialog.confirmDialog = dialog.NewCustomConfirm(
-		"Stop Running Task",
-		"YES",
-		"NO",
-		newDialog.widgetContainer,
-		cb,
-		parent,
-	)
+	err := newDialog.Init()
+	if err != nil {
+		newDialog.log.Err(err).Msg("error initializing dialog")
+	}
 	return newDialog
 }
 
-// Show shows the dialog on the screen
-func (d *StopTaskDialog) Show() {
-	d.confirmDialog.Show()
+// Init initializes the dialog
+func (d *stopTaskDialogData) Init() error {
+	d.closeWindowCheckbox = widget.NewCheckWithData("Close window after stopping task", d.closeWindowBinding)
+	d.widgetContainer = container.NewVBox(
+		d.messageLabel,
+		d.closeWindowCheckbox,
+	)
+	d.Dialog = dialog.NewCustomConfirm(
+		"Stop Running Task",
+		"YES",
+		"NO",
+		d.widgetContainer,
+		d.callbackFunc,
+		*d.parentWindow,
+	)
+	return nil
 }
