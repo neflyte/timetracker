@@ -5,6 +5,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
+	"github.com/neflyte/timetracker/internal/ui/gui/windows"
 )
 
 var (
@@ -12,7 +13,7 @@ var (
 	fyneApp fyne.App
 
 	guiInitialized = false
-	mainWindow     timetrackerWindow
+	mainWindow     windows.TimetrackerWindow
 	guiLogger      = logger.GetPackageLogger("gui")
 	guiStarted     = false
 )
@@ -35,8 +36,8 @@ func InitGUI() *fyne.App {
 	// Set up fyne
 	fyneApp = app.NewWithID("Timetracker")
 	// Create the main timetracker window
-	mainWindow = newTimetrackerWindow(fyneApp)
-	mainWindow.Get().Window.SetMaster()
+	mainWindow = windows.NewTimetrackerWindow(fyneApp)
+	mainWindow.SetMaster()
 	guiInitialized = true
 	return &fyneApp
 }

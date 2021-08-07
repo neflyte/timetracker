@@ -1,4 +1,4 @@
-package gui
+package windows
 
 import "fyne.io/fyne/v2"
 
@@ -7,9 +7,6 @@ const (
 	minimumWindowWidth = 640.0
 	// minimumWindowHeight is the minimum height of a window in pixels
 	minimumWindowHeight = 480.0
-	// manageWindowEventChannelBufferSize is the size of an event channel
-	manageWindowEventChannelBufferSize = 2
-
 	// prefKeyCloseWindow is the preferences key for the flag which causes the main window to close after creating a new task
 	prefKeyCloseWindow = "close-window"
 	// prefKeyCloseWindowStopTask is the preferences key for the flag which causes the main window to close after creating a new task
