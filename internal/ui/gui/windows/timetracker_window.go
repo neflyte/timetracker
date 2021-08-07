@@ -1,4 +1,4 @@
-package gui
+package windows
 
 import (
 	"errors"
@@ -35,8 +35,10 @@ var (
 	taskNameRE = regexp.MustCompile(`^(.*): .*$`)
 )
 
-// timetrackerWindow is the main timetracker GUI window interface
-type timetrackerWindow interface {
+// TimetrackerWindow is the main timetracker GUI window interface
+type TimetrackerWindow interface {
+	fyne.Window
+
 	Show()
 	ShowAbout()
 	ShowWithError(err error)
@@ -50,8 +52,9 @@ type timetrackerWindow interface {
 
 // timetrackerWindowData is the struct underlying the timetrackerWindow interface
 type timetrackerWindowData struct {
+	fyne.Window
+
 	App                         *fyne.App
-	Window                      fyne.Window
 	Container                   *fyne.Container
 	StatusBox                   *fyne.Container
 	SubStatusBox                *fyne.Container
@@ -79,8 +82,8 @@ type timetrackerWindowData struct {
 	elapsedTimeQuitChan     chan bool
 }
 
-// newTimetrackerWindow creates and initializes a new timetracker window
-func newTimetrackerWindow(app fyne.App) timetrackerWindow {
+// NewTimetrackerWindow creates and initializes a new timetracker window
+func NewTimetrackerWindow(app fyne.App) TimetrackerWindow {
 	ttw := &timetrackerWindowData{
 		App:                     &app,
 		Window:                  app.NewWindow("Timetracker"),

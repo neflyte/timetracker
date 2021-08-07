@@ -1,4 +1,4 @@
-package gui
+package windows
 
 import (
 	"errors"
@@ -23,9 +23,13 @@ const (
 	noSelectionIndex                = widget.ListItemID(-1)
 	listTasksCacheExpirationSeconds = 10
 	listTasksCachePurgeSeconds      = 30
+	// manageWindowEventChannelBufferSize is the size of an event channel
+	manageWindowEventChannelBufferSize = 2
 )
 
 type manageWindow interface {
+	fyne.Window
+
 	Show()
 	Hide()
 	Close()
@@ -33,10 +37,11 @@ type manageWindow interface {
 }
 
 type manageWindowData struct {
+	fyne.Window
+
 	Log zerolog.Logger
 
 	App           *fyne.App
-	Window        fyne.Window
 	Container     *fyne.Container
 	HSplit        *container.Split
 	ListTasks     *widget.List
