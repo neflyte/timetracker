@@ -28,7 +28,7 @@ const (
 )
 
 type manageWindow interface {
-	fyne.Window
+	windowBase
 
 	Show()
 	Hide()
@@ -74,11 +74,15 @@ func newManageWindow(app fyne.App) manageWindow {
 			listTasksCachePurgeSeconds*time.Second,
 		),
 	}
-	mw.initWindow()
+	err := mw.Init()
+	if err != nil {
+		mw.Log.Err(err).Msg("error initializing window")
+	}
 	return mw
 }
 
-func (m *manageWindowData) initWindow() {
+// Init initializes the window
+func (m *manageWindowData) Init() error {
 	// setup observables
 	m.TaskListChangedObservable = rxgo.FromEventSource(m.taskListChangedChannel)
 	// setup bindings
@@ -124,6 +128,7 @@ func (m *manageWindowData) initWindow() {
 	m.Window.SetContent(m.Container)
 	m.Window.SetFixedSize(true)
 	m.Window.Resize(minimumWindowSize)
+	return nil
 }
 
 // Get returns the underlying data structure
