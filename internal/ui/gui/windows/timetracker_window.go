@@ -37,7 +37,7 @@ var (
 
 // TimetrackerWindow is the main timetracker GUI window interface
 type TimetrackerWindow interface {
-	fyne.Window
+	windowBase
 
 	Show()
 	ShowAbout()
@@ -50,7 +50,7 @@ type TimetrackerWindow interface {
 	Get() *timetrackerWindowData
 }
 
-// timetrackerWindowData is the struct underlying the timetrackerWindow interface
+// timetrackerWindowData is the struct underlying the TimetrackerWindow interface
 type timetrackerWindowData struct {
 	fyne.Window
 
@@ -92,17 +92,20 @@ func NewTimetrackerWindow(app fyne.App) TimetrackerWindow {
 		elapsedTimeRunning:      false,
 		elapsedTimeQuitChan:     make(chan bool, 1),
 	}
-	ttw.initWindow()
+	err := ttw.Init()
+	if err != nil {
+		ttw.Log.Err(err).Msg("error initializing window")
+	}
 	return ttw
 }
 
-// initWindow initializes the window
-func (t *timetrackerWindowData) initWindow() {
+// Init initializes the window
+func (t *timetrackerWindowData) Init() error {
 	log := logger.GetFuncLogger(t.Log, "initWindow")
 	log.Debug().Msg("started")
 	if t.App == nil {
 		log.Error().Msg("t.App was nil; THIS IS UNEXPECTED")
-		return
+		return errors.New("t.App was nil; THIS IS UNEXPECTED")
 	}
 	t.createNewTaskAndStartDialog = dialogs.NewCreateAndStartTaskDialog((*t.App).Preferences(), t.createAndStartTaskDialogCallback, t.Window)
 	t.TaskList = widgets.NewTasklist()
@@ -193,6 +196,7 @@ func (t *timetrackerWindowData) initWindow() {
 	)
 	// Hide the Manage Window by default
 	t.mngWindow.Hide()
+	return nil
 }
 
 // primeWindowData primes the window with some data
