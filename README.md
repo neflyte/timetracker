@@ -4,7 +4,7 @@ A personal time tracker for simple tasks
 
 ![Golang v1.16](https://img.shields.io/badge/Golang-v1.16-blue?style=for-the-badge&logo=go&color=00add8&link=https://golang.org)
 
-[Features](#features) | [Installation](#installation from source) | [Usage](#usage)
+[Features](#features) | [Installation](#installation) | [Usage](#usage)
 
 ### What is it?
 
@@ -16,14 +16,14 @@ A personal time tracker for simple tasks
 
 ### Features
 
-- (Theoretically) cross-platform; supporting Linux, macOS, and Windows.
+- (Theoretically) cross-platform; supporting Linux, macOS, and Windows
   - Tested on Ubuntu 20.04 + macOS Catalina
 - GUI app to start, stop, and manage tasks
 - System tray app
   - Convenient access to start, stop, and create tasks
   - Task status (idle, running)
     
-### Installation from source
+### Installation
 
 #### System Requirements
 
@@ -87,11 +87,25 @@ Please consult the following sites for information on dependencies for other pla
 
 #### System tray app
 
-TBA
+##### Starting
+
+To start the system tray app as a background process, run the following command:
+
+`nohup timetracker tray &`
+
+On Linux and macOS this command will start a new `timetracker` process and detach it from the terminal.
+
+##### Tray menu options
+
+FIXME: simple systray screenshot goes here; one for linux + one for macos
 
 #### GUI app
 
-TBA
+##### Starting
+
+To start the GUI app, run the following command:
+
+`timetracker ui`
 
 #### CLI (command line) app
 
