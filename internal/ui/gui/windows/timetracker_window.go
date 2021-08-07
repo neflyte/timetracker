@@ -39,14 +39,11 @@ var (
 type TimetrackerWindow interface {
 	windowBase
 
-	Show()
 	ShowAbout()
 	ShowWithError(err error)
 	ShowWithManageWindow()
 	ShowAndStopRunningTask()
 	ShowAndDisplayCreateAndStartDialog()
-	Hide()
-	Close()
 	Get() *timetrackerWindowData
 }
 
@@ -64,7 +61,7 @@ type timetrackerWindowData struct {
 	BtnStopTask                 *widget.Button
 	BtnManageTasks              *widget.Button
 	BtnAbout                    *widget.Button
-	createNewTaskAndStartDialog *dialogs.CreateAndStartTaskDialog
+	createNewTaskAndStartDialog dialogs.CreateAndStartTaskDialog
 	Log                         zerolog.Logger
 	mngWindow                   manageWindow
 
