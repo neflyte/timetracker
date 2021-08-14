@@ -66,7 +66,7 @@ type Timesheet interface {
 	SearchOpen() ([]TimesheetData, error)
 	SearchDateRange(withDeleted bool) ([]TimesheetData, error)
 	LastStartedTasks(limit uint) (startedTasks []TaskData, err error)
-	TaskReport(startDate, endDate time.Time, withDeleted bool) (reportData []TaskReportData, err error)
+	TaskReport(startDate, endDate time.Time, withDeleted bool) (reportData TaskReport, err error)
 }
 
 // Data returns the struct underlying the interface
@@ -271,6 +271,9 @@ type TaskReportData struct {
 	DurationSeconds int
 }
 
+// TaskReport is a type alias for a slice of TaskReportData structs
+type TaskReport []TaskReportData
+
 // NewTaskReportData returns a pointer to a new instance of the TaskReportData struct
 func NewTaskReportData() *TaskReportData {
 	return &TaskReportData{
@@ -296,8 +299,28 @@ func (trd *TaskReportData) Duration() time.Duration {
 	return time.Second * time.Duration(trd.DurationSeconds)
 }
 
+func (trd *TaskReportData) Clone() TaskReportData {
+	startDate := sql.NullTime{}
+	_ = startDate.Scan(trd.StartDate)
+	return TaskReportData{
+		TaskID:          trd.TaskID,
+		TaskSynopsis:    trd.TaskSynopsis,
+		TaskDescription: trd.TaskDescription,
+		StartDate:       startDate,
+		DurationSeconds: trd.DurationSeconds,
+	}
+}
+
+func (tr TaskReport) Clone() TaskReport {
+	taskReport := make(TaskReport, len(tr))
+	for _, taskReportData := range tr {
+		taskReport = append(taskReport, taskReportData.Clone())
+	}
+	return taskReport
+}
+
 // TaskReport returns a list of tasks and their aggregated durations between the two supplied dates
-func (tsd *TimesheetData) TaskReport(startDate, endDate time.Time, withDeleted bool) (reportData []TaskReportData, err error) {
+func (tsd *TimesheetData) TaskReport(startDate, endDate time.Time, withDeleted bool) (reportData TaskReport, err error) {
 	var rows *sql.Rows
 
 	reportData = make([]TaskReportData, 0)
