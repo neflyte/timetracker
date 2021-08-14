@@ -300,21 +300,21 @@ func (trd *TaskReportData) Duration() time.Duration {
 }
 
 func (trd *TaskReportData) Clone() TaskReportData {
-	startDate := sql.NullTime{}
-	_ = startDate.Scan(trd.StartDate)
-	return TaskReportData{
-		TaskID:          trd.TaskID,
-		TaskSynopsis:    trd.TaskSynopsis,
-		TaskDescription: trd.TaskDescription,
-		StartDate:       startDate,
-		DurationSeconds: trd.DurationSeconds,
+	newData := NewTaskReportData()
+	newData.TaskID = trd.TaskID
+	newData.TaskSynopsis = trd.TaskSynopsis
+	newData.TaskDescription = trd.TaskDescription
+	if trd.StartDate.Valid {
+		_ = newData.StartDate.Scan(trd.StartDate.Time)
 	}
+	newData.DurationSeconds = trd.DurationSeconds
+	return *newData
 }
 
 func (tr TaskReport) Clone() TaskReport {
 	taskReport := make(TaskReport, len(tr))
-	for _, taskReportData := range tr {
-		taskReport = append(taskReport, taskReportData.Clone())
+	for idx, taskReportData := range tr {
+		taskReport[idx] = taskReportData.Clone()
 	}
 	return taskReport
 }
