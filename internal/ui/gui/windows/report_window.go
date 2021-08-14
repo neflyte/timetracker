@@ -11,6 +11,7 @@ import (
 	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
 	"github.com/rs/zerolog"
 	"time"
 )
@@ -30,9 +31,9 @@ type reportWindowData struct {
 	headerContainer  *fyne.Container
 	startDateLabel   *widget.Label
 	endDateLabel     *widget.Label
-	startDateInput   *widget.Entry
+	startDateInput   *widgets.DateEntry
 	startDateBinding binding.String
-	endDateInput     *widget.Entry
+	endDateInput     *widgets.DateEntry
 	endDateBinding   binding.String
 	runReportButton  *widget.Button
 
@@ -62,8 +63,14 @@ func newReportWindow(app fyne.App) reportWindow {
 func (w *reportWindowData) Init() error {
 	w.startDateBinding = binding.NewString()
 	w.endDateBinding = binding.NewString()
-	w.startDateInput = widget.NewEntryWithData(w.startDateBinding)
-	w.endDateInput = widget.NewEntryWithData(w.endDateBinding)
+	w.startDateInput = widgets.NewDateEntry()
+	w.startDateInput.PlaceHolder = "YYYY-MM-DD"
+	w.startDateInput.Validator = w.dateValidator
+	w.startDateInput.Bind(w.startDateBinding)
+	w.endDateInput = widgets.NewDateEntry()
+	w.endDateInput.PlaceHolder = "YYYY-MM-DD"
+	w.endDateInput.Validator = w.dateValidator
+	w.endDateInput.Bind(w.endDateBinding)
 	w.startDateLabel = widget.NewLabel("Start date:")
 	w.endDateLabel = widget.NewLabel("End date:")
 	w.runReportButton = widget.NewButton("Run Report", w.doRunReport)
@@ -82,14 +89,16 @@ func (w *reportWindowData) Init() error {
 			return widget.NewLabel("")
 		},
 		func(cell widget.TableCellID, object fyne.CanvasObject) {
+			var labelText string
+
 			label, isLabel := object.(*widget.Label)
 			if !isLabel {
 				w.Logger.Error().Msgf("expected *widget.Label but got %T instead", object)
 				return
 			}
-			labelText := ""
 			if cell.Row == 0 {
 				labelText = tableHeader[cell.Col]
+				label.TextStyle.Bold = true
 			} else {
 				taskReportData := w.taskReport[cell.Row-1]
 				switch cell.Col {
@@ -104,11 +113,18 @@ func (w *reportWindowData) Init() error {
 				default:
 					labelText = ""
 				}
+				label.TextStyle.Bold = false
 			}
 			label.SetText(labelText)
 		},
 	)
-	w.Container = container.NewBorder(w.headerContainer, nil, nil, nil, w.resultTable)
+	w.resultTable.SetColumnWidth(0, 75)
+	w.resultTable.SetColumnWidth(1, 250)
+	w.resultTable.SetColumnWidth(2, 100)
+	w.Container = container.NewMax(container.NewBorder(
+		w.headerContainer, nil, nil, nil,
+		container.NewPadded(w.resultTable),
+	))
 	w.Window.SetContent(w.Container)
 	w.Window.SetCloseIntercept(w.Hide)
 	w.Window.SetFixedSize(true)
@@ -127,12 +143,13 @@ func (w *reportWindowData) doRunReport() {
 	}
 	// Disable run button and enable when this function is done
 	w.runReportButton.Disable()
-	defer w.runReportButton.Enable()
+	defer func() {
+		w.runReportButton.Enable()
+		w.resultTable.Refresh()
+	}()
 	// Clear table
 	//  - set tableRows to zero
 	w.tableRows = 0
-	//  - refresh table
-	w.resultTable.Refresh()
 	// Run query
 	timesheet := models.NewTimesheet()
 	// TODO: Add option to include deleted tasks
@@ -143,11 +160,11 @@ func (w *reportWindowData) doRunReport() {
 		w.Logger.Err(err).Msgf("error running task report between %s and %s", dStart.Format(constants.TimestampDateLayout), dEnd.Format(constants.TimestampDateLayout))
 		return
 	}
+	w.Logger.Debug().Msgf("loaded %d records for report", len(reportData))
 	// Populate table
 	w.taskReport = reportData.Clone()
 	w.tableColumns = len(tableHeader)
-	w.tableRows = len(reportData) + 1
-	w.resultTable.Refresh()
+	w.tableRows = len(w.taskReport) + 1
 }
 
 func (w *reportWindowData) validateDateRange() (startDate time.Time, endDate time.Time, err error) {
@@ -185,4 +202,9 @@ func (w *reportWindowData) validateDateRange() (startDate time.Time, endDate tim
 	}
 	// Date range is valid
 	return
+}
+
+func (w *reportWindowData) dateValidator(value string) error {
+	_, err := time.Parse(constants.TimestampDateLayout, value)
+	return err
 }
