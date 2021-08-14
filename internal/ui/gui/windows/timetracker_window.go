@@ -60,10 +60,12 @@ type timetrackerWindowData struct {
 	BtnStartTask                *widget.Button
 	BtnStopTask                 *widget.Button
 	BtnManageTasks              *widget.Button
+	BtnReport                   *widget.Button
 	BtnAbout                    *widget.Button
 	createNewTaskAndStartDialog dialogs.CreateAndStartTaskDialog
 	Log                         zerolog.Logger
 	mngWindow                   manageWindow
+	rptWindow                   reportWindow
 
 	LblStatus      *widget.Label
 	LblStartTime   *widget.Label
@@ -112,12 +114,14 @@ func (t *timetrackerWindowData) Init() error {
 	t.BtnStartTask = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), t.doStartTask)
 	t.BtnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)
 	t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), t.doManageTasks)
+	t.BtnReport = widget.NewButtonWithIcon("REPORT", theme.FileTextIcon(), t.doReport)
 	t.BtnAbout = widget.NewButton("ABOUT", t.doAbout)
 	t.ButtonBox = container.NewCenter(
 		container.NewHBox(
 			t.BtnStartTask,
 			t.BtnStopTask,
 			t.BtnManageTasks,
+			t.BtnReport,
 			t.BtnAbout,
 		),
 	)
@@ -193,6 +197,9 @@ func (t *timetrackerWindowData) Init() error {
 	)
 	// Hide the Manage Window by default
 	t.mngWindow.Hide()
+	// Also set up the report window and hide it
+	t.rptWindow = newReportWindow(*t.App)
+	t.rptWindow.Hide()
 	return nil
 }
 
@@ -374,6 +381,10 @@ func (t *timetrackerWindowData) doStopTask() {
 
 func (t *timetrackerWindowData) doManageTasks() {
 	t.mngWindow.Show()
+}
+
+func (t *timetrackerWindowData) doReport() {
+	t.rptWindow.Show()
 }
 
 func (t *timetrackerWindowData) doAbout() {

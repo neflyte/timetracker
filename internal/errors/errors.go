@@ -7,7 +7,7 @@ const (
 
 // ErrScanNowIntoSQLNull represents an error that occurs when scanning time.Now() into a sql.NullTime object
 type ErrScanNowIntoSQLNull struct {
-	// Wrapped is a wrapped error
+	// Wrapped is a Wrapped error
 	Wrapped error
 }
 
@@ -15,7 +15,7 @@ func (e ErrScanNowIntoSQLNull) Error() string {
 	return ScanNowIntoSQLNullTimeError
 }
 
-// Unwrap implements a wrapped error
+// Unwrap implements a Wrapped error
 func (e ErrScanNowIntoSQLNull) Unwrap() error {
 	return e.Wrapped
 }
