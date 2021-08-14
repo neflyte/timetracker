@@ -114,7 +114,7 @@ func (t *timetrackerWindowData) Init() error {
 	t.BtnStartTask = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), t.doStartTask)
 	t.BtnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)
 	t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), t.doManageTasks)
-	t.BtnReport = widget.NewButtonWithIcon("REPORT", theme.FileTextIcon(), t.doReport)
+	t.BtnReport = widget.NewButtonWithIcon("REPORT", theme.FileIcon(), t.doReport)
 	t.BtnAbout = widget.NewButton("ABOUT", t.doAbout)
 	t.ButtonBox = container.NewCenter(
 		container.NewHBox(
