@@ -40,7 +40,8 @@ func init() {
 	ReportCmd.Flags().StringVar(&exportCSVFile, "exportCSV", "", "file to export report in CSV format")
 }
 
-func reportTimesheets(_ *cobra.Command, _ []string) (err error) {
+// FIXME: Figure out a way to reduce cyclomatic complexity so the lint exclusion can be removed
+func reportTimesheets(_ *cobra.Command, _ []string) (err error) { //nolint:cyclop
 	log := logger.GetLogger("reportTimesheets")
 	if reportStartDate == "" || reportEndDate == "" {
 		return errors.New("both start date and end date must be specified")
