@@ -65,11 +65,23 @@ func (w *reportWindowData) Init() error {
 	w.endDateBinding = binding.NewString()
 	w.startDateInput = widgets.NewDateEntry()
 	w.startDateInput.PlaceHolder = "YYYY-MM-DD"
-	w.startDateInput.Validator = w.dateValidator
+	w.startDateInput.Validator = func(value string) error {
+		if value == "" {
+			return nil
+		}
+		_, err := time.Parse(constants.TimestampDateLayout, value)
+		return err
+	}
 	w.startDateInput.Bind(w.startDateBinding)
 	w.endDateInput = widgets.NewDateEntry()
 	w.endDateInput.PlaceHolder = "YYYY-MM-DD"
-	w.endDateInput.Validator = w.dateValidator
+	w.endDateInput.Validator = func(value string) error {
+		if value == "" {
+			return nil
+		}
+		_, err := time.Parse(constants.TimestampDateLayout, value)
+		return err
+	}
 	w.endDateInput.Bind(w.endDateBinding)
 	w.startDateLabel = widget.NewLabel("Start date:")
 	w.endDateLabel = widget.NewLabel("End date:")
@@ -123,13 +135,19 @@ func (w *reportWindowData) Init() error {
 	w.resultTable.SetColumnWidth(2, 100)
 	w.Container = container.NewMax(container.NewBorder(
 		w.headerContainer, nil, nil, nil,
-		container.NewPadded(w.resultTable),
+		container.NewPadded(container.NewVBox(widget.NewSeparator(), w.resultTable)),
 	))
 	w.Window.SetContent(w.Container)
 	w.Window.SetCloseIntercept(w.Hide)
 	w.Window.SetFixedSize(true)
 	w.Window.Resize(minimumWindowSize)
 	return nil
+}
+
+// Show displays the window and focuses the start date entry widget
+func (w *reportWindowData) Show() {
+	w.Window.Canvas().Focus(w.startDateInput)
+	w.Window.Show()
 }
 
 func (w *reportWindowData) doRunReport() {
@@ -169,7 +187,10 @@ func (w *reportWindowData) doRunReport() {
 
 func (w *reportWindowData) validateDateRange() (startDate time.Time, endDate time.Time, err error) {
 	// Parse the start date
-	startDateString, _ := w.startDateBinding.Get()
+	startDateString, err := w.startDateBinding.Get()
+	if err != nil {
+		return
+	}
 	startDate, err = time.Parse(constants.TimestampDateLayout, startDateString)
 	if err != nil {
 		err = errors.InvalidTaskReportStartDate{
@@ -179,7 +200,10 @@ func (w *reportWindowData) validateDateRange() (startDate time.Time, endDate tim
 		return
 	}
 	// Parse the end date
-	endDateString, _ := w.endDateBinding.Get()
+	endDateString, err := w.endDateBinding.Get()
+	if err != nil {
+		return
+	}
 	endDate, err = time.Parse(constants.TimestampDateLayout, endDateString)
 	if err != nil {
 		err = errors.InvalidTaskReportEndDate{
@@ -202,9 +226,4 @@ func (w *reportWindowData) validateDateRange() (startDate time.Time, endDate tim
 	}
 	// Date range is valid
 	return
-}
-
-func (w *reportWindowData) dateValidator(value string) error {
-	_, err := time.Parse(constants.TimestampDateLayout, value)
-	return err
 }
