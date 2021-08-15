@@ -19,7 +19,11 @@ import (
 )
 
 const (
-	dateEntryMinWidth = 150.0
+	dateEntryMinWidth  = 150.0
+	columnTaskID       = 0
+	columnTaskSynopsis = 1
+	columnStartDate    = 2
+	columnDuration     = 3
 )
 
 var (
@@ -121,13 +125,13 @@ func (w *reportWindowData) Init() error {
 			} else {
 				taskReportData := w.taskReport[cell.Row-1]
 				switch cell.Col {
-				case 0:
+				case columnTaskID:
 					labelText = fmt.Sprintf("%d", taskReportData.TaskID)
-				case 1:
+				case columnTaskSynopsis:
 					labelText = taskReportData.TaskSynopsis
-				case 2:
+				case columnStartDate:
 					labelText = taskReportData.StartDate.Time.Format(constants.TimestampDateLayout)
-				case 3:
+				case columnDuration:
 					labelText = taskReportData.Duration().String()
 				default:
 					labelText = ""

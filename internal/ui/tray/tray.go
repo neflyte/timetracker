@@ -198,7 +198,7 @@ func mainLoop(quitChan chan bool) { //nolint:cyclop
 	// Create a channel to catch OS signals
 	sigChan := make(chan os.Signal, 1)
 	// Catch OS interrupt, kill, and SIGTERM signals
-	signal.Notify(sigChan, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	// Start main loop
 	log.Trace().Msg("starting")
 	for {
