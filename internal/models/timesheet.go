@@ -299,13 +299,18 @@ func (trd *TaskReportData) Duration() time.Duration {
 	return time.Second * time.Duration(trd.DurationSeconds)
 }
 
+// Clone returns a copy of this object
 func (trd *TaskReportData) Clone() TaskReportData {
+	log := logger.GetLogger("Clone")
 	newData := NewTaskReportData()
 	newData.TaskID = trd.TaskID
 	newData.TaskSynopsis = trd.TaskSynopsis
 	newData.TaskDescription = trd.TaskDescription
 	if trd.StartDate.Valid {
-		_ = newData.StartDate.Scan(trd.StartDate.Time)
+		err := newData.StartDate.Scan(trd.StartDate.Time)
+		if err != nil {
+			log.Err(err).Msgf("error scanning start date %#v", trd.StartDate.Time)
+		}
 	}
 	newData.DurationSeconds = trd.DurationSeconds
 	return *newData
