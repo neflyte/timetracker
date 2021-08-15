@@ -27,7 +27,7 @@ func NewDateEntry(minWidth float32, placeholder string, dateFormat string, strin
 	newEntry.ExtendBaseWidget(newEntry)
 	newEntry.PlaceHolder = placeholder
 	if newEntry.stringBinding != nil {
-		newEntry.stringBinding.AddListener(binding.NewDataListener(newEntry.ValidateDate))
+		newEntry.stringBinding.AddListener(binding.NewDataListener(newEntry.validateDate))
 	}
 	return newEntry
 }
@@ -43,7 +43,7 @@ func (d *DateEntry) MinSize() fyne.Size {
 	return fyne.NewSize(minWidth, entrySize.Height)
 }
 
-func (d *DateEntry) ValidateDate() {
+func (d *DateEntry) validateDate() {
 	if d.stringBinding != nil {
 		stringValue, err := d.stringBinding.Get()
 		if err != nil {
