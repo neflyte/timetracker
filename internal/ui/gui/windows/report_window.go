@@ -1,11 +1,13 @@
 package windows
 
 import (
+	"encoding/csv"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/errors"
@@ -20,7 +22,10 @@ const (
 	dateEntryMinWidth = 150.0
 )
 
-var tableHeader = []string{"Task ID", "Synopsis", "Started On", "Duration"}
+var (
+	tableHeader    = []string{"Task ID", "Synopsis", "Started On", "Duration"}
+	csvTableHeader = []string{"task_id", "synopsis", "started_on", "duration"}
+)
 
 type reportWindow interface {
 	windowBase
@@ -41,6 +46,7 @@ type reportWindowData struct {
 	endDateInput     *widgets.DateEntry
 	endDateBinding   binding.String
 	runReportButton  *widget.Button
+	exportButton     *widget.Button
 
 	resultTable  *widget.Table
 	tableColumns int
@@ -76,7 +82,9 @@ func (w *reportWindowData) Init() error {
 	w.endDateInput.Bind(w.endDateBinding)
 	w.startDateLabel = widget.NewLabel("Start date:")
 	w.endDateLabel = widget.NewLabel("End date:")
-	w.runReportButton = widget.NewButton("Run Report", w.doRunReport)
+	w.runReportButton = widget.NewButtonWithIcon("RUN", theme.MediaPlayIcon(), w.doRunReport)
+	w.exportButton = widget.NewButtonWithIcon("EXPORT", theme.DownloadIcon(), w.doExport)
+	w.exportButton.Disable() // Initialize the export button in a disabled state
 	w.headerContainer = container.NewBorder(
 		nil, nil,
 		container.NewHBox(
@@ -85,7 +93,10 @@ func (w *reportWindowData) Init() error {
 			w.endDateLabel,
 			w.endDateInput,
 		),
-		w.runReportButton,
+		container.NewHBox(
+			w.runReportButton,
+			w.exportButton,
+		),
 	)
 	// Result table
 	w.resultTable = widget.NewTable(
@@ -158,15 +169,20 @@ func (w *reportWindowData) doRunReport() {
 		return
 	}
 	// Disable run button and enable when this function is done
+	w.exportButton.Disable()
 	w.runReportButton.Disable()
 	defer func() {
 		w.runReportButton.Enable()
-		//w.resultTable.Refresh()
+		if len(w.taskReport) > 0 {
+			w.exportButton.Enable()
+		}
 		w.Content().Refresh()
 	}()
 	// Clear table
 	//  - set tableRows to zero
 	w.tableRows = 0
+	//  - set taskReport to empty
+	w.taskReport = make(models.TaskReport, 0)
 	// Run query
 	timesheet := models.NewTimesheet()
 	// TODO: Add option to include deleted tasks
@@ -182,6 +198,56 @@ func (w *reportWindowData) doRunReport() {
 	w.taskReport = reportData.Clone()
 	w.tableColumns = len(tableHeader)
 	w.tableRows = len(w.taskReport) + 1
+}
+
+func (w *reportWindowData) doExport() {
+	// Sanity check that there is data to export
+	if len(w.taskReport) == 0 {
+		dialog.NewError(
+			fmt.Errorf("there is no data to export"),
+			w,
+		).Show()
+		return
+	}
+	// Show file save dialog
+	dialog.ShowFileSave(w.exportReportAsCSV, w)
+}
+
+func (w *reportWindowData) exportReportAsCSV(writeCloser fyne.URIWriteCloser, dialogErr error) {
+	log := logger.GetFuncLogger(w.log, "exportReportAsCSV")
+	if dialogErr != nil {
+		log.Err(dialogErr).Msg("error opening CSV file for writing")
+		return
+	}
+	// Write data to file
+	if writeCloser != nil {
+		// Collect data
+		csvData := make([][]string, 0)
+		csvData = append(csvData, csvTableHeader)
+		for _, taskReportData := range w.taskReport {
+			csvData = append(csvData, []string{
+				fmt.Sprintf("%d", taskReportData.TaskID),
+				taskReportData.TaskSynopsis,
+				taskReportData.StartDate.Time.Format(constants.TimestampDateLayout),
+				taskReportData.Duration().String(),
+			})
+		}
+		csvOut := csv.NewWriter(writeCloser)
+		defer func() {
+			csvOut.Flush()
+			err := writeCloser.Close()
+			if err != nil {
+				log.Err(err).Msg("error closing CSV file")
+			}
+		}()
+		err := csvOut.WriteAll(csvData)
+		if err != nil {
+			log.Err(err).Msg("error exporting data to CSV")
+			dialog.ShowError(err, w)
+			return
+		}
+		dialog.ShowInformation("Export Successful", "The report data was exported successfully.", w)
+	}
 }
 
 func (w *reportWindowData) validateDateRange() (startDate time.Time, endDate time.Time, err error) {
