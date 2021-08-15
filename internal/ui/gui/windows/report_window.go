@@ -23,8 +23,9 @@ const (
 )
 
 var (
-	tableHeader    = []string{"Task ID", "Synopsis", "Started On", "Duration"}
-	csvTableHeader = []string{"task_id", "synopsis", "started_on", "duration"}
+	tableColumnWidths = []float32{75, 250, 100}
+	tableHeader       = []string{"Task ID", "Synopsis", "Started On", "Duration"}
+	csvTableHeader    = []string{"task_id", "synopsis", "started_on", "duration"}
 )
 
 type reportWindow interface {
@@ -136,9 +137,10 @@ func (w *reportWindowData) Init() error {
 			label.SetText(labelText)
 		},
 	)
-	w.resultTable.SetColumnWidth(0, 75)
-	w.resultTable.SetColumnWidth(1, 250)
-	w.resultTable.SetColumnWidth(2, 100)
+	// Set table column widths
+	for idx, colWidth := range tableColumnWidths {
+		w.resultTable.SetColumnWidth(idx, colWidth)
+	}
 	w.Container = container.NewPadded(
 		container.NewBorder(
 			w.headerContainer, nil, nil, nil,
