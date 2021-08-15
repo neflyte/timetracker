@@ -16,6 +16,10 @@ import (
 	"time"
 )
 
+const (
+	dateEntryMinWidth = 150.0
+)
+
 var tableHeader = []string{"Task ID", "Synopsis", "Started On", "Duration"}
 
 type reportWindow interface {
@@ -24,7 +28,8 @@ type reportWindow interface {
 
 type reportWindowData struct {
 	fyne.Window
-	zerolog.Logger
+
+	log zerolog.Logger
 
 	Container *fyne.Container
 
@@ -45,54 +50,44 @@ type reportWindowData struct {
 }
 
 func newReportWindow(app fyne.App) reportWindow {
+	log := logger.GetLogger("newReportWindow")
 	newWindow := &reportWindowData{
-		Window:       app.NewWindow("Report"),
-		Logger:       logger.GetStructLogger("reportWindowData"),
+		Window:       app.NewWindow("Task Report"),
+		log:          logger.GetStructLogger("reportWindowData"),
 		tableRows:    0,
 		tableColumns: 0,
 		taskReport:   make([]models.TaskReportData, 0),
 	}
 	err := newWindow.Init()
 	if err != nil {
-		newWindow.Logger.Err(err).Msg("error initializing window")
+		log.Err(err).Msg("error initializing window")
 	}
 	return newWindow
 }
 
 // Init initializes the window
 func (w *reportWindowData) Init() error {
+	// Header container
 	w.startDateBinding = binding.NewString()
 	w.endDateBinding = binding.NewString()
-	w.startDateInput = widgets.NewDateEntry()
-	w.startDateInput.PlaceHolder = "YYYY-MM-DD"
-	w.startDateInput.Validator = func(value string) error {
-		if value == "" {
-			return nil
-		}
-		_, err := time.Parse(constants.TimestampDateLayout, value)
-		return err
-	}
+	w.startDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.startDateBinding)
 	w.startDateInput.Bind(w.startDateBinding)
-	w.endDateInput = widgets.NewDateEntry()
-	w.endDateInput.PlaceHolder = "YYYY-MM-DD"
-	w.endDateInput.Validator = func(value string) error {
-		if value == "" {
-			return nil
-		}
-		_, err := time.Parse(constants.TimestampDateLayout, value)
-		return err
-	}
+	w.endDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.endDateBinding)
 	w.endDateInput.Bind(w.endDateBinding)
 	w.startDateLabel = widget.NewLabel("Start date:")
 	w.endDateLabel = widget.NewLabel("End date:")
 	w.runReportButton = widget.NewButton("Run Report", w.doRunReport)
-	w.headerContainer = container.NewHBox(
-		w.startDateLabel,
-		w.startDateInput,
-		w.endDateLabel,
-		w.endDateInput,
+	w.headerContainer = container.NewBorder(
+		nil, nil,
+		container.NewHBox(
+			w.startDateLabel,
+			w.startDateInput,
+			w.endDateLabel,
+			w.endDateInput,
+		),
 		w.runReportButton,
 	)
+	// Result table
 	w.resultTable = widget.NewTable(
 		func() (int, int) {
 			return w.tableRows, w.tableColumns
@@ -105,7 +100,7 @@ func (w *reportWindowData) Init() error {
 
 			label, isLabel := object.(*widget.Label)
 			if !isLabel {
-				w.Logger.Error().Msgf("expected *widget.Label but got %T instead", object)
+				w.log.Error().Msgf("expected *widget.Label but got %T instead", object)
 				return
 			}
 			if cell.Row == 0 {
@@ -133,14 +128,17 @@ func (w *reportWindowData) Init() error {
 	w.resultTable.SetColumnWidth(0, 75)
 	w.resultTable.SetColumnWidth(1, 250)
 	w.resultTable.SetColumnWidth(2, 100)
-	w.Container = container.NewMax(container.NewBorder(
-		w.headerContainer, nil, nil, nil,
-		container.NewPadded(container.NewVBox(widget.NewSeparator(), w.resultTable)),
-	))
-	w.Window.SetContent(w.Container)
+	w.Container = container.NewPadded(
+		container.NewBorder(
+			w.headerContainer, nil, nil, nil,
+			w.resultTable,
+		),
+	)
+	w.Window.SetContent(container.NewMax(w.Container))
 	w.Window.SetCloseIntercept(w.Hide)
 	w.Window.SetFixedSize(true)
 	w.Window.Resize(minimumWindowSize)
+	w.Window.Canvas().Focus(w.startDateInput)
 	return nil
 }
 
@@ -156,14 +154,15 @@ func (w *reportWindowData) doRunReport() {
 	if err != nil {
 		// TODO: Show a more informative error
 		dialog.NewError(err, w).Show()
-		w.Logger.Err(err).Msg("unable to validate date range")
+		w.log.Err(err).Msg("unable to validate date range")
 		return
 	}
 	// Disable run button and enable when this function is done
 	w.runReportButton.Disable()
 	defer func() {
 		w.runReportButton.Enable()
-		w.resultTable.Refresh()
+		//w.resultTable.Refresh()
+		w.Content().Refresh()
 	}()
 	// Clear table
 	//  - set tableRows to zero
@@ -175,10 +174,10 @@ func (w *reportWindowData) doRunReport() {
 	if err != nil {
 		// TODO: Show a more informative error
 		dialog.NewError(err, w).Show()
-		w.Logger.Err(err).Msgf("error running task report between %s and %s", dStart.Format(constants.TimestampDateLayout), dEnd.Format(constants.TimestampDateLayout))
+		w.log.Err(err).Msgf("error running task report between %s and %s", dStart.Format(constants.TimestampDateLayout), dEnd.Format(constants.TimestampDateLayout))
 		return
 	}
-	w.Logger.Debug().Msgf("loaded %d records for report", len(reportData))
+	w.log.Debug().Msgf("loaded %d records for report", len(reportData))
 	// Populate table
 	w.taskReport = reportData.Clone()
 	w.tableColumns = len(tableHeader)
