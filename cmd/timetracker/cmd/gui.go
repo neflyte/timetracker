@@ -66,8 +66,8 @@ func preDoGUI(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	log.Debug().Msgf("locked pidfile %s", guiCmdLockfilePath)
-	// Write the AppVersion to the appstate Map so gui components can access it without a direct binding
-	appstate.Map().Store(appstate.KeyAppVersion, AppVersion)
+	// Write the appVersion to the appstate Map so gui components can access it without a direct binding
+	appstate.Map().Store(appstate.KeyAppVersion, appVersion)
 	return nil
 }
 

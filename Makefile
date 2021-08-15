@@ -19,7 +19,7 @@ clean: clean-coverage
 
 lint:
 	go vet ./...
-	golangci-lint run
+	golangci-lint run --timeout=5m
 
 test: clean-coverage
 	if [ ! -d coverage ]; then mkdir coverage; fi
@@ -30,9 +30,14 @@ dist: lint
 	@if [ ! -d dist ]; then mkdir dist; fi
 	@for os in $(OSES); do \
 		echo "Building for $$os" && \
-  		GOARCH=amd64 GOOS=$$os go build $(GO_LDFLAGS) -o dist/$(BINPREFIX)$$os-amd64 ./cmd/timetracker && \
-  		cd dist && \
-  		tar cfJ $(BINPREFIX)$$os-amd64.tar.xz $(BINPREFIX)$$os-amd64 && \
-        sha512sum $(BINPREFIX)$$os-amd64.tar.xz > $(BINPREFIX)$$os-amd64.tar.xz.sha512 && \
-        cd ..; \
-    done
+		GOARCH=amd64 GOOS=$$os go build $(GO_LDFLAGS) -o dist/$(BINPREFIX)$$os-amd64 ./cmd/timetracker && \
+		cd dist && \
+		tar cfJ $(BINPREFIX)$$os-amd64.tar.xz $(BINPREFIX)$$os-amd64 && \
+		sha512sum $(BINPREFIX)$$os-amd64.tar.xz > $(BINPREFIX)$$os-amd64.tar.xz.sha512 && \
+		cd ..; \
+	done
+
+dist-darwin: lint
+	GOOS=darwin GOARCH=amd64 go build $(GO_LDFLAGS) -o dist/$(BINPREFIX)darwin-amd64 ./cmd/timetracker
+	fyne package -name Timetracker -os darwin -appID cc.ethereal.timetracker -appVersion "0.3.1" -icon assets/images/Apps-Anydo-icon.png -executable dist/$(BINPREFIX)darwin-amd64
+	mv Timetracker.app dist/
