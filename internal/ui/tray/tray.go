@@ -196,9 +196,9 @@ func updateStatus(tsd *models.TimesheetData) {
 func mainLoop(quitChan chan bool) { //nolint:cyclop
 	log := logger.GetFuncLogger(trayLogger, "mainLoop")
 	// Create a channel to catch OS signals
-	sigChan := make(chan os.Signal, 1)
-	// Catch OS interrupt, kill, and SIGTERM signals
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	signalChan := make(chan os.Signal, 1)
+	// Catch OS interrupt and SIGTERM signals
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 	// Start main loop
 	log.Trace().Msg("starting")
 	for {
@@ -225,8 +225,8 @@ func mainLoop(quitChan chan bool) { //nolint:cyclop
 			launchGUI(guiOptionShowAboutWindow)
 		case <-mCreateAndStart.ClickedCh:
 			launchGUI(guiOptionCreateAndStartTask)
-		case <-sigChan:
-			log.Trace().Msg("caught interrupt, kill, or SIGTERM signal; calling systray.Quit() and exiting function")
+		case <-signalChan:
+			log.Trace().Msg("caught interrupt or SIGTERM signal; calling systray.Quit() and exiting function")
 			systray.Quit()
 			return
 		case <-mQuit.ClickedCh:
