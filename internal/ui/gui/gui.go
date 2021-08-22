@@ -6,6 +6,9 @@ import (
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/gui/windows"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 var (
@@ -70,7 +73,11 @@ func ShowTimetrackerWindowAndShowCreateAndStartDialog() {
 func guiFunc(appPtr *fyne.App) {
 	log := logger.GetFuncLogger(guiLogger, "guiFunc")
 	if appPtr != nil {
+		defer log.Trace().Msg("done")
 		appInstance := *appPtr
+		// Start Signal catcher
+		signalFuncQuitChan := make(chan bool, 1)
+		go signalFunc(signalFuncQuitChan, appPtr)
 		// Start ActionLoop
 		actionLoopQuitChan := make(chan bool, 1)
 		go appstate.ActionLoop(actionLoopQuitChan)
@@ -83,10 +90,37 @@ func guiFunc(appPtr *fyne.App) {
 		log.Trace().Msg("calling appInstance.Run()")
 		appInstance.Run()
 		log.Trace().Msg("fyne exited")
+		// stop signal catcher
+		signalFuncQuitChan <- true
 		// stop actionloop
 		actionLoopQuitChan <- true
 	} else {
 		log.Error().Msg("appPtr was nil; this is unexpected")
 	}
-	log.Trace().Msg("done")
+}
+
+func signalFunc(quitChan chan bool, appPtr *fyne.App) {
+	log := logger.GetFuncLogger(guiLogger, "signalFunc")
+	if appPtr != nil {
+		// Create a channel to catch OS signals
+		signalChan := make(chan os.Signal, 1)
+		// Catch OS interrupt and SIGTERM signals
+		signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+		// Start signal loop
+		log.Trace().Msg("starting")
+		defer log.Trace().Msg("done")
+		for {
+			select {
+			case <-signalChan:
+				log.Warn().Msg("caught os.Interrupt or SIGTERM; shutting down GUI")
+				(*appPtr).Quit()
+				return
+			case <-quitChan:
+				log.Trace().Msg("quit channel fired; exiting function")
+				return
+			}
+		}
+	} else {
+		log.Error().Msg("appPtr was nil; this is unexpected")
+	}
 }
