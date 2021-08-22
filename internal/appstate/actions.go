@@ -20,7 +20,7 @@ func ActionLoop(quitChannel chan bool) {
 		log.Warn().Msg("action loop is already running")
 		return
 	}
-	log.Debug().Msg("starting ActionLoop")
+	log.Trace().Msg("starting ActionLoop")
 	actionLoopRunning = true
 	defer func() {
 		actionLoopRunning = false
@@ -30,7 +30,7 @@ func ActionLoop(quitChannel chan bool) {
 		log.Trace().Msgf("delaying %d seconds until next action loop", constants.ActionLoopDelaySeconds)
 		select {
 		case <-quitChannel:
-			log.Debug().Msg("quit channel fired; exiting function")
+			log.Trace().Msg("quit channel fired; exiting function")
 			return
 		case <-time.After(constants.ActionLoopDelaySeconds * time.Second):
 			break
