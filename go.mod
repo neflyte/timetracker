@@ -17,6 +17,7 @@ require (
 	github.com/go-gl/gl v0.0.0-20210501111010-69f74958bac0 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible
 	github.com/gopherjs/gopherjs v0.0.0-20210619142842-05447a1fa367 // indirect
+	github.com/jinzhu/now v1.1.2
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/mattn/go-sqlite3 v1.14.7 // indirect
 	github.com/nightlyone/lockfile v1.0.0

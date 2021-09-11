@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"fmt"
+	"github.com/jinzhu/now"
 	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/database"
 	ttErrors "github.com/neflyte/timetracker/internal/errors"
@@ -333,20 +334,33 @@ func (tsd *TimesheetData) TaskReport(startDate, endDate time.Time, withDeleted b
 	if withDeleted {
 		db = db.Unscoped()
 	}
+	// Make sure the startDate is at the start of the day and the endDate is at the end of the day
+	startDateAtDayStart := now.With(startDate).BeginningOfDay()
+	endDateAtDayEnd := now.With(endDate).EndOfDay()
+	tsd.log.Trace().Msgf(
+		"input: startDate=%s, endDate=%s",
+		startDate.Format(constants.TimestampLayout),
+		endDate.Format(constants.TimestampLayout),
+	)
+	tsd.log.Trace().Msgf(
+		"rounded: startDateAtDayStart=%s, endDateAtDayEnd=%s",
+		startDateAtDayStart.Format(constants.TimestampLayout),
+		endDateAtDayEnd.Format(constants.TimestampLayout),
+	)
 	// TODO: Move the SQL statement to an appropriate constant
 	rows, err = db.Raw(
-		`SELECT 
+		`SELECT
 	ts.task_id AS task_id,
 	t.synopsis AS task_synopsis,
 	t.description AS task_description,
 	ts.start_time AS start_date,
-	STRFTIME('%s', ts.stop_time) - STRFTIME('%s', ts.start_time) AS duration_seconds 
-FROM timesheet ts JOIN task t ON ts.task_id = t.id 
-WHERE ts.start_time >= ? AND ts.stop_time <= ? AND ts.stop_time IS NOT NULL 
-GROUP BY ts.task_id, DATE(ts.start_time) 
+	STRFTIME('%s', ts.stop_time) - STRFTIME('%s', ts.start_time) AS duration_seconds
+FROM timesheet ts JOIN task t ON ts.task_id = t.id
+WHERE ts.start_time >= ? AND ts.stop_time <= ? AND ts.stop_time IS NOT NULL
+GROUP BY ts.task_id, DATE(ts.start_time)
 ORDER BY DATE(ts.start_time) ASC`,
-		startDate,
-		endDate).
+		startDateAtDayStart,
+		endDateAtDayEnd).
 		Rows()
 	if err != nil {
 		return nil, err
