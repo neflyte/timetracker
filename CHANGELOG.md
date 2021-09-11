@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.1-beta1] - TBA
 ### Changed
 - Fixed defect in report where end date was not at the end of the day
+- Update github.com/rs/zerolog from v1.23.0 to v1.25.0
+- Update gorm.io/gorm from v1.21.11 to v1.21.15
+- Update gorm.io/driver/sqlite from v1.1.4 to v1.1.5
 
 ## [0.3.1-alpha5] - 2021-08-22
 ### Added
