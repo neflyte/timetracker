@@ -22,7 +22,7 @@ A personal time tracker for simple tasks
 - System tray app
   - Convenient access to start, stop, and create tasks
   - Task status (idle, running)
-    
+
 ### Installation
 
 #### System Requirements
@@ -73,12 +73,12 @@ Please consult the following sites for information on dependencies for other pla
   `git clone https://github.com/neflyte/timetracker`
 
 - Build the `timetracker` app:
-  
+
   `make`
 
   - The app will be placed in the `dist` subdirectory
 
-#### Installing 
+#### Installing
 - Copy the app to a directory on the system path, for example `/usr/local/bin` or `$HOME/bin`:
 
   `cp dist/timetracker $HOME/bin`
@@ -95,10 +95,6 @@ To start the system tray app as a background process, run the following command:
 
 On Linux and macOS this command will start a new `timetracker` process and detach it from the terminal.
 
-##### Tray menu options
-
-FIXME: simple systray screenshot goes here; one for linux + one for macos
-
 #### GUI app
 
 ##### Starting
@@ -106,7 +102,3 @@ FIXME: simple systray screenshot goes here; one for linux + one for macos
 To start the GUI app, run the following command:
 
 `timetracker ui`
-
-#### CLI (command line) app
-
-TBA
