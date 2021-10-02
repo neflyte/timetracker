@@ -334,5 +334,5 @@ func (d *datePickerRenderer) doSubmit() {
 }
 
 func (d *datePickerRenderer) doCancel() {
-	d.submitChannel <- rxgo.Of(true)
+	d.cancelChannel <- rxgo.Of(true)
 }

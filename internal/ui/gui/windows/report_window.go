@@ -43,15 +43,18 @@ type reportWindowData struct {
 
 	Container *fyne.Container
 
-	headerContainer  *fyne.Container
-	startDateLabel   *widget.Label
-	endDateLabel     *widget.Label
-	startDateInput   *widgets.DateEntry
-	startDateBinding binding.String
-	endDateInput     *widgets.DateEntry
-	endDateBinding   binding.String
-	runReportButton  *widget.Button
-	exportButton     *widget.Button
+	headerContainer      *fyne.Container
+	startDateLabel       *widget.Label
+	endDateLabel         *widget.Label
+	startDateInput       *widgets.DateEntry
+	startDateBinding     binding.String
+	startDatePopup       *widget.PopUp
+	startDatePicker      *widgets.DatePicker
+	startDatePopupButton *widget.Button
+	endDateInput         *widgets.DateEntry
+	endDateBinding       binding.String
+	runReportButton      *widget.Button
+	exportButton         *widget.Button
 
 	resultTable  *widget.Table
 	tableColumns int
@@ -83,6 +86,27 @@ func (w *reportWindowData) Init() error {
 	w.endDateBinding = binding.NewString()
 	w.startDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.startDateBinding)
 	w.startDateInput.Bind(w.startDateBinding)
+	w.startDatePicker = widgets.NewDatePicker()
+	w.startDatePopup = widget.NewPopUp(w.startDatePicker, w.Window.Canvas())
+	w.startDatePopupButton = widget.NewButtonWithIcon("", theme.MenuDropDownIcon(), func() {
+		w.startDatePopup.ShowAtPosition(w.startDatePopupButton.Position())
+	})
+	w.startDatePicker.Observables()[widgets.DatePickerSubmitEventKey].ForEach(
+		func(value interface{}) {
+			valueString, ok := value.(string)
+			if ok {
+				w.log.Debug().Msgf("startDatePicker submitted: %s", valueString)
+				w.startDatePopup.Hide()
+			}
+		},
+		func(err error) {
+			w.log.Err(err).Msg("error from startDatePicker submitted observable")
+		},
+		func() {
+			w.log.Debug().Msg("startDatePicker submitted observable finished")
+			w.startDatePopup.Hide()
+		},
+	)
 	w.endDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.endDateBinding)
 	w.endDateInput.Bind(w.endDateBinding)
 	w.startDateLabel = widget.NewLabel("Start date:")
@@ -95,6 +119,7 @@ func (w *reportWindowData) Init() error {
 		container.NewHBox(
 			w.startDateLabel,
 			w.startDateInput,
+			w.startDatePopupButton,
 			w.endDateLabel,
 			w.endDateInput,
 		),
