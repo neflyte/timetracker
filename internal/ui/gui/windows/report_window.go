@@ -49,7 +49,7 @@ type reportWindowData struct {
 	startDateInput       *widgets.DateEntry
 	startDateBinding     binding.String
 	startDatePopup       *widget.PopUp
-	startDatePicker      *widgets.DatePicker
+	startDatePicker      *widgets.DateSpinner
 	startDatePopupButton *widget.Button
 	endDateInput         *widgets.DateEntry
 	endDateBinding       binding.String
@@ -86,13 +86,16 @@ func (w *reportWindowData) Init() error {
 	w.endDateBinding = binding.NewString()
 	w.startDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.startDateBinding)
 	w.startDateInput.Bind(w.startDateBinding)
-	w.startDatePicker = widgets.NewDatePicker()
+	w.startDatePicker = widgets.NewDateSpinner(constants.TimestampDateLayout)
 	w.startDatePopup = widget.NewPopUp(w.startDatePicker, w.Window.Canvas())
 	w.startDatePopupButton = widget.NewButtonWithIcon("", theme.MenuDropDownIcon(), func() {
-		w.startDatePopup.ShowAtPosition(w.startDatePopupButton.Position())
+		startDateInputPos := w.startDateInput.Position()
+		startDateInputPos.Y += w.startDateInput.MinSize().Height
+		startDateInputPos.Y += theme.Padding()
+		w.startDatePopup.ShowAtPosition(startDateInputPos)
 	})
 	w.startDatePopupButton.Importance = widget.LowImportance
-	w.startDatePicker.Observables()[widgets.DatePickerSubmitEventKey].ForEach(
+	w.startDatePicker.Observables()[widgets.DateSpinnerSubmitEventKey].ForEach(
 		func(value interface{}) {
 			valueString, ok := value.(string)
 			if ok {
@@ -107,7 +110,7 @@ func (w *reportWindowData) Init() error {
 			w.log.Debug().Msg("startDatePicker submitted observable finished")
 		},
 	)
-	w.startDatePicker.Observables()[widgets.DatePickerCancelEventKey].ForEach(
+	w.startDatePicker.Observables()[widgets.DateSpinnerCancelEventKey].ForEach(
 		func(value interface{}) {
 			valueBool, ok := value.(bool)
 			if ok && valueBool {
