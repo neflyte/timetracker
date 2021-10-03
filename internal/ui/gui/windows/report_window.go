@@ -43,18 +43,15 @@ type reportWindowData struct {
 
 	Container *fyne.Container
 
-	headerContainer      *fyne.Container
-	startDateLabel       *widget.Label
-	endDateLabel         *widget.Label
-	startDateInput       *widgets.DateEntry
-	startDateBinding     binding.String
-	startDatePopup       *widget.PopUp
-	startDatePicker      *widgets.DateSpinner
-	startDatePopupButton *widget.Button
-	endDateInput         *widgets.DateEntry
-	endDateBinding       binding.String
-	runReportButton      *widget.Button
-	exportButton         *widget.Button
+	headerContainer  *fyne.Container
+	startDateLabel   *widget.Label
+	endDateLabel     *widget.Label
+	startDateBinding binding.String
+	startDatePicker  *widgets.DatePicker
+	endDateInput     *widgets.DateEntry
+	endDateBinding   binding.String
+	runReportButton  *widget.Button
+	exportButton     *widget.Button
 
 	resultTable  *widget.Table
 	tableColumns int
@@ -84,47 +81,7 @@ func (w *reportWindowData) Init() error {
 	// Header container
 	w.startDateBinding = binding.NewString()
 	w.endDateBinding = binding.NewString()
-	w.startDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.startDateBinding)
-	w.startDateInput.Bind(w.startDateBinding)
-	w.startDatePicker = widgets.NewDateSpinner(constants.TimestampDateLayout)
-	w.startDatePopup = widget.NewPopUp(w.startDatePicker, w.Window.Canvas())
-	w.startDatePopupButton = widget.NewButtonWithIcon("", theme.MenuDropDownIcon(), func() {
-		startDateInputPos := w.startDateInput.Position()
-		startDateInputPos.Y += w.startDateInput.MinSize().Height
-		startDateInputPos.Y += theme.Padding()
-		w.startDatePopup.ShowAtPosition(startDateInputPos)
-	})
-	w.startDatePopupButton.Importance = widget.LowImportance
-	w.startDatePicker.Observables()[widgets.DateSpinnerSubmitEventKey].ForEach(
-		func(value interface{}) {
-			valueString, ok := value.(string)
-			if ok {
-				w.log.Debug().Msgf("startDatePicker submitted: %s", valueString)
-				w.startDatePopup.Hide()
-			}
-		},
-		func(err error) {
-			w.log.Err(err).Msg("error from startDatePicker submitted observable")
-		},
-		func() {
-			w.log.Debug().Msg("startDatePicker submitted observable finished")
-		},
-	)
-	w.startDatePicker.Observables()[widgets.DateSpinnerCancelEventKey].ForEach(
-		func(value interface{}) {
-			valueBool, ok := value.(bool)
-			if ok && valueBool {
-				w.log.Debug().Msg("startDatePicker cancelled")
-				w.startDatePopup.Hide()
-			}
-		},
-		func(err error) {
-			w.log.Err(err).Msg("error from startDatePicker cancel observable")
-		},
-		func() {
-			w.log.Debug().Msg("startDatePicker cancel observable finished")
-		},
-	)
+	w.startDatePicker = widgets.NewDatePicker(constants.TimestampDateLayout, &w.startDateBinding, w.Window.Canvas())
 	w.endDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.endDateBinding)
 	w.endDateInput.Bind(w.endDateBinding)
 	w.startDateLabel = widget.NewLabel("Start date:")
@@ -136,8 +93,7 @@ func (w *reportWindowData) Init() error {
 		nil, nil,
 		container.NewHBox(
 			w.startDateLabel,
-			w.startDateInput,
-			w.startDatePopupButton,
+			w.startDatePicker,
 			w.endDateLabel,
 			w.endDateInput,
 		),
@@ -198,13 +154,13 @@ func (w *reportWindowData) Init() error {
 	w.Window.SetCloseIntercept(w.Hide)
 	w.Window.SetFixedSize(true)
 	w.Window.Resize(minimumWindowSize)
-	w.Window.Canvas().Focus(w.startDateInput)
+	// FIXME: w.Window.Canvas().Focus(w.startDatePicker)
 	return nil
 }
 
 // Show displays the window and focuses the start date entry widget
 func (w *reportWindowData) Show() {
-	w.Window.Canvas().Focus(w.startDateInput)
+	// FIXME: w.Window.Canvas().Focus(w.startDatePicker)
 	w.Window.Show()
 }
 

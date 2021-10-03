@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/rs/zerolog"
+	"time"
 )
 
 type DatePicker struct {
@@ -19,26 +20,44 @@ type DatePicker struct {
 	parentCanvas fyne.Canvas
 }
 
-func NewDatePicker(format string, canvas fyne.Canvas) *DatePicker {
+func NewDatePicker(format string, bind *binding.String, canvas fyne.Canvas) *DatePicker {
 	dp := &DatePicker{
 		log:          logger.GetStructLogger("DatePicker"),
 		parentCanvas: canvas,
-		dateBinding:  binding.NewString(),
 		dateFormat:   format,
 	}
 	dp.ExtendBaseWidget(dp)
+	if bind != nil {
+		dp.dateBinding = *bind
+	} else {
+		dp.dateBinding = binding.NewString()
+	}
+	timeNow := time.Now().Format(format)
+	err := dp.dateBinding.Set(timeNow)
+	if err != nil {
+		dp.log.Err(err).Msgf("error setting dateBinding to %s", timeNow)
+	}
 	return dp
+}
+
+func (d *DatePicker) Bind(bind binding.String) {
+	d.dateBinding = bind
+}
+
+func (d *DatePicker) Binding() binding.String {
+	return d.dateBinding
 }
 
 func (d *DatePicker) CreateRenderer() fyne.WidgetRenderer {
 	r := datePickerRenderer{
 		log:          d.log.With().Str("renderer", "datePickerRenderer").Logger(),
+		dateSpinner:  NewDateSpinner(d.dateFormat),
+		dateEntry:    NewDateEntryV2(d.dateFormat),
 		widgetLayout: layout.NewHBoxLayout(),
 	}
-	r.dateEntry = NewDateEntryV2(d.dateFormat)
 	r.dateEntry.Bind(d.dateBinding)
 	r.dateSpinnerIcon = NewTappableIcon(theme.MenuDropDownIcon(), r.doShowSpinner)
-	r.dateSpinner = NewDateSpinner(d.dateFormat)
+	r.dateSpinnerPopup = widget.NewPopUp(r.dateSpinner, d.parentCanvas)
 	r.dateSpinner.Observables()[DateSpinnerSubmitEventKey].ForEach(
 		func(value interface{}) {
 			dateStringValue, ok := value.(string)
@@ -72,10 +91,14 @@ func (d *DatePicker) CreateRenderer() fyne.WidgetRenderer {
 			r.log.Debug().Msg("dateSpinner cancel observable finished")
 		},
 	)
-	r.dateSpinnerPopup = widget.NewPopUp(r.dateSpinner, d.parentCanvas)
 	r.objects = []fyne.CanvasObject{
 		r.dateEntry,
 		r.dateSpinnerIcon,
+	}
+	r.sizeObjects = []fyne.CanvasObject{
+		r.dateEntry,
+		r.dateSpinnerIcon,
+		r.dateSpinnerPopup,
 	}
 	return r
 }
@@ -86,6 +109,7 @@ type datePickerRenderer struct {
 	log          zerolog.Logger
 	widgetLayout fyne.Layout
 	objects      []fyne.CanvasObject
+	sizeObjects  []fyne.CanvasObject
 
 	dateEntry        *DateEntryV2
 	dateSpinnerIcon  *TappableIcon
@@ -100,9 +124,9 @@ func (d datePickerRenderer) doShowSpinner() {
 			d.log.Err(err).Msg("error getting string from dateEntry binding")
 		} else {
 			d.dateSpinner.SetString(dateString)
+			d.dateSpinnerPopup.ShowAtPosition(d.getPopupPosition())
 		}
 	}
-	d.dateSpinnerPopup.ShowAtPosition(d.getPopupPosition())
 }
 
 func (d datePickerRenderer) getPopupPosition() fyne.Position {
@@ -122,7 +146,7 @@ func (d datePickerRenderer) Layout(size fyne.Size) {
 }
 
 func (d datePickerRenderer) MinSize() fyne.Size {
-	return d.widgetLayout.MinSize(d.Objects())
+	return d.widgetLayout.MinSize(d.sizeObjects)
 }
 
 func (d datePickerRenderer) Objects() []fyne.CanvasObject {
