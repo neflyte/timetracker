@@ -3,7 +3,6 @@ package widgets
 import (
 	"fmt"
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
@@ -113,13 +112,14 @@ func (dp *DatePicker) CreateRenderer() fyne.WidgetRenderer {
 	r := &datePickerRenderer{
 		log:           dp.log.With().Str("renderer", "datePickerRenderer").Logger(),
 		canvasObjects: make([]fyne.CanvasObject, 0),
-		yearEntry:     widget.NewEntryWithData(dp.yearBinding),
-		monthEntry:    widget.NewEntryWithData(dp.monthBinding),
-		dayEntry:      widget.NewEntryWithData(dp.dayBinding),
+		yearEntry:     NewNumericalEntry(),
+		monthEntry:    NewNumericalEntry(),
+		dayEntry:      NewNumericalEntry(),
 		submitChannel: dp.submitChannel,
 		cancelChannel: dp.cancelChannel,
 		layout:        layout.NewHBoxLayout(),
 	}
+	r.yearEntry.Bind(dp.yearBinding)
 	r.yearEntry.Validator = func(yearValue string) error {
 		yearIntValue, err := strconv.Atoi(yearValue)
 		if err != nil {
@@ -133,9 +133,8 @@ func (dp *DatePicker) CreateRenderer() fyne.WidgetRenderer {
 		}
 		return nil
 	}
-	r.yearAddButton = widget.NewButtonWithIcon("", theme.MenuDropUpIcon(), r.doAddYear)
-	r.yearSubButton = widget.NewButtonWithIcon("", theme.MenuDropDownIcon(), r.doSubYear)
-	r.yearVBox = container.NewVBox(r.yearAddButton, r.yearSubButton)
+	r.yearSpinner = NewSpinner(r.doAddYear, r.doSubYear)
+	r.monthEntry.Bind(dp.monthBinding)
 	r.monthEntry.Validator = func(monthValue string) error {
 		monthIntValue, err := strconv.Atoi(monthValue)
 		if err != nil {
@@ -149,9 +148,8 @@ func (dp *DatePicker) CreateRenderer() fyne.WidgetRenderer {
 		}
 		return nil
 	}
-	r.monthAddButton = widget.NewButtonWithIcon("", theme.MenuDropUpIcon(), r.doAddMonth)
-	r.monthSubButton = widget.NewButtonWithIcon("", theme.MenuDropDownIcon(), r.doSubMonth)
-	r.monthVBox = container.NewVBox(r.monthAddButton, r.monthSubButton)
+	r.monthSpinner = NewSpinner(r.doAddMonth, r.doSubMonth)
+	r.dayEntry.Bind(dp.dayBinding)
 	r.dayEntry.Validator = func(dayValue string) error {
 		dayIntValue, err := strconv.Atoi(dayValue)
 		if err != nil {
@@ -165,16 +163,14 @@ func (dp *DatePicker) CreateRenderer() fyne.WidgetRenderer {
 		}
 		return nil
 	}
-	r.dayAddButton = widget.NewButtonWithIcon("", theme.MenuDropUpIcon(), r.doAddDay)
-	r.daySubButton = widget.NewButtonWithIcon("", theme.MenuDropDownIcon(), r.doSubDay)
-	r.dayVBox = container.NewVBox(r.dayAddButton, r.daySubButton)
+	r.daySpinner = NewSpinner(r.doAddDay, r.doSubDay)
 	r.okButton = widget.NewButtonWithIcon("", theme.ConfirmIcon(), r.doSubmit)
 	r.cancelButton = widget.NewButtonWithIcon("", theme.CancelIcon(), r.doCancel)
 	r.canvasObjects = append(
 		r.canvasObjects,
-		r.yearEntry, r.yearVBox,
-		r.monthEntry, r.monthVBox,
-		r.dayEntry, r.dayVBox,
+		r.yearEntry, r.yearSpinner,
+		r.monthEntry, r.monthSpinner,
+		r.dayEntry, r.daySpinner,
 		r.cancelButton,
 		r.okButton,
 	)
@@ -186,22 +182,16 @@ type datePickerRenderer struct {
 	canvasObjects []fyne.CanvasObject
 	layout        fyne.Layout
 
-	yearEntry      *widget.Entry
-	yearAddButton  *widget.Button
-	yearSubButton  *widget.Button
-	yearVBox       *fyne.Container
-	monthEntry     *widget.Entry
-	monthAddButton *widget.Button
-	monthSubButton *widget.Button
-	monthVBox      *fyne.Container
-	dayEntry       *widget.Entry
-	dayAddButton   *widget.Button
-	daySubButton   *widget.Button
-	dayVBox        *fyne.Container
-	okButton       *widget.Button
-	cancelButton   *widget.Button
-	submitChannel  chan rxgo.Item
-	cancelChannel  chan rxgo.Item
+	yearEntry     *NumericalEntry
+	yearSpinner   *Spinner
+	monthEntry    *NumericalEntry
+	monthSpinner  *Spinner
+	dayEntry      *NumericalEntry
+	daySpinner    *Spinner
+	okButton      *widget.Button
+	cancelButton  *widget.Button
+	submitChannel chan rxgo.Item
+	cancelChannel chan rxgo.Item
 }
 
 func (d datePickerRenderer) Destroy() {

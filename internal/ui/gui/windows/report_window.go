@@ -91,6 +91,7 @@ func (w *reportWindowData) Init() error {
 	w.startDatePopupButton = widget.NewButtonWithIcon("", theme.MenuDropDownIcon(), func() {
 		w.startDatePopup.ShowAtPosition(w.startDatePopupButton.Position())
 	})
+	w.startDatePopupButton.Importance = widget.LowImportance
 	w.startDatePicker.Observables()[widgets.DatePickerSubmitEventKey].ForEach(
 		func(value interface{}) {
 			valueString, ok := value.(string)
@@ -104,7 +105,21 @@ func (w *reportWindowData) Init() error {
 		},
 		func() {
 			w.log.Debug().Msg("startDatePicker submitted observable finished")
-			w.startDatePopup.Hide()
+		},
+	)
+	w.startDatePicker.Observables()[widgets.DatePickerCancelEventKey].ForEach(
+		func(value interface{}) {
+			valueBool, ok := value.(bool)
+			if ok && valueBool {
+				w.log.Debug().Msg("startDatePicker cancelled")
+				w.startDatePopup.Hide()
+			}
+		},
+		func(err error) {
+			w.log.Err(err).Msg("error from startDatePicker cancel observable")
+		},
+		func() {
+			w.log.Debug().Msg("startDatePicker cancel observable finished")
 		},
 	)
 	w.endDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.endDateBinding)
