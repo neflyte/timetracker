@@ -17,7 +17,7 @@ A personal time tracker for simple tasks
 ### Features
 
 - (Theoretically) cross-platform; supporting Linux, macOS, and Windows
-  - Tested on Ubuntu 20.04 + macOS Catalina
+  - Tested on Ubuntu 20.04, macOS Catalina and Big Sur
 - GUI app to start, stop, and manage tasks
 - System tray app
   - Convenient access to start, stop, and create tasks
