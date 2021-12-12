@@ -37,7 +37,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "logLevel", "l", "info", "Specify the logging level")
 	rootCmd.PersistentFlags().BoolVar(&consoleLogging, "console", false, "Log messages to the console as well as the log file")
 	rootCmd.AddCommand(taskCmd, timesheetCmd, statusCmd, trayCmd, guiCmd)
-	rootCmd.SetVersionTemplate(fmt.Sprintf("timetracker %s", AppVersion))
+	rootCmd.SetVersionTemplate(fmt.Sprintf("timetracker %s\n", AppVersion))
 }
 
 // Execute is the main entry point for the CLI
