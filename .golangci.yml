@@ -1,60 +1,60 @@
 # golangci-lint configuration
 #
 run:
-  timeout: 5m
+    timeout: 5m
 linters:
-  disable-all: true
-  enable:
-    - deadcode
-    - errcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - staticcheck
-    - structcheck
-    - typecheck
-    - unused
-    - varcheck
-    - bodyclose
-    - cyclop
-    - dogsled
-    - errorlint
-    - exportloopref
-    - goconst
-    - gocritic
-    - gomnd
-    - gosec
-    - misspell
-    - nilerr
-    - predeclared
-    - revive
-    - rowserrcheck
-    - stylecheck
-    - unconvert
-    - unparam
-    - wastedassign
-    - whitespace
+    disable-all: true
+    enable:
+        - deadcode
+        - errcheck
+        - gosimple
+        - govet
+        - ineffassign
+        - staticcheck
+        - structcheck
+        - typecheck
+        - unused
+        - varcheck
+        - bodyclose
+        - cyclop
+        - dogsled
+        - errorlint
+        - exportloopref
+        - goconst
+        - gocritic
+        - gomnd
+        - gosec
+        - misspell
+        - nilerr
+        - predeclared
+        - revive
+        - rowserrcheck
+        - stylecheck
+        - unconvert
+        - unparam
+        - wastedassign
+        - whitespace
 linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-  gomnd:
-    settings:
-      mnd:
-        checks:
-          - argument
-          - case
-          - condition
-          - return
-          - assign
-          - operation
-  govet:
-    check-shadowing: true
-  staticcheck:
-    go: "1.15"
-  stylecheck:
-    go: "1.15"
-  unparam:
-    check-exported: true
-  unused:
-    check-exported: false
+    errcheck:
+        check-type-assertions: true
+        check-blank: true
+    gomnd:
+        settings:
+            mnd:
+                checks:
+                    - argument
+                    - case
+                    - condition
+                    - return
+                    - assign
+                    - operation
+    govet:
+        check-shadowing: true
+    staticcheck:
+        go: "1.15"
+    stylecheck:
+        go: "1.15"
+    unparam:
+        check-exported: true
+    unused:
+        check-exported: false
