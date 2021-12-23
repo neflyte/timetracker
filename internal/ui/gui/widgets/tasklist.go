@@ -16,6 +16,9 @@ const (
 	// tasklistMinWidth is the minimum width of the widget in pixels
 	tasklistMinWidth              = 500
 	tasklistDescriptionTrimLength = 48
+	tasklistLastStartedTasks      = 5
+	tasklistSeparator             = "---"
+	tasklistStringFormat          = "%s: %s"
 )
 
 // Tasklist is an extended widget.Select object that adds data binding for displaying a list of tasks
@@ -24,6 +27,7 @@ type Tasklist struct {
 	log              zerolog.Logger
 	listBinding      binding.StringList
 	selectionBinding binding.String
+	tasks            []models.TaskData
 }
 
 // NewTasklist creates a new instance of a Tasklist widget
@@ -32,6 +36,7 @@ func NewTasklist() *Tasklist {
 		log:              logger.GetStructLogger("Tasklist"),
 		listBinding:      binding.NewStringList(),
 		selectionBinding: binding.NewString(),
+		tasks:            make([]models.TaskData, 0),
 	}
 	tl.ExtendBaseWidget(tl)
 	tl.listBinding.AddListener(binding.NewDataListener(tl.listBindingChanged))
@@ -42,6 +47,7 @@ func NewTasklist() *Tasklist {
 // Refresh redraws the task list
 func (t *Tasklist) Refresh() {
 	t.refreshTaskList()
+	t.Select.Refresh()
 }
 
 // SelectionBinding returns the Select widget's data binding for the current selection
@@ -61,7 +67,6 @@ func (t *Tasklist) listBindingChanged() {
 		t.Select.ClearSelected()
 	}
 	t.Select.Options = changed
-	t.Select.Refresh()
 }
 
 func (t *Tasklist) selectionChanged(selection string) {
@@ -74,6 +79,7 @@ func (t *Tasklist) selectionChanged(selection string) {
 
 func (t *Tasklist) refreshTaskList() {
 	log := logger.GetFuncLogger(t.log, "refreshTaskList")
+	log.Debug().Msg("refreshing task list data")
 	td := models.NewTask()
 	tasks, err := td.LoadAll(false)
 	if err != nil {
@@ -81,10 +87,43 @@ func (t *Tasklist) refreshTaskList() {
 		return
 	}
 	log.Trace().Msgf("len(tasks)=%d", len(tasks))
-	taskStrings := make([]string, len(tasks))
+	allTasks := make([]models.TaskData, len(tasks))
 	for idx, task := range tasks {
-		taskStrings[idx] = fmt.Sprintf(
-			"%s: %s",
+		allTasks[idx] = *task.Clone().Data()
+	}
+	// Get last 5 started tasks
+	tsd := models.NewTimesheet()
+	lastStartedTasks, err := tsd.LastStartedTasks(tasklistLastStartedTasks)
+	if err != nil {
+		log.Err(err).Msg("error loading last started tasks")
+		return
+	}
+	log.Trace().Msgf("len(lastStartedTasks)=%d", len(lastStartedTasks))
+	// Prepend the last started tasks to the front of the list
+	t.tasks = make([]models.TaskData, 0)
+	for _, task := range lastStartedTasks {
+		t.tasks = append(t.tasks, *task.Clone().Data())
+	}
+	t.tasks = append(t.tasks, allTasks...)
+	taskStrings := make([]string, len(t.tasks)+1)
+	handledLastStarted := false
+	for idx, task := range t.tasks {
+		if idx+1 == len(lastStartedTasks) {
+			taskStrings[idx] = fmt.Sprintf(
+				tasklistStringFormat,
+				task.Synopsis,
+				utils.TrimWithEllipsis(task.Description, tasklistDescriptionTrimLength),
+			)
+			taskStrings[idx+1] = tasklistSeparator
+			handledLastStarted = true
+			continue
+		}
+		index := idx
+		if handledLastStarted {
+			index++
+		}
+		taskStrings[index] = fmt.Sprintf(
+			tasklistStringFormat,
 			task.Synopsis,
 			utils.TrimWithEllipsis(task.Description, tasklistDescriptionTrimLength),
 		)
