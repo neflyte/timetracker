@@ -21,37 +21,41 @@ type CreateAndStartTaskDialog interface {
 	dialogBase
 	GetTask() *models.TaskData
 	Reset()
+	HideCloseWindowCheckbox()
+	ShowCloseWindowCheckbox()
 }
 
 // createAndStartTaskDialogData is the main data structure for the Create and Start New Task dialog
 type createAndStartTaskDialogData struct {
 	dialog.Dialog
 
-	synopsisLabel       *widget.Label
-	synopsisEntry       *widget.Entry
-	synopsisBinding     binding.String
-	descriptionLabel    *widget.Label
-	descriptionEntry    *widget.Entry
-	descriptionBinding  binding.String
-	closeWindowCheckbox *widget.Check
-	closeWindowBinding  binding.Bool
-	widgetContainer     *fyne.Container
-	parentWindow        *fyne.Window
-	log                 zerolog.Logger
-	callbackFunc        func(bool)
+	synopsisLabel           *widget.Label
+	synopsisEntry           *widget.Entry
+	synopsisBinding         binding.String
+	descriptionLabel        *widget.Label
+	descriptionEntry        *widget.Entry
+	descriptionBinding      binding.String
+	closeWindowCheckbox     *widget.Check
+	closeWindowBinding      binding.Bool
+	showCloseWindowCheckbox bool
+	widgetContainer         *fyne.Container
+	parentWindow            *fyne.Window
+	log                     zerolog.Logger
+	callbackFunc            func(bool)
 }
 
 // NewCreateAndStartTaskDialog creates a new instance of the Create and Start a New Task dialog
 func NewCreateAndStartTaskDialog(prefs fyne.Preferences, cb func(bool), parent fyne.Window) CreateAndStartTaskDialog {
 	newDialog := &createAndStartTaskDialogData{
-		log:                logger.GetStructLogger("createAndStartTaskDialogData"),
-		synopsisLabel:      widget.NewLabel("Synopsis:"),
-		descriptionLabel:   widget.NewLabel("Description:"),
-		synopsisBinding:    binding.NewString(),
-		descriptionBinding: binding.NewString(),
-		closeWindowBinding: binding.BindPreferenceBool(prefKeyCloseWindow, prefs),
-		parentWindow:       &parent,
-		callbackFunc:       cb,
+		log:                     logger.GetStructLogger("createAndStartTaskDialogData"),
+		synopsisLabel:           widget.NewLabel("Synopsis:"),
+		descriptionLabel:        widget.NewLabel("Description:"),
+		synopsisBinding:         binding.NewString(),
+		descriptionBinding:      binding.NewString(),
+		closeWindowBinding:      binding.BindPreferenceBool(prefKeyCloseWindow, prefs),
+		showCloseWindowCheckbox: true,
+		parentWindow:            &parent,
+		callbackFunc:            cb,
 	}
 	err := newDialog.Init()
 	if err != nil {
@@ -86,6 +90,18 @@ func (c *createAndStartTaskDialogData) Init() error {
 	return nil
 }
 
+// HideCloseWindowCheckbox hides the Close Window checkbox
+func (c *createAndStartTaskDialogData) HideCloseWindowCheckbox() {
+	c.showCloseWindowCheckbox = false
+	c.closeWindowCheckbox.Hide()
+}
+
+// ShowCloseWindowCheckbox shows the Close Window checkbox
+func (c *createAndStartTaskDialogData) ShowCloseWindowCheckbox() {
+	c.showCloseWindowCheckbox = true
+	c.closeWindowCheckbox.Show()
+}
+
 // GetTask returns the model.TaskData representing the newly input task details
 func (c *createAndStartTaskDialogData) GetTask() *models.TaskData {
 	log := logger.GetFuncLogger(c.log, "GetTask")
@@ -116,4 +132,5 @@ func (c *createAndStartTaskDialogData) Reset() {
 	if err != nil {
 		log.Err(err).Msg("error setting description through binding")
 	}
+	c.ShowCloseWindowCheckbox() // reset close window checkbox to default
 }

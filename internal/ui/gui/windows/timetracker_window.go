@@ -317,6 +317,7 @@ func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
 }
 
 func (t *timetrackerWindowData) doCreateAndStartTask() {
+	t.createNewTaskAndStartDialog.HideCloseWindowCheckbox()
 	t.createNewTaskAndStartDialog.Show()
 }
 
