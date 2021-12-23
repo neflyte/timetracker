@@ -57,6 +57,7 @@ type timetrackerWindowData struct {
 	SubStatusBox                *fyne.Container
 	ButtonBox                   *fyne.Container
 	TaskList                    *widgets.Tasklist
+	BtnCreateAndStart           *widget.Button
 	BtnStartTask                *widget.Button
 	BtnStopTask                 *widget.Button
 	BtnManageTasks              *widget.Button
@@ -116,7 +117,8 @@ func (t *timetrackerWindowData) Init() error {
 	t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), t.doManageTasks)
 	t.BtnReport = widget.NewButtonWithIcon("REPORT", theme.FileIcon(), t.doReport)
 	t.BtnAbout = widget.NewButton("ABOUT", t.doAbout)
-	t.ButtonBox = container.NewCenter(
+	t.BtnCreateAndStart = widget.NewButton("CREATE AND START", t.doCreateAndStartTask)
+	t.ButtonBox = container.NewCenter(container.NewVBox(
 		container.NewHBox(
 			t.BtnStartTask,
 			t.BtnStopTask,
@@ -124,7 +126,8 @@ func (t *timetrackerWindowData) Init() error {
 			t.BtnReport,
 			t.BtnAbout,
 		),
-	)
+		container.NewHBox(t.BtnCreateAndStart),
+	))
 	t.BindRunningTask = binding.NewString()
 	t.LblStatus = widget.NewLabelWithData(t.BindRunningTask)
 	t.BindStartTime = binding.NewString()
@@ -311,6 +314,10 @@ func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
 		go t.elapsedTimeLoop(runningTS.StartTime, t.elapsedTimeQuitChan)
 		t.SubStatusBox.Show()
 	}
+}
+
+func (t *timetrackerWindowData) doCreateAndStartTask() {
+	t.createNewTaskAndStartDialog.Show()
 }
 
 func (t *timetrackerWindowData) doStartTask() {
