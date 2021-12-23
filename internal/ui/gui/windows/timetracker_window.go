@@ -523,7 +523,6 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 		return
 	}
 	log.Debug().Msgf("created new task %s", taskData.String())
-	t.createNewTaskAndStartDialog.Reset()
 	// Stop the running task
 	stoppedTimesheet, err := taskData.StopRunningTask()
 	if err != nil && !errors.Is(err, tterrors.ErrNoRunningTask{}) {
@@ -552,11 +551,6 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 	(*t.App).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
 	log.Debug().Msgf("task %s started at %s", taskData.String(), timesheet.Data().StartTime.String())
 	appstate.SetRunningTimesheet(timesheet.Data())
-	// Check if we should close the main window as well
-	shouldCloseMainWindow := (*t.App).Preferences().BoolWithFallback(prefKeyCloseWindow, false)
-	if shouldCloseMainWindow {
-		t.Close()
-	}
 }
 
 // elapsedTimeLoop is a loop that draws the elapsed time since the running task was started

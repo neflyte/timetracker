@@ -84,7 +84,7 @@ func (c *createAndStartTaskDialogData) Init() error {
 		"CREATE AND START",
 		"CLOSE",
 		c.widgetContainer,
-		c.callbackFunc,
+		c.doCallback,
 		*c.parentWindow,
 	)
 	return nil
@@ -92,13 +92,17 @@ func (c *createAndStartTaskDialogData) Init() error {
 
 // HideCloseWindowCheckbox hides the Close Window checkbox
 func (c *createAndStartTaskDialogData) HideCloseWindowCheckbox() {
+	log := logger.GetFuncLogger(c.log, "HideCloseWindowCheckbox")
 	c.showCloseWindowCheckbox = false
+	log.Debug().Msgf("c.showCloseWindowCheckbox: %t", c.showCloseWindowCheckbox)
 	c.closeWindowCheckbox.Hide()
 }
 
 // ShowCloseWindowCheckbox shows the Close Window checkbox
 func (c *createAndStartTaskDialogData) ShowCloseWindowCheckbox() {
+	log := logger.GetFuncLogger(c.log, "ShowCloseWindowCheckbox")
 	c.showCloseWindowCheckbox = true
+	log.Debug().Msgf("c.showCloseWindowCheckbox: %t", c.showCloseWindowCheckbox)
 	c.closeWindowCheckbox.Show()
 }
 
@@ -133,4 +137,25 @@ func (c *createAndStartTaskDialogData) Reset() {
 		log.Err(err).Msg("error setting description through binding")
 	}
 	c.ShowCloseWindowCheckbox() // reset close window checkbox to default
+}
+
+func (c *createAndStartTaskDialogData) doCallback(createAndStart bool) {
+	log := logger.GetFuncLogger(c.log, "doCallback")
+	if c.callbackFunc != nil {
+		log.Debug().Msgf("callbackFunc is not nil; calling c.callbackFunc(%t)", createAndStart)
+		c.callbackFunc(createAndStart)
+	}
+	// If the close window checkbox is visible, handle the close window case
+	log.Debug().Msgf("showCloseWindowCheckbox: %t", c.showCloseWindowCheckbox)
+	if c.showCloseWindowCheckbox {
+		shouldCloseWindow, err := c.closeWindowBinding.Get()
+		if err == nil && shouldCloseWindow && c.parentWindow != nil {
+			log.Debug().Msgf("shouldCloseWindow: %t; err == nil and c.parentWindow != nil", shouldCloseWindow)
+			(*c.parentWindow).Close()
+		}
+	}
+	// Reset ourselves if we didn't cancel
+	if createAndStart {
+		c.Reset()
+	}
 }
