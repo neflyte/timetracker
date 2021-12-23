@@ -278,7 +278,7 @@ func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
 			if err != nil {
 				log.Err(err).Msg("error getting selection from binding")
 			}
-			if selection != "" {
+			if selection != "" && selection != "---" {
 				// A task is selected
 				t.BtnStartTask.Enable()
 			} else {
@@ -366,6 +366,8 @@ func (t *timetrackerWindowData) doStartTask() {
 		t.BtnStopTask.Enable()
 		t.BtnStartTask.Disable()
 		appstate.SetRunningTimesheet(timesheet.Data())
+		// Tell the tasklist widget to refresh its data (including last x started tasks)
+		t.TaskList.Refresh()
 	}
 	log.Trace().Msg("done")
 }
@@ -551,6 +553,8 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 	(*t.App).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
 	log.Debug().Msgf("task %s started at %s", taskData.String(), timesheet.Data().StartTime.String())
 	appstate.SetRunningTimesheet(timesheet.Data())
+	// Tell tasklist widget to refresh its data
+	t.TaskList.Refresh()
 }
 
 // elapsedTimeLoop is a loop that draws the elapsed time since the running task was started
