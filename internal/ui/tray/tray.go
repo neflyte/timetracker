@@ -286,7 +286,7 @@ func handleStatusClick() {
 }
 
 func setTrayTitle(title string) {
-	// Only set the title if we're not on macOS so we don't see the app name beside the icon in the menu bar
+	// Only set the title if we're not on macOS, so we don't see the app name beside the icon in the menu bar
 	if runtime.GOOS != "darwin" {
 		systray.SetTitle(title)
 	}
@@ -342,13 +342,13 @@ func stopRunningTask() {
 	}
 	// Show notification that the task has stopped
 	if stoppedTimesheet != nil {
+		appstate.SetRunningTimesheet(nil)
 		notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)
 		notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp))
 		err = beeep.Notify(notificationTitle, notificationContents, "")
 		if err != nil {
 			log.Err(err).Msg("error sending notification about stopped task")
 		}
-		appstate.SetRunningTimesheet(nil)
 	}
 }
 
@@ -362,8 +362,10 @@ func startTask(taskData *models.TaskData) (err error) {
 	timesheet.Data().StartTime = time.Now()
 	err = timesheet.Create()
 	if err != nil {
+		log.Err(err).Msg("error creating new timesheet to start a task")
 		return
 	}
+	appstate.SetRunningTimesheet(timesheet.Data())
 	// Show notification that task started
 	notificationTitle := fmt.Sprintf("Task %s started", taskData.Synopsis)
 	notificationContents := fmt.Sprintf("Started at %s", timesheet.Data().StartTime.Format(time.Stamp))
@@ -371,7 +373,6 @@ func startTask(taskData *models.TaskData) (err error) {
 	if err != nil {
 		log.Err(err).Msg("error sending notification about started task")
 	}
-	appstate.SetRunningTimesheet(timesheet.Data())
 	return
 }
 

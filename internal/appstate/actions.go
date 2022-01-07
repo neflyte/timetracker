@@ -41,6 +41,7 @@ func ActionLoop(quitChannel chan bool) {
 // updateRunningTimesheet gets the latest running timesheet object and sets the appropriate status
 func updateRunningTimesheet() {
 	log := logger.GetFuncLogger(appstateLog, "updateRunningTimesheet")
+	log.Trace().Msg("acquiring lock")
 	updateTSMutex.Lock()
 	log.Trace().Msg("lock acquired successfully")
 	defer func() {
@@ -53,25 +54,19 @@ func updateRunningTimesheet() {
 		SetRunningTimesheet(nil) // Reset running timesheet
 		log.Err(err).Msg("error getting running timesheet")
 		setLastError(err)
-		if GetLastState() != constants.TimesheetStatusError {
-			setLastState(constants.TimesheetStatusError)
-		}
+		setLastState(constants.TimesheetStatusError)
 	} else {
 		setLastError(nil)
 		if len(timesheets) == 0 {
 			// No running task
 			log.Trace().Msg("there are no running tasks")
-			if GetLastState() != constants.TimesheetStatusIdle {
-				SetRunningTimesheet(nil) // Reset running timesheet
-				setLastState(constants.TimesheetStatusIdle)
-			}
+			SetRunningTimesheet(nil) // Reset running timesheet
+			setLastState(constants.TimesheetStatusIdle)
 		} else {
 			// Running task...
 			log.Trace().Msgf("there are %d running tasks", len(timesheets))
 			SetRunningTimesheet(&timesheets[0])
-			if GetLastState() != constants.TimesheetStatusRunning {
-				setLastState(constants.TimesheetStatusRunning)
-			}
+			setLastState(constants.TimesheetStatusRunning)
 		}
 	}
 }

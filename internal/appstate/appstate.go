@@ -51,12 +51,8 @@ func GetLastState() int {
 		Str("key", keyLastState).
 		Logger()
 	lstateIntf, ok := syncMap.LoadOrStore(keyLastState, constants.TimesheetStatusIdle)
-	if !ok {
+	if !ok || lstateIntf == nil {
 		log.Trace().Msg("key not found; storing + loading default")
-		return constants.TimesheetStatusIdle
-	}
-	if lstateIntf == nil {
-		// This really shouldn't happen since we specify a default above
 		return constants.TimesheetStatusIdle
 	}
 	log.Trace().Msgf("loading %#v", lstateIntf)
