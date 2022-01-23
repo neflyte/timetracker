@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/tray"
@@ -43,6 +44,13 @@ func preDoTray(_ *cobra.Command, _ []string) error {
 	}
 	trayCmdLockfilePath = path.Join(userConfigDir, trayPidfile)
 	log.Trace().Msgf("trayCmdLockfilePath=%s", trayCmdLockfilePath)
+	lockfileInfo, err := os.Stat(trayCmdLockfilePath)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Err(err).Msgf("error stating pidfile %s", trayCmdLockfilePath)
+	}
+	if lockfileInfo != nil {
+		log.Warn().Msgf("pidfile %s exists; modtime=%s", trayCmdLockfilePath, lockfileInfo.ModTime().String())
+	}
 	trayCmdLockFile, err = lockfile.New(trayCmdLockfilePath)
 	if err != nil {
 		log.Err(err).Msgf("error creating pidfile; trayCmdLockfilePath=%s", trayCmdLockfilePath)
@@ -62,6 +70,11 @@ func postDoTray(_ *cobra.Command, _ []string) error {
 	err := trayCmdLockFile.Unlock()
 	if err != nil {
 		log.Err(err).Msgf("error releasing pidfile %s", trayCmdLockfilePath)
+		log.Warn().Msgf("attempting to force-remove pidfile %s", trayCmdLockfilePath)
+		fileErr := os.Remove(trayCmdLockfilePath)
+		if fileErr != nil {
+			log.Err(fileErr).Msgf("error force-removing pidfile %s", trayCmdLockfilePath)
+		}
 		return err
 	}
 	log.Debug().Msgf("unlocked pidfile %s", trayCmdLockfilePath)

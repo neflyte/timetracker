@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/gui"
@@ -55,6 +56,13 @@ func preDoGUI(_ *cobra.Command, _ []string) error {
 	}
 	guiCmdLockfilePath = path.Join(userConfigDir, guiPidfile)
 	log.Trace().Msgf("guiCmdLockfilePath=%s", guiCmdLockfilePath)
+	lockfileInfo, err := os.Stat(guiCmdLockfilePath)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Err(err).Msgf("error stating pidfile %s", guiCmdLockfilePath)
+	}
+	if lockfileInfo != nil {
+		log.Warn().Msgf("pidfile %s exists; modtime=%s", guiCmdLockfilePath, lockfileInfo.ModTime().String())
+	}
 	guiCmdLockfile, err = lockfile.New(guiCmdLockfilePath)
 	if err != nil {
 		log.Err(err).Msgf("error creating pidfile; pidPath=%s", guiCmdLockfilePath)
@@ -76,6 +84,11 @@ func postDoGUI(_ *cobra.Command, _ []string) error {
 	err := guiCmdLockfile.Unlock()
 	if err != nil {
 		log.Err(err).Msgf("error releasing pidfile %s", guiCmdLockfilePath)
+		log.Warn().Msgf("attempting to force-remove pidfile %s", guiCmdLockfilePath)
+		fileErr := os.Remove(guiCmdLockfilePath)
+		if fileErr != nil {
+			log.Err(fileErr).Msgf("error force-removing pidfile %s", guiCmdLockfilePath)
+		}
 		return err
 	}
 	log.Debug().Msgf("unlocked pidfile %s", guiCmdLockfilePath)
