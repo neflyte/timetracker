@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	cloud.google.com/go/storage v1.18.2 // indirect
-	fyne.io/fyne/v2 v2.0.4
+	fyne.io/fyne/v2 v2.1.2
 	github.com/alexeyco/simpletable v1.0.0
 	github.com/bluele/factory-go v0.0.1
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
@@ -16,7 +16,6 @@ require (
 	github.com/getlantern/hidden v0.0.0-20201229170000-e66e7f878730 // indirect
 	github.com/getlantern/ops v0.0.0-20200403153110-8476b16edcd6 // indirect
 	github.com/getlantern/systray v1.1.0
-	github.com/go-gl/gl v0.0.0-20210501111010-69f74958bac0 // indirect
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/googleapis/google-cloud-go-testing v0.0.0-20210719221736-1c9a4c676720 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20210619142842-05447a1fa367 // indirect

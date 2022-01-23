@@ -8,7 +8,7 @@ const (
 	// minimumWindowHeight is the minimum height of a window in pixels
 	minimumWindowHeight = 480.0
 	// prefKeyCloseWindow is the preferences key for the flag which causes the main window to close after creating a new task
-	prefKeyCloseWindow = "close-window"
+	// prefKeyCloseWindow = "close-window"
 	// prefKeyCloseWindowStopTask is the preferences key for the flag which causes the main window to close after creating a new task
 	prefKeyCloseWindowStopTask = "close-window:stop-task"
 )
