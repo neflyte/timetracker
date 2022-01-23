@@ -262,35 +262,40 @@ func (t *timetrackerWindowData) tasklistSelectionChanged() {
 	t.BtnStartTask.Disable()
 }
 
+func (t *timetrackerWindowData) setNoRunningTimesheet() {
+	log := logger.GetFuncLogger(t.Log, "setNoRunningTimesheet")
+	// No task is running
+	err := t.BindRunningTask.Set("none")
+	if err != nil {
+		log.Err(err).Msg("error setting running task to none")
+	}
+	t.SubStatusBox.Hide()
+	t.BtnStopTask.Disable()
+	selection, err := t.TaskList.SelectionBinding().Get()
+	if err != nil {
+		log.Err(err).Msg("error getting selection from binding")
+	}
+	if selection != "" && selection != "---" {
+		// A task is selected
+		t.BtnStartTask.Enable()
+	} else {
+		// No task is selected
+		t.BtnStartTask.Disable()
+	}
+	// Stop the elapsed time counter if it's running
+	t.elapsedTimeRunningMutex.RLock()
+	defer t.elapsedTimeRunningMutex.RUnlock()
+	if t.elapsedTimeRunning {
+		t.elapsedTimeQuitChan <- true
+	}
+}
+
 func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
 	log := logger.GetFuncLogger(t.Log, "runningTimesheetChanged")
 	runningTS, ok := item.(*models.TimesheetData)
 	if ok {
 		if runningTS == nil {
-			// No task is running
-			err := t.BindRunningTask.Set("none")
-			if err != nil {
-				log.Err(err).Msg("error setting running task to none")
-			}
-			t.SubStatusBox.Hide()
-			t.BtnStopTask.Disable()
-			selection, err := t.TaskList.SelectionBinding().Get()
-			if err != nil {
-				log.Err(err).Msg("error getting selection from binding")
-			}
-			if selection != "" && selection != "---" {
-				// A task is selected
-				t.BtnStartTask.Enable()
-			} else {
-				// No task is selected
-				t.BtnStartTask.Disable()
-			}
-			// Stop the elapsed time counter if it's running
-			t.elapsedTimeRunningMutex.RLock()
-			defer t.elapsedTimeRunningMutex.RUnlock()
-			if t.elapsedTimeRunning {
-				t.elapsedTimeQuitChan <- true
-			}
+			t.setNoRunningTimesheet()
 			return
 		}
 		// A task is running
