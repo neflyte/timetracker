@@ -1,6 +1,6 @@
 # timetracker Makefile
 
-.PHONY: build clean clean-coverage lint test dist
+.PHONY: build clean clean-coverage lint test dist outdated
 
 APPVERSION=$(shell cat VERSION)
 OSES=darwin linux
@@ -41,3 +41,6 @@ dist-darwin: lint
 	GOOS=darwin GOARCH=amd64 go build $(GO_LDFLAGS) -o dist/$(BINPREFIX)darwin-amd64 ./cmd/timetracker
 	fyne package -name Timetracker -os darwin -appID cc.ethereal.timetracker -appVersion "$(APPVERSION)" -icon assets/images/Apps-Anydo-icon.png -executable dist/$(BINPREFIX)darwin-amd64
 	mv Timetracker.app dist/
+
+outdated:
+	go list -json -u -m all | go-mod-outdated -direct -update
