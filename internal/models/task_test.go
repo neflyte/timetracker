@@ -340,6 +340,44 @@ func TestUnit_Task_LoadAll_WithDeleted(t *testing.T) {
 	}
 }
 
+func TestUnit_Task_Clone(t *testing.T) {
+	// Create test data
+	timeNow := time.Now()
+	deletedAtTime := gorm.DeletedAt{
+		Time:  timeNow,
+		Valid: true,
+	}
+	td := NewTask()
+	td.Data().ID = uint(42)
+	td.Data().CreatedAt = timeNow
+	td.Data().UpdatedAt = timeNow
+	td.Data().DeletedAt = deletedAtTime
+	td.Data().Synopsis = testTaskSynopsis2
+	td.Data().Description = testTaskDescription
+	// Clone
+	clone := td.Clone()
+	require.Equal(t, uint(42), clone.Data().ID)
+	require.Equal(t, timeNow, clone.Data().CreatedAt)
+	require.Equal(t, timeNow, clone.Data().UpdatedAt)
+	require.Equal(t, deletedAtTime, clone.Data().DeletedAt)
+	require.Equal(t, testTaskSynopsis2, clone.Data().Synopsis)
+	require.Equal(t, testTaskDescription, clone.Data().Description)
+}
+
+func TestUnit_Task_Clear(t *testing.T) {
+	// Create test data
+	td := NewTask()
+	td.Data().ID = uint(42)
+	td.Data().Synopsis = testTaskSynopsis2
+	td.Data().Description = testTaskDescription
+
+	// Clear the task
+	td.Clear()
+	require.Equal(t, uint(0), td.Data().ID)
+	require.Equal(t, "", td.Data().Synopsis)
+	require.Equal(t, "", td.Data().Description)
+}
+
 func TestUnit_Task_Search_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
@@ -421,6 +459,30 @@ func TestUnit_Task_SearchBySynopsis_Nominal(t *testing.T) {
 	tasks, err = NewTask().SearchBySynopsis("gotta gotta get up to get down")
 	require.Nil(t, err)
 	require.Len(t, tasks, 0)
+}
+
+func TestUnit_Task_Resolve_Nominal(t *testing.T) {
+	td := NewTask()
+
+	// Empty argument
+	id, syn := td.Resolve("")
+	require.Equal(t, uint(0), id)
+	require.Equal(t, "", syn)
+
+	// Text string
+	id, syn = td.Resolve(testTaskSynopsis)
+	require.Equal(t, uint(0), id)
+	require.Equal(t, testTaskSynopsis, syn)
+
+	// Numeric string
+	id, syn = td.Resolve("42")
+	require.Equal(t, uint(42), id)
+	require.Equal(t, syn, "")
+}
+
+func TestUnit_FindTaskBySynopsis_TaskNotExists(t *testing.T) {
+	tasks := NewTask().FindTaskBySynopsis(make([]TaskData, 0), testTaskSynopsis)
+	require.Nil(t, tasks)
 }
 
 func TestUnit_Update_Nominal(t *testing.T) {
@@ -553,4 +615,23 @@ func TestUnit_StopRunningTask_Nominal(t *testing.T) {
 	stopped, err := NewTask().StopRunningTask()
 	require.Nil(t, err)
 	require.NotNil(t, stopped)
+}
+
+func TestUnit_StopRunningTask_NoRunningTask(t *testing.T) {
+	db := MustOpenTestDB(t)
+	defer CloseTestDB(t, db)
+	database.Set(db)
+
+	// Create a task
+	td := NewTask()
+	td.Data().Synopsis = testTaskSynopsis
+	td.Data().Description = "Task number one"
+	err := td.Create()
+	require.Nil(t, err)
+
+	// Stop the running task of which there are none
+	stopped, err := NewTask().StopRunningTask()
+	require.NotNil(t, err)
+	require.True(t, errors.Is(err, ttErrors.ErrNoRunningTask{}))
+	require.Nil(t, stopped)
 }
