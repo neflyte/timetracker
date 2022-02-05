@@ -17,8 +17,10 @@ import (
 type taskFactoryContextKey int8
 
 const (
-	testTaskSynopsis    = "Task-1"
-	testTaskDescription = "This is a task"
+	testTaskSynopsis     = "Task-1"
+	testTaskDescription  = "This is a task"
+	testTaskSynopsis2    = "Foo Bar Baz"
+	testTaskDescription2 = "quux Narf fnord"
 
 	synopsisBar        = "Bar"
 	descriptionQuxQuux = "qux quux"
@@ -387,6 +389,36 @@ func TestUnit_Task_Search_NotFound(t *testing.T) {
 
 	// Test description
 	tasks, err = NewTask().Search("%qux%")
+	require.Nil(t, err)
+	require.Len(t, tasks, 0)
+}
+
+func TestUnit_Task_SearchBySynopsis_Nominal(t *testing.T) {
+	db := MustOpenTestDB(t)
+	defer CloseTestDB(t, db)
+	database.Set(db)
+
+	// Create test data
+	td := NewTask()
+	td.Data().Synopsis = testTaskSynopsis
+	td.Data().Description = testTaskDescription
+	err := td.Create()
+	require.Nil(t, err)
+	td = NewTask()
+	td.Data().Synopsis = testTaskSynopsis2
+	td.Data().Description = testTaskDescription2
+	err = td.Create()
+	require.Nil(t, err)
+
+	// Search for something that exists
+	tasks, err := NewTask().SearchBySynopsis(testTaskSynopsis2)
+	require.Nil(t, err)
+	require.Len(t, tasks, 1)
+	require.Equal(t, testTaskSynopsis2, tasks[0].Synopsis)
+	require.Equal(t, testTaskDescription2, tasks[0].Description)
+
+	// Search for something that doesn't exist
+	tasks, err = NewTask().SearchBySynopsis("gotta gotta get up to get down")
 	require.Nil(t, err)
 	require.Len(t, tasks, 0)
 }

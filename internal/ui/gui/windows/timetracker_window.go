@@ -530,6 +530,8 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 		return
 	}
 	log.Debug().Msgf("created new task %s", taskData.String())
+	// reset the create dialog now that the task has been created
+	t.createNewTaskAndStartDialog.Reset()
 	// Stop the running task
 	stoppedTimesheet, err := taskData.StopRunningTask()
 	if err != nil && !errors.Is(err, tterrors.ErrNoRunningTask{}) {
