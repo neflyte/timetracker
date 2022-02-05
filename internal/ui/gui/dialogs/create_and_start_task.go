@@ -1,6 +1,7 @@
 package dialogs
 
 import (
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
@@ -64,6 +65,7 @@ func NewCreateAndStartTaskDialog(prefs fyne.Preferences, cb func(bool), parent f
 	return newDialog
 }
 
+// Init initializes the dialog widgets
 func (c *createAndStartTaskDialogData) Init() error {
 	c.synopsisEntry = widget.NewEntryWithData(c.synopsisBinding)
 	c.synopsisEntry.SetPlaceHolder("enter the task synopsis here")
@@ -143,9 +145,51 @@ func (c *createAndStartTaskDialogData) Reset() {
 
 func (c *createAndStartTaskDialogData) doCallback(createAndStart bool) {
 	log := logger.GetFuncLogger(c.log, "doCallback")
-	if c.callbackFunc != nil {
-		log.Debug().Msgf("callbackFunc is not nil; calling c.callbackFunc(%t)", createAndStart)
-		c.callbackFunc(createAndStart)
+	// Handle the callback at the end of the function
+	defer func(funcLogger zerolog.Logger, cb func(bool), boolValue bool) {
+		if cb != nil {
+			funcLogger.Debug().Msgf("callbackFunc is not nil; calling c.callbackFunc(%t)", createAndStart)
+			cb(boolValue)
+		}
+	}(log, c.callbackFunc, createAndStart)
+	// check if a task with the specified synopsis already exists before returning
+	if createAndStart {
+		task := c.GetTask()
+		existingTasks, err := task.SearchBySynopsis(task.Synopsis)
+		if err != nil {
+			// error checking for existing task
+			log.Err(err).Msgf("error checking for existing tasks with synopsis '%s'", task.Synopsis)
+			// ensure we don't try to create the task anyway
+			createAndStart = false
+			// display an error dialog
+			errorDialog := dialog.NewError(
+				fmt.Errorf("could not check for existing tasks with synopsis '%s': %w", task.Synopsis, err),
+				*c.parentWindow,
+			)
+			// re-display ourselves after the error dialog is dismissed
+			errorDialog.SetOnClosed(func() {
+				c.Dialog.Show()
+			})
+			errorDialog.Show()
+			return
+		}
+		if len(existingTasks) > 0 {
+			// existing task!
+			log.Error().Msgf("there are existing tasks with synopsis '%s'; please choose another synopsis", task.Synopsis)
+			// ensure we don't try to create the task anyway
+			createAndStart = false
+			// display an error dialog
+			errorDialog := dialog.NewError(
+				fmt.Errorf("there are existing tasks with synopsis '%s'\nplease choose another synopsis", task.Synopsis),
+				*c.parentWindow,
+			)
+			// re-display ourselves after the error dialog is dismissed
+			errorDialog.SetOnClosed(func() {
+				c.Dialog.Show()
+			})
+			errorDialog.Show()
+			return
+		}
 	}
 	// If the close window checkbox is visible, handle the close window case
 	log.Debug().Msgf("showCloseWindowCheckbox: %t", c.showCloseWindowCheckbox)
@@ -155,9 +199,5 @@ func (c *createAndStartTaskDialogData) doCallback(createAndStart bool) {
 			log.Debug().Msgf("shouldCloseWindow: %t; err == nil and c.parentWindow != nil", shouldCloseWindow)
 			(*c.parentWindow).Close()
 		}
-	}
-	// Reset ourselves if we didn't cancel
-	if createAndStart {
-		c.Reset()
 	}
 }

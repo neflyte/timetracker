@@ -71,6 +71,7 @@ type Task interface {
 	Clone() Task
 	LoadAll(withDeleted bool) ([]TaskData, error)
 	Search(text string) ([]TaskData, error)
+	SearchBySynopsis(synopsis string) ([]TaskData, error)
 	StopRunningTask() (*TimesheetData, error)
 	FindTaskBySynopsis(tasks []TaskData, synopsis string) *TaskData
 	Resolve(arg string) (uint, string)
@@ -163,6 +164,17 @@ func (td *TaskData) Search(text string) ([]TaskData, error) {
 	err := database.Get().
 		Model(new(TaskData)).
 		Where("synopsis LIKE ? OR description LIKE ?", text, text).
+		Find(&tasks).
+		Error
+	return tasks, err
+}
+
+// SearchBySynopsis searches for a task by synopsis only using SQL equals
+func (td *TaskData) SearchBySynopsis(synopsis string) ([]TaskData, error) {
+	tasks := make([]TaskData, 0)
+	err := database.Get().
+		Model(new(TaskData)).
+		Where("synopsis = ?", synopsis).
 		Find(&tasks).
 		Error
 	return tasks, err
