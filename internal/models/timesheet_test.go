@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/bluele/factory-go/factory"
 	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/database"
@@ -91,6 +92,43 @@ var (
 			return nil
 		})
 )
+
+func TestUnit_Timesheet_String(t *testing.T) {
+	// Create a task
+	td := NewTask()
+	td.Data().Synopsis = testTaskSynopsis
+	td.Data().Description = testTaskDescription
+	// Create a timesheet
+	timeNow := time.Now().Round(time.Second)
+	timeNowString := timeNow.String()
+	tsd := NewTimesheet()
+	tsd.Data().Task = *td.Data()
+	tsd.Data().StartTime = timeNow
+	// Set up expectations
+	expectedString := fmt.Sprintf(
+		"TimesheetData{Task=%s, StartTime=%s, StopTime=(running)}",
+		td.String(),
+		timeNowString,
+	)
+	// Get String value
+	actualString := tsd.String()
+	require.Equal(t, expectedString, actualString)
+
+	// Set a stop time
+	tsd.Data().StopTime.Time = timeNow
+	tsd.Data().StopTime.Valid = true
+
+	// Set up expectations
+	expectedString = fmt.Sprintf(
+		"TimesheetData{Task=%s, StartTime=%s, StopTime=%s}",
+		td.String(),
+		timeNowString,
+		timeNowString,
+	)
+	// Get String value
+	actualString = tsd.String()
+	require.Equal(t, expectedString, actualString)
+}
 
 func TestUnit_Timesheet_CreateAndLoad_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
