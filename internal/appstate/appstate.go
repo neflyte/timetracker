@@ -17,7 +17,7 @@ const (
 
 	// keyLastState is the map key for the last timesheet state
 	keyLastState = "last_state"
-	// keylastError is the map key for the last ActionLoop error
+	// keyLastError is the map key for the last ActionLoop error
 	keyLastError = "last_error"
 
 	channelBufferSize = 5
