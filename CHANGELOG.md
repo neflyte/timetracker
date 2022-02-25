@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add button to main GUI window which creates and starts a new task
 - Add last 5 started tasks to top of tasklist widget in main GUI window
 
+### Changed
+- Default action on macOS when no CLI arguments are specified is to start the GUI
+- Add Makefile target to install the fyne CLI tool before building the Darwin target
+
 ## [0.3.1] - 2021-12-12
 - Released
 

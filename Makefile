@@ -3,6 +3,7 @@
 .PHONY: build clean clean-coverage lint test dist outdated
 
 APPVERSION=$(shell cat VERSION)
+SHORTAPPVERSION=$(shell cat VERSION | sed -E -e "s/v([0-9.]*).*/\1/")
 OSES=darwin linux
 GO_LDFLAGS=-ldflags "-X 'github.com/neflyte/timetracker/cmd/timetracker/cmd.AppVersion=$(APPVERSION)'"
 BINPREFIX=timetracker-$(APPVERSION)_
@@ -18,7 +19,6 @@ clean: clean-coverage
 	if [ -d dist ]; then rm -Rf dist; fi
 
 lint:
-	go vet ./...
 	golangci-lint run --timeout=5m
 
 test: clean-coverage
@@ -37,10 +37,14 @@ dist: lint
 		cd ..; \
 	done
 
-dist-darwin: lint
+dist-darwin: ensure-fyne-cli lint
 	GOOS=darwin GOARCH=amd64 go build $(GO_LDFLAGS) -o dist/$(BINPREFIX)darwin-amd64 ./cmd/timetracker
-	fyne package -name Timetracker -os darwin -appID cc.ethereal.timetracker -appVersion "$(APPVERSION)" -icon assets/images/Apps-Anydo-icon.png -executable dist/$(BINPREFIX)darwin-amd64
+	fyne package -name Timetracker -os darwin -appID cc.ethereal.timetracker -appVersion "$(SHORTAPPVERSION)" -icon assets/images/Apps-Anydo-icon.png -executable dist/$(BINPREFIX)darwin-amd64
 	mv Timetracker.app dist/
 
 outdated:
 	go list -json -u -m all | go-mod-outdated -direct -update
+
+ensure-fyne-cli:
+	@echo "Checking for fyne CLI tool"
+	hash fyne 2>/dev/null || { cd && go install fyne.io/fyne/v2/cmd/fyne@latest; cd -; }
