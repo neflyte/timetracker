@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"path"
+	"runtime"
 )
 
 const (
@@ -43,6 +44,10 @@ func init() {
 // Execute is the main entry point for the CLI
 func Execute() {
 	log := logger.GetLogger("Execute")
+	// On macOS, if no CLI parameters were specified then default to starting the GUI
+	if runtime.GOOS == "darwin" && len(os.Args) < 2 {
+		rootCmd.SetArgs([]string{"gui"})
+	}
 	err := rootCmd.Execute()
 	if err != nil {
 		log.Err(err).Msg("error executing root command")
