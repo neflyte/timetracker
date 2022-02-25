@@ -144,7 +144,6 @@ func (t *timetrackerWindowData) Init() error {
 			t.LblElapsedTime,
 		),
 	)
-	t.SubStatusBox.Hide()
 	t.StatusBox = container.NewVBox(
 		container.NewHBox(
 			widget.NewLabelWithStyle(
@@ -175,8 +174,13 @@ func (t *timetrackerWindowData) Init() error {
 	)
 	log.Debug().Msg("set content")
 	t.Window.SetContent(t.Container)
-	t.Window.SetFixedSize(true)
-	t.Window.Resize(minimumWindowSize)
+	// get the size of the content with everything visible
+	siz := t.Window.Content().Size()
+	log.Debug().Msgf("content size: %#v", siz)
+	// resize the window to fit the content
+	t.Window.Resize(siz)
+	// hide stuff now that we resized
+	t.SubStatusBox.Hide()
 	t.Window.SetCloseIntercept(t.Close)
 	// Set up our observables
 	t.setupObservables()
