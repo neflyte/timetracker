@@ -78,6 +78,8 @@ func postDoTray(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	log.Debug().Msgf("unlocked pidfile %s", trayCmdLockfilePath)
+	// Force-remove the pid file in case it didn't delete for some reason; we don't care if it fails
+	_ = os.Remove(trayCmdLockfilePath)
 	return nil
 }
 
