@@ -27,6 +27,8 @@ import (
 const (
 	// taskNameTrimLength is the maximum length of the task name string before trimming
 	taskNameTrimLength = 32
+	// windowHeightBuffer is the number of pixels to increase a window height by to try to fit its contents correctly
+	windowHeightBuffer = 50
 )
 
 var (
@@ -102,7 +104,6 @@ func NewTimetrackerWindow(app fyne.App) TimetrackerWindow {
 // Init initializes the window
 func (t *timetrackerWindowData) Init() error {
 	log := logger.GetFuncLogger(t.Log, "initWindow")
-	log.Debug().Msg("started")
 	if t.App == nil {
 		log.Error().Msg("t.App was nil; THIS IS UNEXPECTED")
 		return errors.New("t.App was nil; THIS IS UNEXPECTED")
@@ -172,11 +173,12 @@ func (t *timetrackerWindowData) Init() error {
 			)),
 		),
 	)
-	log.Debug().Msg("set content")
 	t.Window.SetContent(t.Container)
 	// get the size of the content with everything visible
 	siz := t.Window.Content().Size()
 	log.Debug().Msgf("content size: %#v", siz)
+	// HACK: add a bit of a height buffer, so we can try to fit everything in the window nicely
+	siz.Height += float32(windowHeightBuffer)
 	// resize the window to fit the content
 	t.Window.Resize(siz)
 	// hide stuff now that we resized
