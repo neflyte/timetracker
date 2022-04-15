@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Default action on macOS when no CLI arguments are specified is to start the GUI
 - Add Makefile target to install the fyne CLI tool before building the Darwin target
-- Force-delete PID files after they have been unlocked to ensure the files are deleted
+- If a PID file exists, validate that the PID is valid at startup and force-remove the PID file if it is not
 
 ## [0.3.1] - 2021-12-12
 - Released

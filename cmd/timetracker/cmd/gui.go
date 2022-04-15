@@ -5,6 +5,7 @@ import (
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/gui"
+	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/nightlyone/lockfile"
 	"github.com/spf13/cobra"
 	"os"
@@ -56,12 +57,22 @@ func preDoGUI(_ *cobra.Command, _ []string) error {
 	}
 	guiCmdLockfilePath = path.Join(userConfigDir, guiPidfile)
 	log.Trace().Msgf("guiCmdLockfilePath=%s", guiCmdLockfilePath)
-	lockfileInfo, err := os.Stat(guiCmdLockfilePath)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		log.Err(err).Msgf("error stating pidfile %s", guiCmdLockfilePath)
+	pidExists, err := utils.CheckPidfile(guiCmdLockfilePath)
+	if err != nil && !errors.Is(err, os.ErrNotExist) && !errors.Is(err, utils.ErrStalePidfile) {
+		log.Err(err).Msgf("error checking pidfile %s", guiCmdLockfilePath)
 	}
-	if lockfileInfo != nil {
-		log.Warn().Msgf("pidfile %s exists; modtime=%s", guiCmdLockfilePath, lockfileInfo.ModTime().String())
+	log.Trace().Msgf("pidExists=%t", pidExists)
+	if pidExists {
+		log.Error().Msgf("pidfile %s exists and its process is running; exiting", guiCmdLockfilePath)
+		return errors.New("another process is already running")
+	}
+	if errors.Is(err, utils.ErrStalePidfile) {
+		log.Debug().Msgf("attempting to remove stale pidfile %s", guiCmdLockfilePath)
+		err = os.Remove(guiCmdLockfilePath)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			log.Err(err).Msgf("error removing existing pidfile %s", guiCmdLockfilePath)
+			return errors.New("unable to remove stale pidfile")
+		}
 	}
 	guiCmdLockfile, err = lockfile.New(guiCmdLockfilePath)
 	if err != nil {
@@ -92,8 +103,6 @@ func postDoGUI(_ *cobra.Command, _ []string) error {
 		return err
 	}
 	log.Debug().Msgf("unlocked pidfile %s", guiCmdLockfilePath)
-	// Force-remove the pid file in case it didn't delete for some reason; we don't care if it fails
-	_ = os.Remove(guiCmdLockfilePath)
 	return nil
 }
 

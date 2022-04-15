@@ -20,6 +20,7 @@ require (
 	github.com/googleapis/google-cloud-go-testing v0.0.0-20210719221736-1c9a4c676720 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20210619142842-05447a1fa367 // indirect
 	github.com/jinzhu/now v1.1.4
+	github.com/mitchellh/go-ps v1.0.0
 	github.com/nightlyone/lockfile v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/reactivex/rxgo/v2 v2.5.0
