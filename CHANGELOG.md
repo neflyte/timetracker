@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Default action on macOS when no CLI arguments are specified is to start the GUI
 - Add Makefile target to install the fyne CLI tool before building the Darwin target
 - If a PID file exists, validate that the PID is valid at startup and force-remove the PID file if it is not
+- Updated fyne.io/fyne/v2 from v2.1.4 to v2.2.1
+- Updated github.com/getlantern/systray from v1.1.0 to v1.2.1
+- Updated github.com/rs/zerolog from v1.26.1 to v1.27.0
+- Updated github.com/spf13/cobra from v1.4.0 to v1.5.0
+- Updated github.com/spf13/viper from v1.11.0 to v1.12.0
+- Updated github.com/stretchr/testify from v1.7.1 to v1.7.5
+- Updated gorm.io/gorm from v1.23.5 to v1.23.6
+- Updated gotm.io/driver/sqlite from v1.3.2 to v1.3.4
 
 ## [0.3.1] - 2021-12-12
 - Released
