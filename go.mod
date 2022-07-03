@@ -3,7 +3,7 @@ module github.com/neflyte/timetracker
 go 1.16
 
 require (
-	fyne.io/fyne/v2 v2.2.1
+	fyne.io/fyne/v2 v2.2.2
 	github.com/alexeyco/simpletable v1.0.0
 	github.com/bluele/factory-go v0.0.1
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
@@ -18,7 +18,7 @@ require (
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/jinzhu/now v1.1.5
-	github.com/mattn/go-sqlite3 v1.14.13 // indirect
+	github.com/mattn/go-sqlite3 v1.14.14 // indirect
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/nightlyone/lockfile v1.0.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -29,7 +29,7 @@ require (
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.0
 	github.com/srwiley/oksvg v0.0.0-20210320200257-875f767ac39a // indirect
-	github.com/stretchr/testify v1.7.5
+	github.com/stretchr/testify v1.8.0
 	github.com/subosito/gotenv v1.4.0 // indirect
 	github.com/teivah/onecontext v1.3.0 // indirect
 	go.opentelemetry.io/otel v1.7.0 // indirect
@@ -38,6 +38,6 @@ require (
 	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/sys v0.0.0-20220624220833-87e55d714810 // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
-	gorm.io/driver/sqlite v1.3.4
-	gorm.io/gorm v1.23.6
+	gorm.io/driver/sqlite v1.3.5
+	gorm.io/gorm v1.23.7
 )
