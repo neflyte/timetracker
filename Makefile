@@ -1,9 +1,9 @@
 # timetracker Makefile
 
-.PHONY: build clean clean-coverage lint test dist outdated
+.PHONY: build clean clean-coverage lint test dist outdated ensure-fyne-cli
 
 APPVERSION=$(shell cat VERSION)
-SHORTAPPVERSION=$(shell cat VERSION | sed -E -e "s/v([0-9.]*).*/\1/")
+SHORTAPPVERSION=$(shell sed -E -e "s/v([0-9.]*).*/\1/" VERSION)
 OSES=darwin linux
 GO_LDFLAGS=-ldflags "-X 'github.com/neflyte/timetracker/cmd/timetracker/cmd.AppVersion=$(APPVERSION)'"
 BINPREFIX=timetracker-$(APPVERSION)_
@@ -43,6 +43,7 @@ dist-darwin: ensure-fyne-cli lint
 	mv Timetracker.app dist/
 
 outdated:
+	hash go-mod-outdated 2>/dev/null || { cd && go install github.com/psampaz/go-mod-outdated@v0.8.0; cd -; }
 	go list -json -u -m all | go-mod-outdated -direct -update
 
 ensure-fyne-cli:
