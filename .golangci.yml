@@ -51,9 +51,9 @@ linters-settings:
   govet:
     check-shadowing: true
   staticcheck:
-    go: "1.15"
+    go: "1.16"
   stylecheck:
-    go: "1.15"
+    go: "1.16"
   unparam:
     check-exported: true
   unused:
