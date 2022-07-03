@@ -37,10 +37,14 @@ func InitGUI() *fyne.App {
 		return nil
 	}
 	// Set up fyne
-	fyneApp = app.NewWithID("Timetracker")
+	fyneApp = app.NewWithID("cc.ethereal.timetracker")
 	// Create the main timetracker window
 	mainWindow = windows.NewTimetrackerWindow(fyneApp)
-	mainWindow.SetMaster()
+	// Initialize the tray
+	err := trayInit(&fyneApp)
+	if err != nil {
+		log.Error().Err(err).Msg("unable to initialize system tray")
+	}
 	guiInitialized = true
 	return &fyneApp
 }
