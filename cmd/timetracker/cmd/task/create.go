@@ -2,6 +2,9 @@ package task
 
 import (
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/fatih/color"
 	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/errors"
@@ -9,8 +12,6 @@ import (
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/cli"
 	"github.com/spf13/cobra"
-	"strconv"
-	"time"
 )
 
 const (

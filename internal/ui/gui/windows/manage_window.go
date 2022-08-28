@@ -3,6 +3,9 @@ package windows
 import (
 	"errors"
 	"fmt"
+	"reflect"
+	"time"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
@@ -15,8 +18,6 @@ import (
 	"github.com/patrickmn/go-cache"
 	"github.com/reactivex/rxgo/v2"
 	"github.com/rs/zerolog"
-	"reflect"
-	"time"
 )
 
 const (

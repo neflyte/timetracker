@@ -5,14 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/bluele/factory-go/factory"
 	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/database"
 	ttErrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
-	"testing"
-	"time"
 )
 
 type timesheetFactoryKey int8

@@ -2,11 +2,12 @@ package database
 
 import (
 	"context"
+	"strconv"
+	"time"
+
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/rs/zerolog"
 	gormLog "gorm.io/gorm/logger"
-	"strconv"
-	"time"
 )
 
 var (

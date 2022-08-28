@@ -2,11 +2,12 @@ package timesheet
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/alexeyco/simpletable"
 	"github.com/fatih/color"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/spf13/cobra"
-	"strconv"
 )
 
 const defaultTaskLimit = 5

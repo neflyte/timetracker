@@ -3,6 +3,10 @@ package windows
 import (
 	"errors"
 	"fmt"
+	"regexp"
+	"sync"
+	"time"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
@@ -17,9 +21,6 @@ import (
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
 	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/rs/zerolog"
-	"regexp"
-	"sync"
-	"time"
 )
 
 // TODO: rework the UI layout to better contain the components (e.g. use themes and a custom layout, not just a card)

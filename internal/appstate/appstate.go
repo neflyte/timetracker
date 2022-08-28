@@ -2,11 +2,12 @@ package appstate
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/reactivex/rxgo/v2"
-	"sync"
 )
 
 const (

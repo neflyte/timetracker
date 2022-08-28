@@ -1,14 +1,15 @@
 package gui
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/gui/windows"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 var (

@@ -3,10 +3,11 @@ package tray
 import (
 	"errors"
 	"fmt"
-	"github.com/neflyte/timetracker/internal/logger"
-	"github.com/spf13/viper"
 	"os"
 	"path"
+
+	"github.com/neflyte/timetracker/internal/logger"
+	"github.com/spf13/viper"
 )
 
 const (
