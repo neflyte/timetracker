@@ -1,11 +1,12 @@
 package appstate
 
 import (
+	"sync"
+	"time"
+
 	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
-	"sync"
-	"time"
 )
 
 var (

@@ -3,6 +3,9 @@ package timesheet
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/alexeyco/simpletable"
 	"github.com/fatih/color"
 	"github.com/neflyte/timetracker/internal/constants"
@@ -11,8 +14,6 @@ import (
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/cli"
 	"github.com/spf13/cobra"
-	"strconv"
-	"time"
 )
 
 var (

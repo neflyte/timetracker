@@ -3,6 +3,8 @@ package windows
 import (
 	"encoding/csv"
 	"fmt"
+	"time"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
@@ -15,7 +17,6 @@ import (
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
 	"github.com/rs/zerolog"
-	"time"
 )
 
 const (

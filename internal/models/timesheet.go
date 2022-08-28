@@ -3,6 +3,8 @@ package models
 import (
 	"database/sql"
 	"fmt"
+	"time"
+
 	"github.com/jinzhu/now"
 	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/database"
@@ -11,7 +13,6 @@ import (
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
-	"time"
 )
 
 const (

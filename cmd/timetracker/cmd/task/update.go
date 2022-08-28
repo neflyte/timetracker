@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+
 	"github.com/fatih/color"
 	"github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"

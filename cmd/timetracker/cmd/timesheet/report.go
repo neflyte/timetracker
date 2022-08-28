@@ -4,15 +4,16 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/alexeyco/simpletable"
 	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/cli"
 	"github.com/spf13/cobra"
-	"os"
-	"strconv"
-	"time"
 )
 
 const (

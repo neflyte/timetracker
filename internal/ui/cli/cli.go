@@ -2,9 +2,10 @@ package cli
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/fatih/color"
 	"github.com/rs/zerolog"
-	"strings"
 )
 
 // printError prints an error message with an optional formatted message to the console

@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/bluele/factory-go/factory"
 	"github.com/gofrs/uuid"
 	"github.com/neflyte/timetracker/internal/database"
 	ttErrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
-	"testing"
-	"time"
 )
 
 type taskFactoryContextKey int8

@@ -2,14 +2,15 @@ package cmd
 
 import (
 	"errors"
+	"os"
+	"path"
+
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/gui"
 	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/nightlyone/lockfile"
 	"github.com/spf13/cobra"
-	"os"
-	"path"
 )
 
 const (

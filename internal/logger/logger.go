@@ -2,11 +2,12 @@ package logger
 
 import (
 	"fmt"
-	"github.com/rs/zerolog"
 	"io"
 	"os"
 	"path"
 	"time"
+
+	"github.com/rs/zerolog"
 )
 
 const (

@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+
 	"github.com/neflyte/timetracker/internal/logger"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

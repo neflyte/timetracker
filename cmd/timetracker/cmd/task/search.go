@@ -2,6 +2,8 @@ package task
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/alexeyco/simpletable"
 	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/errors"
@@ -9,7 +11,6 @@ import (
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/cli"
 	"github.com/spf13/cobra"
-	"strconv"
 )
 
 var (

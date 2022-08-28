@@ -2,10 +2,11 @@ package widgets
 
 import (
 	"errors"
+	"time"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
-	"time"
 )
 
 // DateEntry is an entry widget which accepts a date

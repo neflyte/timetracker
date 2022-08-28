@@ -3,6 +3,13 @@ package tray
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"os/signal"
+	"runtime"
+	"syscall"
+	"time"
+
 	"github.com/gen2brain/beeep"
 	"github.com/getlantern/systray"
 	"github.com/neflyte/timetracker/internal/appstate"
@@ -12,12 +19,6 @@ import (
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/icons"
 	"github.com/spf13/viper"
-	"os"
-	"os/exec"
-	"os/signal"
-	"runtime"
-	"syscall"
-	"time"
 )
 
 const (
