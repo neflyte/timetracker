@@ -1,28 +1,51 @@
 # timetracker Makefile
 
-.PHONY: build clean clean-coverage lint test dist outdated ensure-fyne-cli
+.PHONY: build clean clean-coverage lint test dist dist-darwin dist-windows outdated ensure-fyne-cli
 
+ifeq ($(OS),Windows_NT)
+APPVERSION=$(shell cmd /C type VERSION)
+else
 APPVERSION=$(shell cat VERSION)
+endif
+ifeq ($(OS),Darwin)
 SHORTAPPVERSION=$(shell sed -E -e "s/v([0-9.]*).*/\1/" VERSION)
+endif
 OSES=darwin linux
 GO_LDFLAGS=-ldflags "-X 'github.com/neflyte/timetracker/cmd/timetracker/cmd.AppVersion=$(APPVERSION)'"
 BINPREFIX=timetracker-$(APPVERSION)_
 
 build:
+ifeq ($(OS),Windows_NT)
+	CMD /C IF NOT EXIST dist MD dist
+	go build $(GO_LDFLAGS) -o dist/timetracker.exe ./cmd/timetracker
+else
 	if [ ! -d dist ]; then mkdir dist; fi
 	go build $(GO_LDFLAGS) -o dist/timetracker ./cmd/timetracker
+endif
 
 clean-coverage:
+ifeq ($(OS),Windows_NT)
+	CMD /C IF EXIST coverage RD /S /Q coverage
+else
 	if [ -d coverage ]; then rm -Rf coverage; fi
+endif
 
 clean: clean-coverage
+ifeq ($(OS),Windows_NT)
+	CMD /C IF EXIST dist RD /S /Q dist
+else
 	if [ -d dist ]; then rm -Rf dist; fi
+endif
 
 lint:
 	golangci-lint run --timeout=5m
 
 test: clean-coverage
+ifeq ($(OS),Windows_NT)
+	CMD /C IF NOT EXIST coverage MD coverage
+else
 	if [ ! -d coverage ]; then mkdir coverage; fi
+endif
 	go test -covermode=count -coverprofile=coverage/cover.out ./...
 	go tool cover -html=coverage/cover.out -o coverage/coverage.html
 
@@ -42,9 +65,16 @@ dist-darwin: ensure-fyne-cli lint
 	fyne package -name Timetracker -os darwin -appID cc.ethereal.timetracker -appVersion "$(SHORTAPPVERSION)" -icon assets/images/Apps-Anydo-icon.png -executable dist/$(BINPREFIX)darwin-amd64
 	mv Timetracker.app dist/
 
+dist-windows: lint
+	go build $(GO_LDFLAGS) -o dist/$(BINPREFIX)windows-amd64.exe ./cmd/timetracker
+	7z a -txz dist/$(BINPREFIX)windows-amd64.exe.xz dist/$(BINPREFIX)windows-amd64.exe
+
 outdated:
+ifneq ($(OS),Windows_NT)
 	hash go-mod-outdated 2>/dev/null || { cd && go install github.com/psampaz/go-mod-outdated@v0.8.0; cd -; }
+else
 	go list -json -u -m all | go-mod-outdated -direct -update
+endif
 
 ensure-fyne-cli:
 	@echo "Checking for fyne CLI tool"

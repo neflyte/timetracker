@@ -43,18 +43,10 @@ func init() {
 
 func preDoGUI(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("preDoGUI")
-	userConfigDir, err := os.UserConfigDir()
+	userConfigDir, err := ensureUserHomeDirectory()
 	if err != nil {
-		userConfigDir = "."
-	} else {
-		userConfigDir = path.Join(userConfigDir, "timetracker")
-	}
-	if userConfigDir != "." {
-		err = os.MkdirAll(userConfigDir, configDirectoryMode)
-		if err != nil {
-			log.Err(err).Msgf("error creating directories for pidfile; userConfigDir=%s", userConfigDir)
-			return err
-		}
+		log.Err(err).Msgf("error ensuring user home directory exists")
+		return err
 	}
 	guiCmdLockfilePath = path.Join(userConfigDir, guiPidfile)
 	log.Trace().Msgf("guiCmdLockfilePath=%s", guiCmdLockfilePath)
@@ -68,12 +60,7 @@ func preDoGUI(_ *cobra.Command, _ []string) error {
 		return errors.New("another process is already running")
 	}
 	if errors.Is(err, utils.ErrStalePidfile) {
-		log.Debug().Msgf("attempting to remove stale pidfile %s", guiCmdLockfilePath)
-		err = os.Remove(guiCmdLockfilePath)
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			log.Err(err).Msgf("error removing existing pidfile %s", guiCmdLockfilePath)
-			return errors.New("unable to remove stale pidfile")
-		}
+		removeStalePidfile(guiCmdLockfilePath)
 	}
 	guiCmdLockfile, err = lockfile.New(guiCmdLockfilePath)
 	if err != nil {
@@ -126,4 +113,31 @@ func doGUI(_ *cobra.Command, _ []string) error {
 	// Start the GUI
 	gui.StartGUI(app)
 	return nil
+}
+
+func ensureUserHomeDirectory() (string, error) {
+	log := logger.GetLogger("ensureUserHomeDirectory")
+	userConfigDir, err := os.UserConfigDir()
+	if err != nil {
+		userConfigDir = "."
+	} else {
+		userConfigDir = path.Join(userConfigDir, "timetracker")
+	}
+	if userConfigDir != "." {
+		err = os.MkdirAll(userConfigDir, configDirectoryMode)
+		if err != nil {
+			log.Err(err).Msgf("error creating directories for pidfile; userConfigDir=%s", userConfigDir)
+			return "", err
+		}
+	}
+	return userConfigDir, nil
+}
+
+func removeStalePidfile(pidfile string) {
+	log := logger.GetLogger("removeStalePidfile")
+	log.Debug().Msgf("attempting to remove stale pidfile %s", pidfile)
+	err := os.Remove(pidfile)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Err(err).Msgf("error removing existing pidfile %s", pidfile)
+	}
 }
