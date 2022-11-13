@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.2] - TBD
 ### Added
+- Add preliminary support for building on Win32
 
 ### Changed
 - Updated fyne.io/fyne/v2 from v2.2.1 to v2.2.2

@@ -31,18 +31,10 @@ var (
 
 func preDoTray(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("preDoTray")
-	userConfigDir, err := os.UserConfigDir()
+	userConfigDir, err := ensureUserHomeDirectory()
 	if err != nil {
-		userConfigDir = "."
-	} else {
-		userConfigDir = path.Join(userConfigDir, "timetracker")
-	}
-	if userConfigDir != "." {
-		err = os.MkdirAll(userConfigDir, configDirectoryMode)
-		if err != nil {
-			log.Err(err).Msgf("error creating directories for pidfile; userConfigDir=%s", userConfigDir)
-			return err
-		}
+		log.Err(err).Msgf("error ensuring user home directory exists")
+		return err
 	}
 	trayCmdLockfilePath = path.Join(userConfigDir, trayPidfile)
 	log.Trace().Msgf("trayCmdLockfilePath=%s", trayCmdLockfilePath)
@@ -56,12 +48,7 @@ func preDoTray(_ *cobra.Command, _ []string) error {
 		return errors.New("another process is already running")
 	}
 	if errors.Is(err, utils.ErrStalePidfile) {
-		log.Debug().Msgf("attempting to remove stale pidfile %s", trayCmdLockfilePath)
-		err = os.Remove(trayCmdLockfilePath)
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			log.Err(err).Msgf("error removing existing pidfile %s", trayCmdLockfilePath)
-			return errors.New("unable to remove stale pidfile")
-		}
+		removeStalePidfile(trayCmdLockfilePath)
 	}
 	trayCmdLockFile, err = lockfile.New(trayCmdLockfilePath)
 	if err != nil {
