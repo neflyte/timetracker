@@ -179,11 +179,13 @@ func (m *manageWindowData) refreshTasks() {
 	if err != nil {
 		log.Err(err).Msg("error setting tasks")
 	}
+	// TODO: Remove the following call
 	m.jiggleHSplit()
 }
 
 // jiggleHSplit moves the HSplit component to the left and back again so each side
 // is forced to redraw with the correct sizing
+// TODO: Remove this method
 func (m *manageWindowData) jiggleHSplit() {
 	oldOffset := m.HSplit.Offset
 	newOffset := oldOffset - 1.0
