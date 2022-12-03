@@ -72,9 +72,8 @@ dist-windows: lint
 outdated:
 ifneq ($(OS),Windows_NT)
 	hash go-mod-outdated 2>/dev/null || { cd && go install github.com/psampaz/go-mod-outdated@v0.8.0; cd -; }
-else
-	go list -json -u -m all | go-mod-outdated -direct -update
 endif
+	go list -json -u -m all | go-mod-outdated -direct -update
 
 ensure-fyne-cli:
 	@echo "Checking for fyne CLI tool"

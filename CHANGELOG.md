@@ -9,10 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add preliminary support for building on Win32
 
 ### Changed
-- Updated fyne.io/fyne/v2 from v2.2.1 to v2.2.2
-- Updated github.com/stretchr/testify from v1.7.5 to v1.8.0
-- Updated gorm.io/gorm from v1.23.6 to v1.23.7
-- Updated gorm.io/drivers/sqlite from v1.3.4 to v1.3.5
+- Updated fyne.io/fyne/v2 from v2.2.1 to v2.2.4
+- Updated github.com/gen2brain/beeep from v0.0.0-20220518085355-d7852edf42fc to v0.0.0-20220909211152-5a9ec94374f6
+- Updated github.com/gofrs/uuid from v4.2.0+incompatible to v4.3.1+incompatible
+- Updated github.com/rs/zerolog from v1.27.0 to v1.28.0
+- Updated github.com/spf13/cobra from v1.5.0 to v1.6.1
+- Updated github.com/spf13/viper from v1.12.0 to v1.14.0
+- Updated github.com/stretchr/testify from v1.7.5 to v1.8.1
+- Updated gorm.io/gorm from v1.23.6 to v1.24.2
+- Updated gorm.io/drivers/sqlite from v1.3.4 to v1.4.3
 
 ## [0.3.2-alpha1] - 2022-06-03
 ### Added
