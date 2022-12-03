@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"fyne.io/systray"
 	"github.com/gen2brain/beeep"
-	"github.com/getlantern/systray"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/constants"
 	tterrors "github.com/neflyte/timetracker/internal/errors"
