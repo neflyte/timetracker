@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated github.com/stretchr/testify from v1.7.5 to v1.8.1
 - Updated gorm.io/gorm from v1.23.6 to v1.24.2
 - Updated gorm.io/drivers/sqlite from v1.3.4 to v1.4.3
+- Replaced github.com/getlantern/systray with fyne.io/systray
 
 ## [0.3.2-alpha1] - 2022-06-03
 ### Added
