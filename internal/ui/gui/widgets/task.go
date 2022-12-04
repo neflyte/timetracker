@@ -12,12 +12,6 @@ const (
 	taskDefaultDescription
 )
 
-// TaskIntf is the interface to the Task widget
-type TaskIntf interface {
-	Task() models.Task
-	SetTask(newTask models.Task)
-}
-
 // taskImpl is the struct implementation of the TaskIntf interface
 type taskImpl struct {
 	widget.BaseWidget
@@ -27,11 +21,11 @@ type taskImpl struct {
 	description *widget.Label
 }
 
-func NewTask() TaskIntf {
+func NewTask() *taskImpl {
 	return NewTaskWithData(nil)
 }
 
-func NewTaskWithData(taskData models.Task) TaskIntf {
+func NewTaskWithData(taskData models.Task) *taskImpl {
 	t := &taskImpl{
 		task: taskData,
 	}
