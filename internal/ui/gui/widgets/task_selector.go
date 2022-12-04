@@ -38,9 +38,11 @@ func NewTaskSelector() *TaskSelector {
 func (t *TaskSelector) initUI() {
 	t.filterEntry = widget.NewEntry()
 	t.filterEntry.SetPlaceHolder("Filter tasks")
-	t.sortButton = widget.NewButton("Sort", t.doShowSortMenu)
+	t.sortButton = widget.NewButton("Sort", t.showSortMenu)
 	t.filterHBox = container.NewHBox(t.filterEntry, t.sortButton)
 	t.tasksList = widget.NewListWithData(t.tasksListBinding, t.createTaskWidget, t.updateTaskWidget)
+	t.tasksList.OnSelected = t.taskWasSelected
+	t.tasksList.OnUnselected = t.taskWasUnselected
 	t.container = container.NewVBox(t.filterHBox, t.tasksList)
 }
 
@@ -76,6 +78,14 @@ func (t *TaskSelector) updateTaskWidget(item binding.DataItem, canvasObject fyne
 	taskWidget.SetTask(task)
 }
 
+func (t *TaskSelector) taskWasSelected(id widget.ListItemID) {
+
+}
+
+func (t *TaskSelector) taskWasUnselected(id widget.ListItemID) {
+
+}
+
 func (t *TaskSelector) List() models.TaskList {
 	log := t.log.With().Str("func", "List").Logger()
 	taskListIntf, err := t.tasksListBinding.Get()
@@ -94,8 +104,8 @@ func (t *TaskSelector) SetList(tasks models.TaskList) {
 	}
 }
 
-func (t *TaskSelector) doShowSortMenu() {
-	t.log.Warn().Msg("doShowSortMenu(): IMPLEMENTATION MISSING")
+func (t *TaskSelector) showSortMenu() {
+	t.log.Warn().Msg("showSortMenu(): IMPLEMENTATION MISSING")
 }
 
 // CreateRenderer returns a new WidgetRenderer for this widget.
