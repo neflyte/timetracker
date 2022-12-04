@@ -7,8 +7,20 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/reactivex/rxgo/v2"
 	"github.com/rs/zerolog"
 )
+
+const (
+	selectedTaskNone            = widget.ListItemID(-1)
+	taskSelectorCommandChanSize = 2
+)
+
+// TaskSelectorSelectedEvent contains the task that is sent to the command channel when a selection happens
+type TaskSelectorSelectedEvent struct {
+	// SelectedTask is the selected task item; nil if there is no selection
+	SelectedTask models.Task
+}
 
 var _ fyne.Widget = (*TaskSelector)(nil)
 
@@ -22,19 +34,24 @@ type TaskSelector struct {
 	sortButton       *widget.Button
 	tasksList        *widget.List
 	tasksListBinding binding.UntypedList
+	selectedTask     widget.ListItemID
+	commandChan      chan rxgo.Item
 }
 
-// NewTaskSelector returns a pointer to a new instance of TaskSelector
+// NewTaskSelector returns a pointer to a new, initialized instance of TaskSelector
 func NewTaskSelector() *TaskSelector {
 	ts := &TaskSelector{
 		log:              logger.GetStructLogger("TaskSelector"),
 		tasksListBinding: binding.NewUntypedList(),
+		selectedTask:     selectedTaskNone,
+		commandChan:      make(chan rxgo.Item, taskSelectorCommandChanSize),
 	}
 	ts.ExtendBaseWidget(ts)
 	ts.initUI()
 	return ts
 }
 
+// initUI initializes UI widgets
 func (t *TaskSelector) initUI() {
 	t.filterEntry = widget.NewEntry()
 	t.filterEntry.SetPlaceHolder("Filter tasks")
@@ -42,14 +59,16 @@ func (t *TaskSelector) initUI() {
 	t.filterHBox = container.NewHBox(t.filterEntry, t.sortButton)
 	t.tasksList = widget.NewListWithData(t.tasksListBinding, t.createTaskWidget, t.updateTaskWidget)
 	t.tasksList.OnSelected = t.taskWasSelected
-	t.tasksList.OnUnselected = t.taskWasUnselected
+	// t.tasksList.OnUnselected = t.taskWasUnselected
 	t.container = container.NewVBox(t.filterHBox, t.tasksList)
 }
 
+// createTaskWidget creates new Task widgets for the tasksList widget
 func (t *TaskSelector) createTaskWidget() fyne.CanvasObject {
 	return NewTask()
 }
 
+// updateTaskWidget updates the supplied Task widget with the supplied Task model
 func (t *TaskSelector) updateTaskWidget(item binding.DataItem, canvasObject fyne.CanvasObject) {
 	log := t.log.With().Str("func", "updateTaskWidget").Logger()
 	// get task
@@ -79,13 +98,20 @@ func (t *TaskSelector) updateTaskWidget(item binding.DataItem, canvasObject fyne
 }
 
 func (t *TaskSelector) taskWasSelected(id widget.ListItemID) {
-
+	if t.selectedTask != selectedTaskNone {
+		t.tasksList.Unselect(t.selectedTask)
+		t.commandChan <- rxgo.Of(TaskSelectorSelectedEvent{nil})
+	}
+	t.selectedTask = id
+	t.commandChan <- rxgo.Of(TaskSelectorSelectedEvent{t.Selected()})
 }
 
-func (t *TaskSelector) taskWasUnselected(id widget.ListItemID) {
-
+// Observable returns an rxgo Observable for the widget's command channel
+func (t *TaskSelector) Observable() rxgo.Observable {
+	return rxgo.FromEventSource(t.commandChan)
 }
 
+// List returns the list of Task objects used in the selector
 func (t *TaskSelector) List() models.TaskList {
 	log := t.log.With().Str("func", "List").Logger()
 	taskListIntf, err := t.tasksListBinding.Get()
@@ -96,12 +122,38 @@ func (t *TaskSelector) List() models.TaskList {
 	return models.TaskListFromSliceIntf(taskListIntf)
 }
 
+// SetList sets the list of Task objects used in the selector
 func (t *TaskSelector) SetList(tasks models.TaskList) {
 	log := t.log.With().Str("func", "SetList").Logger()
 	err := t.tasksListBinding.Set(models.TaskListToSliceIntf(tasks))
 	if err != nil {
 		log.Err(err).Msg("unable to set tasksListBinding")
 	}
+	// Reset the selected task
+	t.selectedTask = selectedTaskNone
+}
+
+// HasSelected indicates whether a selection has been made or not
+func (t *TaskSelector) HasSelected() bool {
+	return t.selectedTask != selectedTaskNone
+}
+
+// Selected returns the selected task or nil if there is no selection
+func (t *TaskSelector) Selected() models.Task {
+	if !t.HasSelected() {
+		// nothing selected
+		return nil
+	}
+	taskList := t.List()
+	if len(taskList) == 0 {
+		// empty list
+		return nil
+	}
+	if t.selectedTask >= len(taskList) {
+		// index out of bounds
+		return nil
+	}
+	return taskList[t.selectedTask]
 }
 
 func (t *TaskSelector) showSortMenu() {
