@@ -3,8 +3,11 @@ package widgets
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/widget"
+	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/rs/zerolog"
 )
 
 const (
@@ -12,63 +15,66 @@ const (
 	taskDefaultDescription
 )
 
-// taskImpl is the struct implementation of the TaskIntf interface
-type taskImpl struct {
+var _ fyne.Widget = (*Task)(nil)
+
+// Task is the implementation of the Task widget. This is essentially TasklistItem v2.
+type Task struct {
 	widget.BaseWidget
-	task        models.Task
-	container   *fyne.Container
-	synopsis    *widget.Label
-	description *widget.Label
+	log                zerolog.Logger
+	task               models.Task
+	container          *fyne.Container
+	synopsis           *widget.Label
+	description        *widget.Label
+	synopsisBinding    binding.String
+	descriptionBinding binding.String
 }
 
-func NewTask() *taskImpl {
+func NewTask() *Task {
 	return NewTaskWithData(nil)
 }
 
-func NewTaskWithData(taskData models.Task) *taskImpl {
-	t := &taskImpl{
-		task: taskData,
+func NewTaskWithData(taskData models.Task) *Task {
+	t := &Task{
+		log:                logger.GetStructLogger("Task"),
+		synopsisBinding:    binding.NewString(),
+		descriptionBinding: binding.NewString(),
 	}
 	t.ExtendBaseWidget(t)
+	t.SetTask(taskData)
 	t.initUI()
 	return t
 }
 
-func (t *taskImpl) initUI() {
-	synopsysText := ""
-	descriptionText := ""
-	if t.task != nil {
-		synopsysText = t.task.Data().Synopsis
-		descriptionText = t.task.Data().Description
-	}
-	t.synopsis = widget.NewLabelWithStyle(synopsysText, fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	t.description = widget.NewLabel(descriptionText)
+func (t *Task) initUI() {
+	t.synopsis = widget.NewLabelWithStyle("", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	t.synopsis.Bind(t.synopsisBinding)
+	t.description = widget.NewLabelWithData(t.descriptionBinding)
 	t.container = container.NewVBox(t.synopsis, t.description)
 }
 
-func (t *taskImpl) Task() models.Task {
+func (t *Task) Task() models.Task {
 	return t.task
 }
 
-func (t *taskImpl) SetTask(taskData models.Task) {
-	didChange := false
+func (t *Task) SetTask(taskData models.Task) {
+	log := t.log.With().Str("func", "SetTask").Logger()
 	t.task = taskData
-	if taskData == nil {
-		return
+	synopsysText := taskDefaultSynopsis
+	descriptionText := taskDefaultDescription
+	if taskData != nil {
+		synopsysText = taskData.Data().Synopsis
+		descriptionText = taskData.Data().Description
 	}
-	if t.synopsis != nil {
-		t.synopsis.SetText(taskData.Data().Synopsis)
-		didChange = true
+	err := t.synopsisBinding.Set(synopsysText)
+	if err != nil {
+		log.Err(err).Msg("unable to set synopsis binding")
 	}
-	if t.description != nil {
-		t.description.SetText(taskData.Data().Description)
-		didChange = true
-	}
-	if didChange {
-		t.Refresh()
+	err = t.descriptionBinding.Set(descriptionText)
+	if err != nil {
+		log.Err(err).Msg("unable to set description binding")
 	}
 }
 
-func (t *taskImpl) CreateRenderer() fyne.WidgetRenderer {
+func (t *Task) CreateRenderer() fyne.WidgetRenderer {
 	return widget.NewSimpleRenderer(t.container)
 }
