@@ -56,11 +56,11 @@ func (t *TaskSelector) initUI() {
 	t.filterEntry = widget.NewEntry()
 	t.filterEntry.SetPlaceHolder("Filter tasks")
 	t.sortButton = widget.NewButton("Sort", t.showSortMenu)
-	t.filterHBox = container.NewHBox(t.filterEntry, t.sortButton)
+	t.filterHBox = container.NewBorder(nil, nil, nil, t.sortButton, t.filterEntry)
 	t.tasksList = widget.NewListWithData(t.tasksListBinding, t.createTaskWidget, t.updateTaskWidget)
 	t.tasksList.OnSelected = t.taskWasSelected
 	// t.tasksList.OnUnselected = t.taskWasUnselected
-	t.container = container.NewVBox(t.filterHBox, t.tasksList)
+	t.container = container.NewBorder(t.filterHBox, nil, nil, nil, t.tasksList)
 }
 
 // createTaskWidget creates new Task widgets for the tasksList widget
