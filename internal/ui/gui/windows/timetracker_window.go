@@ -64,11 +64,13 @@ type timetrackerWindowData struct {
 	BtnStartTask                *widget.Button
 	BtnStopTask                 *widget.Button
 	BtnManageTasks              *widget.Button
+	BtnManageTasksV2            *widget.Button
 	BtnReport                   *widget.Button
 	BtnAbout                    *widget.Button
 	createNewTaskAndStartDialog dialogs.CreateAndStartTaskDialog
 	Log                         zerolog.Logger
 	mngWindow                   manageWindow
+	mngWindowV2                 manageWindowV2
 	rptWindow                   reportWindow
 
 	LblStatus      *widget.Label
@@ -117,6 +119,7 @@ func (t *timetrackerWindowData) Init() error {
 	t.BtnStartTask = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), t.doStartTask)
 	t.BtnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)
 	t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), t.doManageTasks)
+	t.BtnManageTasksV2 = widget.NewButtonWithIcon("MANAGEv2", theme.SettingsIcon(), t.doManageTasksV2)
 	t.BtnReport = widget.NewButtonWithIcon("REPORT", theme.FileIcon(), t.doReport)
 	t.BtnAbout = widget.NewButton("ABOUT", t.doAbout)
 	t.BtnCreateAndStart = widget.NewButton("CREATE AND START", t.doCreateAndStartTask)
@@ -125,6 +128,7 @@ func (t *timetrackerWindowData) Init() error {
 			t.BtnStartTask,
 			t.BtnStopTask,
 			t.BtnManageTasks,
+			t.BtnManageTasksV2,
 			t.BtnReport,
 			t.BtnAbout,
 		),
@@ -207,6 +211,9 @@ func (t *timetrackerWindowData) Init() error {
 	)
 	// Hide the Manage Window by default
 	t.mngWindow.Hide()
+	// manage window v2
+	t.mngWindowV2 = newManageWindowV2(*t.App)
+	t.mngWindowV2.Hide()
 	// Also set up the report window and hide it
 	t.rptWindow = newReportWindow(*t.App)
 	t.rptWindow.Hide()
@@ -405,6 +412,10 @@ func (t *timetrackerWindowData) doManageTasks() {
 	t.mngWindow.Show()
 }
 
+func (t *timetrackerWindowData) doManageTasksV2() {
+	t.mngWindowV2.Show()
+}
+
 func (t *timetrackerWindowData) doReport() {
 	t.rptWindow.Show()
 }
@@ -477,6 +488,9 @@ func (t *timetrackerWindowData) ShowAndDisplayCreateAndStartDialog() {
 func (t *timetrackerWindowData) Hide() {
 	if t.mngWindow != nil {
 		t.mngWindow.Hide()
+	}
+	if t.mngWindowV2 != nil {
+		t.mngWindowV2.Hide()
 	}
 	t.Window.Hide()
 }
