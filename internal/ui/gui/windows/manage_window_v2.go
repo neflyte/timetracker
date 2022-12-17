@@ -31,6 +31,7 @@ type manageWindowV2Impl struct {
 	editButton   *widget.Button
 	deleteButton *widget.Button
 	taskSelector *widgets.TaskSelector
+	taskEditor   *widgets.TaskEditorV2
 }
 
 func newManageWindowV2(app fyne.App) manageWindowV2 {
@@ -64,6 +65,7 @@ func (m *manageWindowV2Impl) Init() error {
 		utils.ObservableCloseHandler("taskSelector", m.log),
 	)
 	m.container = container.NewBorder(m.buttonHBox, nil, nil, nil, m.taskSelector)
+	m.taskEditor = widgets.NewTaskEditorV2()
 	m.Window.SetCloseIntercept(m.Hide)
 	m.Window.SetContent(m.container)
 	// get the size of the content with everything visible
@@ -111,18 +113,24 @@ func (m *manageWindowV2Impl) handleTaskSelectorEvent(item interface{}) {
 }
 
 func (m *manageWindowV2Impl) doEditTask() {
-	taskEditor := widgets.NewTaskEditorV2()
-	editDialog := dialog.NewCustomConfirm(
-		"Edit task", // i18n
-		"SAVE",
-		"CANCEL",
-		container.NewMax(taskEditor),
-		m.handleEditTaskResult,
-		m.Window,
-	)
-	editDialog.Show()
+	if m.taskSelector.HasSelected() {
+		m.taskEditor.SetTask(m.taskSelector.Selected())
+		dialog.NewCustomConfirm(
+			"Edit task", // i18n
+			"SAVE",      // i18n
+			"CANCEL",    // i18n
+			container.NewMax(m.taskEditor),
+			m.handleEditTaskResult,
+			m.Window,
+		).Show()
+	}
 }
 
-func (m *manageWindowV2Impl) handleEditTaskResult(result bool) {
-
+func (m *manageWindowV2Impl) handleEditTaskResult(saved bool) {
+	if !saved {
+		return
+	}
+	editedTask := m.taskEditor.Task()
+	// TODO: save task to database
+	// TODO: refresh list
 }
