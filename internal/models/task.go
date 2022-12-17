@@ -59,6 +59,16 @@ func (td *TaskData) Clone() Task {
 	return clone
 }
 
+type TaskDatas []TaskData
+
+func (td TaskDatas) AsTaskList() TaskList {
+	taskList := make(TaskList, len(td))
+	for idx := range td {
+		taskList[idx] = NewTaskWithData(td[idx])
+	}
+	return taskList
+}
+
 // Task is the main interface to task definitions
 type Task interface {
 	fmt.Stringer

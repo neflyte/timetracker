@@ -3,6 +3,7 @@ package windows
 import (
 	"errors"
 	"fmt"
+	"github.com/neflyte/timetracker/internal/utils"
 	"reflect"
 	"time"
 
@@ -95,12 +96,8 @@ func (m *manageWindowData) Init() error {
 	// setup observables
 	m.TaskEditor.Observables()[widgets.TaskEditorTaskSavedEventKey].ForEach(
 		m.doEditSave,
-		func(err error) {
-			m.Log.Err(err).Msg("error from TaskSaved observable")
-		},
-		func() {
-			m.Log.Trace().Msgf("observable %s is finished", widgets.TaskEditorTaskSavedEventKey)
-		},
+		utils.ObservableErrorHandler(widgets.TaskEditorTaskSavedEventKey, m.Log),
+		utils.ObservableCloseHandler(widgets.TaskEditorTaskSavedEventKey, m.Log),
 	)
 	m.TaskEditor.Observables()[widgets.TaskEditorEditCancelledEventKey].ForEach(
 		m.doEditCancel,
