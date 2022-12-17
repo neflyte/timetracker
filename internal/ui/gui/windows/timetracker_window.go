@@ -505,6 +505,8 @@ func (t *timetrackerWindowData) Close() {
 	}
 	// Close the window
 	t.Window.Close()
+	// Quit
+	(*t.App).Quit()
 }
 
 // Get returns the underlying data structure

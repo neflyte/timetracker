@@ -46,10 +46,16 @@ func newManageWindowV2(app fyne.App) manageWindowV2 {
 }
 
 func (m *manageWindowV2Impl) Init() error {
+	log := m.log.With().Str("func", "Init").Logger()
 	m.createButton = widget.NewButton("New", func() {})
 	m.editButton = widget.NewButton("Edit", func() {})
 	m.deleteButton = widget.NewButton("Delete", func() {})
-	m.buttonHBox = container.NewHBox(m.createButton, widget.NewSeparator(), m.editButton, m.deleteButton)
+	m.buttonHBox = container.NewBorder(
+		nil,
+		nil,
+		m.createButton,
+		container.NewHBox(m.editButton, m.deleteButton),
+	)
 	m.taskSelector = widgets.NewTaskSelector()
 	m.taskSelector.Observable().ForEach(
 		func(item interface{}) {
@@ -63,9 +69,16 @@ func (m *manageWindowV2Impl) Init() error {
 		utils.ObservableErrorHandler("taskSelector", m.log),
 		utils.ObservableCloseHandler("taskSelector", m.log),
 	)
-	m.container = container.NewMax(container.NewVBox(m.buttonHBox, m.taskSelector))
+	m.container = container.NewBorder(m.buttonHBox, nil, nil, nil, m.taskSelector)
 	m.Window.SetCloseIntercept(m.Hide)
 	m.Window.SetContent(m.container)
+	// get the size of the content with everything visible
+	siz := m.Window.Content().Size()
+	log.Debug().Msgf("content size: %#v", siz)
+	// HACK: add a bit of a height buffer, so we can try to fit everything in the window nicely
+	siz.Height += float32(windowHeightBuffer)
+	// resize the window to fit the content
+	m.Window.Resize(siz)
 	return nil
 }
 
