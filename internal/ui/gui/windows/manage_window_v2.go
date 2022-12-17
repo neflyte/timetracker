@@ -3,6 +3,7 @@ package windows
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
@@ -48,7 +49,7 @@ func newManageWindowV2(app fyne.App) manageWindowV2 {
 func (m *manageWindowV2Impl) Init() error {
 	log := m.log.With().Str("func", "Init").Logger()
 	m.createButton = widget.NewButton("New", func() {})
-	m.editButton = widget.NewButton("Edit", func() {})
+	m.editButton = widget.NewButton("Edit", m.doEditTask)
 	m.deleteButton = widget.NewButton("Delete", func() {})
 	m.buttonHBox = container.NewBorder(
 		nil,
@@ -58,14 +59,7 @@ func (m *manageWindowV2Impl) Init() error {
 	)
 	m.taskSelector = widgets.NewTaskSelector()
 	m.taskSelector.Observable().ForEach(
-		func(item interface{}) {
-			switch event := item.(type) {
-			case widgets.TaskSelectorSelectedEvent:
-				if event.SelectedTask != nil {
-					m.log.Debug().Msgf("task selected: %s", event.SelectedTask.String())
-				}
-			}
-		},
+		m.handleTaskSelectorEvent,
 		utils.ObservableErrorHandler("taskSelector", m.log),
 		utils.ObservableCloseHandler("taskSelector", m.log),
 	)
@@ -104,4 +98,31 @@ func (m *manageWindowV2Impl) refreshTasks() {
 	}
 	log.Trace().Msgf("read %d tasks", len(tasks))
 	m.taskSelector.SetList(models.TaskDatas(tasks).AsTaskList())
+}
+
+func (m *manageWindowV2Impl) handleTaskSelectorEvent(item interface{}) {
+	log := m.log.With().Str("func", "handleTaskSelectorEvent").Logger()
+	switch event := item.(type) {
+	case widgets.TaskSelectorSelectedEvent:
+		if event.SelectedTask != nil {
+			log.Debug().Msgf("task selected: %s", event.SelectedTask.String())
+		}
+	}
+}
+
+func (m *manageWindowV2Impl) doEditTask() {
+	taskEditor := widgets.NewTaskEditorV2()
+	editDialog := dialog.NewCustomConfirm(
+		"Edit task", // i18n
+		"SAVE",
+		"CANCEL",
+		container.NewMax(taskEditor),
+		m.handleEditTaskResult,
+		m.Window,
+	)
+	editDialog.Show()
+}
+
+func (m *manageWindowV2Impl) handleEditTaskResult(result bool) {
+
 }

@@ -119,7 +119,7 @@ func (t *timetrackerWindowData) Init() error {
 	t.BtnStartTask = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), t.doStartTask)
 	t.BtnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)
 	t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), t.doManageTasks)
-	t.BtnManageTasksV2 = widget.NewButtonWithIcon("MANAGEv2", theme.SettingsIcon(), t.doManageTasksV2)
+	t.BtnManageTasksV2 = widget.NewButtonWithIcon("MANAGE v2", theme.SettingsIcon(), t.doManageTasksV2)
 	t.BtnReport = widget.NewButtonWithIcon("REPORT", theme.FileIcon(), t.doReport)
 	t.BtnAbout = widget.NewButton("ABOUT", t.doAbout)
 	t.BtnCreateAndStart = widget.NewButton("CREATE AND START", t.doCreateAndStartTask)
@@ -128,11 +128,10 @@ func (t *timetrackerWindowData) Init() error {
 			t.BtnStartTask,
 			t.BtnStopTask,
 			t.BtnManageTasks,
-			t.BtnManageTasksV2,
 			t.BtnReport,
 			t.BtnAbout,
 		),
-		container.NewHBox(t.BtnCreateAndStart),
+		container.NewHBox(t.BtnCreateAndStart, t.BtnManageTasksV2),
 	))
 	t.BindRunningTask = binding.NewString()
 	t.LblStatus = widget.NewLabelWithData(t.BindRunningTask)
