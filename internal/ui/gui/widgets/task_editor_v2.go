@@ -10,12 +10,10 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const (
-// taskEditorV2CommandChanSize = 2
-)
-
 var _ fyne.Widget = (*TaskEditorV2)(nil)
 
+// TaskEditorV2 is the struct implementing the TaskEditorV2 widget.
+// Use NewTaskEditorV2() to create a new instance of the widget.
 type TaskEditorV2 struct {
 	widget.BaseWidget
 	log                    zerolog.Logger
@@ -26,8 +24,10 @@ type TaskEditorV2 struct {
 	synopsisEntry          *widget.Entry
 	descriptionLabel       *widget.Label
 	descriptionEntry       *widget.Entry
+	taskID                 uint
 }
 
+// NewTaskEditorV2 returns a pointer to a newly initialized instance of the TaskEditorV2 widget
 func NewTaskEditorV2() *TaskEditorV2 {
 	te := &TaskEditorV2{
 		log:                    logger.GetStructLogger("TaskEditorV2"),
@@ -39,6 +39,7 @@ func NewTaskEditorV2() *TaskEditorV2 {
 	return te
 }
 
+// CreateRenderer returns a new WidgetRenderer for this widget.
 func (t *TaskEditorV2) CreateRenderer() fyne.WidgetRenderer {
 	return widget.NewSimpleRenderer(t.container)
 }
@@ -57,37 +58,58 @@ func (t *TaskEditorV2) initUI() {
 	t.container = container.NewVBox(t.synopsisLabel, t.synopsisEntry, t.descriptionLabel, t.descriptionEntry)
 }
 
+// Task returns the task currently being edited
 func (t *TaskEditorV2) Task() models.Task {
-	log := t.log.With().Str("func", "Task").Logger()
+	log := logger.GetFuncLogger(t.log, "Task")
 	synopsis, err := t.taskSynopsisBinding.Get()
 	if err != nil {
-		log.Err(err).Msg("error getting synopsis from binding")
+		log.Err(err).
+			Msg("error getting synopsis from binding")
 		return nil
 	}
 	description, err := t.taskDescriptionBinding.Get()
 	if err != nil {
-		log.Err(err).Msg("error getting description from binding")
+		log.Err(err).
+			Msg("error getting description from binding")
 		return nil
 	}
 	task := models.NewTask()
 	task.Data().Synopsis = synopsis
 	task.Data().Description = description
+	task.Data().ID = t.taskID
+	log.Debug().
+		Str("task", task.String()).
+		Msg("returning task")
 	return task
 }
 
+// SetTask sets the task to be edited
 func (t *TaskEditorV2) SetTask(task models.Task) {
-	log := t.log.With().Str("func", "SetTask").Logger()
+	log := logger.GetFuncLogger(t.log, "SetTask")
 	if task == nil || task.Data() == nil {
 		return
 	}
+	// Set the known task ID to zero in case updating the bindings fails.
+	// We don't want to unintentionally update a task with bad data.
+	t.taskID = 0
+	// Update the synopsis binding
 	err := t.taskSynopsisBinding.Set(task.Data().Synopsis)
 	if err != nil {
-		log.Err(err).Msg("error setting synopsis")
+		log.Err(err).
+			Msg("error setting synopsis")
 		return
 	}
+	// Update the description binding
 	err = t.taskDescriptionBinding.Set(task.Data().Description)
 	if err != nil {
-		log.Err(err).Msg("error setting description")
+		log.Err(err).
+			Msg("error setting description")
 		return
 	}
+	// Save the task's ID now that we've updated the bindings
+	t.taskID = task.Data().ID
+	// Log what we set
+	log.Debug().
+		Str("task", task.String()).
+		Msg("task set successfully")
 }

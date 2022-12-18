@@ -48,7 +48,7 @@ func newManageWindowV2(app fyne.App) manageWindowV2 {
 }
 
 func (m *manageWindowV2Impl) Init() error {
-	log := m.log.With().Str("func", "Init").Logger()
+	log := logger.GetFuncLogger(m.log, "Init")
 	m.createButton = widget.NewButton("New", func() {})
 	m.editButton = widget.NewButton("Edit", m.doEditTask)
 	m.deleteButton = widget.NewButton("Delete", func() {})
@@ -70,7 +70,10 @@ func (m *manageWindowV2Impl) Init() error {
 	m.Window.SetContent(m.container)
 	// get the size of the content with everything visible
 	siz := m.Window.Content().Size()
-	log.Debug().Msgf("content size: %#v", siz)
+	log.Debug().
+		Float32("width", siz.Width).
+		Float32("height", siz.Height).
+		Msg("content size")
 	// HACK: add a bit of a height buffer, so we can try to fit everything in the window nicely
 	siz.Height += float32(windowHeightBuffer)
 	// resize the window to fit the content
@@ -95,19 +98,24 @@ func (m *manageWindowV2Impl) refreshTasks() {
 	log := logger.GetFuncLogger(m.log, "refreshTasks")
 	tasks, err := models.NewTask().LoadAll(false)
 	if err != nil {
-		log.Err(err).Msg("error reading all tasks")
+		log.Err(err).
+			Msg("error reading all tasks")
 		return
 	}
-	log.Trace().Msgf("read %d tasks", len(tasks))
+	log.Trace().
+		Int("count", len(tasks)).
+		Msg("read tasks successfully")
 	m.taskSelector.SetList(models.TaskDatas(tasks).AsTaskList())
 }
 
 func (m *manageWindowV2Impl) handleTaskSelectorEvent(item interface{}) {
-	log := m.log.With().Str("func", "handleTaskSelectorEvent").Logger()
+	log := logger.GetFuncLogger(m.log, "handleTaskSelectorEvent")
 	switch event := item.(type) {
 	case widgets.TaskSelectorSelectedEvent:
 		if event.SelectedTask != nil {
-			log.Debug().Msgf("task selected: %s", event.SelectedTask.String())
+			log.Debug().
+				Str("selected", event.SelectedTask.String()).
+				Msg("got selected task")
 		}
 	}
 }
@@ -130,7 +138,20 @@ func (m *manageWindowV2Impl) handleEditTaskResult(saved bool) {
 	if !saved {
 		return
 	}
+	log := logger.GetFuncLogger(m.log, "handleEditTaskResult")
 	editedTask := m.taskEditor.Task()
-	// TODO: save task to database
-	// TODO: refresh list
+	if editedTask == nil {
+		log.Error().
+			Msg("edited task was nil; this is unexpected")
+		return
+	}
+	// save task to database
+	err := editedTask.Update(false)
+	if err != nil {
+		log.Err(err).
+			Msg("error updating task")
+		return
+	}
+	// refresh task list
+	go m.refreshTasks()
 }

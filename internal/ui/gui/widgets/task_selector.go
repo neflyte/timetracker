@@ -9,6 +9,7 @@ import (
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/reactivex/rxgo/v2"
 	"github.com/rs/zerolog"
+	"reflect"
 )
 
 const (
@@ -70,27 +71,37 @@ func (t *TaskSelector) createTaskWidget() fyne.CanvasObject {
 
 // updateTaskWidget updates the supplied Task widget with the supplied Task model
 func (t *TaskSelector) updateTaskWidget(item binding.DataItem, canvasObject fyne.CanvasObject) {
-	log := t.log.With().Str("func", "updateTaskWidget").Logger()
+	log := logger.GetFuncLogger(t.log, "updateTaskWidget")
 	// get task
 	listBinding, ok := item.(binding.Untyped)
 	if !ok {
-		log.Error().Msgf("item is %T but should be binding.Untyped", item)
+		log.Error().
+			Str("expected", "binding.Untyped").
+			Str("actual", reflect.TypeOf(item).String()).
+			Msg("item is of an unexpected type")
 		return
 	}
 	taskIntf, err := listBinding.Get()
 	if err != nil {
-		log.Err(err).Msg("unable to get task interface from listBinding")
+		log.Err(err).
+			Msg("unable to get task interface from listBinding")
 		return
 	}
 	task, ok := taskIntf.(models.Task)
 	if !ok {
-		log.Error().Msgf("taskIntf is %T but should be models.Task instead", taskIntf)
+		log.Error().
+			Str("expected", "models.Task").
+			Str("actual", reflect.TypeOf(taskIntf).String()).
+			Msg("taskIntf is of an unexpected type")
 		return
 	}
 	// get widget
 	taskWidget, ok := canvasObject.(*Task)
 	if !ok {
-		log.Error().Msgf("canvasObject is %T but should be *Task", canvasObject)
+		log.Error().
+			Str("expected", "*Task").
+			Str("actual", reflect.TypeOf(canvasObject).String()).
+			Msg("canvasObject is of an unexpected type")
 		return
 	}
 	// update widget
@@ -113,10 +124,11 @@ func (t *TaskSelector) Observable() rxgo.Observable {
 
 // List returns the list of Task objects used in the selector
 func (t *TaskSelector) List() models.TaskList {
-	log := t.log.With().Str("func", "List").Logger()
+	log := logger.GetFuncLogger(t.log, "List")
 	taskListIntf, err := t.tasksListBinding.Get()
 	if err != nil {
-		log.Err(err).Msg("unable to get list from binding")
+		log.Err(err).
+			Msg("unable to get list from binding")
 		return make([]models.Task, 0)
 	}
 	return models.TaskListFromSliceIntf(taskListIntf)
@@ -124,10 +136,11 @@ func (t *TaskSelector) List() models.TaskList {
 
 // SetList sets the list of Task objects used in the selector
 func (t *TaskSelector) SetList(tasks models.TaskList) {
-	log := t.log.With().Str("func", "SetList").Logger()
+	log := logger.GetFuncLogger(t.log, "SetList")
 	err := t.tasksListBinding.Set(models.TaskListToSliceIntf(tasks))
 	if err != nil {
-		log.Err(err).Msg("unable to set tasksListBinding")
+		log.Err(err).
+			Msg("unable to set tasksListBinding")
 	}
 	// Reset the selected task
 	t.selectedTask = selectedTaskNone
@@ -157,7 +170,8 @@ func (t *TaskSelector) Selected() models.Task {
 }
 
 func (t *TaskSelector) showSortMenu() {
-	t.log.Warn().Msg("showSortMenu(): IMPLEMENTATION MISSING")
+	t.log.Warn().
+		Msg("showSortMenu(): IMPLEMENTATION MISSING")
 }
 
 // CreateRenderer returns a new WidgetRenderer for this widget.
