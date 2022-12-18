@@ -54,24 +54,26 @@ type TimetrackerWindow interface {
 type timetrackerWindowData struct {
 	fyne.Window
 
-	App                         *fyne.App
-	Container                   *fyne.Container
-	StatusBox                   *fyne.Container
-	SubStatusBox                *fyne.Container
-	ButtonBox                   *fyne.Container
-	TaskList                    *widgets.Tasklist
-	BtnCreateAndStart           *widget.Button
-	BtnStartTask                *widget.Button
-	BtnStopTask                 *widget.Button
-	BtnManageTasks              *widget.Button
+	App               *fyne.App
+	Container         *fyne.Container
+	StatusBox         *fyne.Container
+	SubStatusBox      *fyne.Container
+	ButtonBox         *fyne.Container
+	TaskList          *widgets.Tasklist
+	BtnSelectTask     *widget.Button
+	BtnCreateAndStart *widget.Button
+	BtnStartTask      *widget.Button
+	BtnStopTask       *widget.Button
+	// BtnManageTasks              *widget.Button
 	BtnManageTasksV2            *widget.Button
 	BtnReport                   *widget.Button
 	BtnAbout                    *widget.Button
 	createNewTaskAndStartDialog dialogs.CreateAndStartTaskDialog
 	Log                         zerolog.Logger
-	mngWindow                   manageWindow
-	mngWindowV2                 manageWindowV2
-	rptWindow                   reportWindow
+	// mngWindow                   manageWindow
+	mngWindowV2  manageWindowV2
+	rptWindow    reportWindow
+	taskSelector *widgets.TaskSelector
 
 	LblStatus      *widget.Label
 	LblStartTime   *widget.Label
@@ -111,14 +113,16 @@ func (t *timetrackerWindowData) Init() error {
 		log.Error().Msg("t.App was nil; THIS IS UNEXPECTED")
 		return errors.New("t.App was nil; THIS IS UNEXPECTED")
 	}
+	t.BtnStartTask = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), t.doStartTask)
+	t.BtnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)
 	t.createNewTaskAndStartDialog = dialogs.NewCreateAndStartTaskDialog((*t.App).Preferences(), t.createAndStartTaskDialogCallback, t.Window)
 	t.TaskList = widgets.NewTasklist()
 	t.TaskList.SelectionBinding().AddListener(binding.NewDataListener(func() {
 		t.tasklistSelectionChanged()
 	}))
-	t.BtnStartTask = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), t.doStartTask)
-	t.BtnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)
-	t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), t.doManageTasks)
+	t.BtnSelectTask = widget.NewButtonWithIcon("", theme.MoreHorizontalIcon(), t.doSelectTask)
+	t.taskSelector = widgets.NewTaskSelector()
+	// t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), t.doManageTasks)
 	t.BtnManageTasksV2 = widget.NewButtonWithIcon("MANAGE v2", theme.SettingsIcon(), t.doManageTasksV2)
 	t.BtnReport = widget.NewButtonWithIcon("REPORT", theme.FileIcon(), t.doReport)
 	t.BtnAbout = widget.NewButton("ABOUT", t.doAbout)
@@ -127,11 +131,11 @@ func (t *timetrackerWindowData) Init() error {
 		container.NewHBox(
 			t.BtnStartTask,
 			t.BtnStopTask,
-			t.BtnManageTasks,
+			t.BtnManageTasksV2,
 			t.BtnReport,
 			t.BtnAbout,
 		),
-		container.NewHBox(t.BtnCreateAndStart, t.BtnManageTasksV2),
+		container.NewHBox(t.BtnCreateAndStart),
 	))
 	t.BindRunningTask = binding.NewString()
 	t.LblStatus = widget.NewLabelWithData(t.BindRunningTask)
@@ -172,6 +176,7 @@ func (t *timetrackerWindowData) Init() error {
 				container.NewHBox(
 					widget.NewLabel("Task:"),
 					t.TaskList,
+					t.BtnSelectTask,
 				),
 				t.ButtonBox,
 			)),
@@ -193,23 +198,23 @@ func (t *timetrackerWindowData) Init() error {
 	// Load the window's data
 	t.primeWindowData()
 	// Set up the Manage Window as well
-	t.mngWindow = newManageWindow(*t.App)
-	t.mngWindow.Get().TaskListChangedObservable.ForEach(
-		func(item interface{}) {
-			changed, ok := item.(bool)
-			if ok && changed {
-				t.TaskList.Refresh()
-			}
-		},
-		func(err error) {
-			t.Log.Err(err).Msg("error from tasklist changed observable")
-		},
-		func() {
-			t.Log.Trace().Msg("tasklist changed observable is finished")
-		},
-	)
+	// t.mngWindow = newManageWindow(*t.App)
+	// t.mngWindow.Get().TaskListChangedObservable.ForEach(
+	//	func(item interface{}) {
+	//		changed, ok := item.(bool)
+	//		if ok && changed {
+	//			t.TaskList.Refresh()
+	//		}
+	//	},
+	//	func(err error) {
+	//		t.Log.Err(err).Msg("error from tasklist changed observable")
+	//	},
+	//	func() {
+	//		t.Log.Trace().Msg("tasklist changed observable is finished")
+	//	},
+	//)
 	// Hide the Manage Window by default
-	t.mngWindow.Hide()
+	// t.mngWindow.Hide()
 	// manage window v2
 	t.mngWindowV2 = newManageWindowV2(*t.App)
 	t.mngWindowV2.Hide()
@@ -418,12 +423,46 @@ func (t *timetrackerWindowData) doStopTask() {
 	appstate.SetRunningTimesheet(nil)
 }
 
-func (t *timetrackerWindowData) doManageTasks() {
-	t.mngWindow.Show()
-}
+// func (t *timetrackerWindowData) doManageTasks() {
+//	t.mngWindow.Show()
+// }
 
 func (t *timetrackerWindowData) doManageTasksV2() {
 	t.mngWindowV2.Show()
+}
+
+func (t *timetrackerWindowData) doSelectTask() {
+	log := logger.GetFuncLogger(t.Log, "doSelectTask")
+	allTaskDatas, err := models.NewTask().LoadAll(false)
+	if err != nil {
+		log.Err(err).
+			Msg("error loading all tasks")
+		dialog.NewError(err, t.Window).Show()
+		return
+	}
+	allTasks := models.TaskDatas(allTaskDatas).AsTaskList()
+	t.taskSelector.SetList(allTasks)
+	dialog.NewCustomConfirm(
+		"Select a task", // i18n
+		"SELECT",        // i18n
+		"CANCEL",        // i18n
+		t.taskSelector,
+		t.handleSelectTaskResult,
+		t.Window,
+	).Show()
+}
+
+func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
+	log := logger.GetFuncLogger(t.Log, "handleSelectTaskResult")
+	if !selected {
+		return
+	}
+	selectedTask := t.taskSelector.Selected()
+	if selectedTask == nil {
+		log.Error().Msg("selected task is nil; this is unexpected_")
+		return
+	}
+	// TODO: do something with the selected task
 }
 
 func (t *timetrackerWindowData) doReport() {
@@ -473,7 +512,8 @@ func (t *timetrackerWindowData) ShowAndStopRunningTask() {
 // ShowWithManageWindow shows the main window followed by the Manage window
 func (t *timetrackerWindowData) ShowWithManageWindow() {
 	t.Show()
-	t.doManageTasks()
+	// t.doManageTasks()
+	t.doManageTasksV2()
 }
 
 // ShowWithError shows the main window and then shows an error dialog
@@ -496,9 +536,9 @@ func (t *timetrackerWindowData) ShowAndDisplayCreateAndStartDialog() {
 
 // Hide hides the main window and the manage window
 func (t *timetrackerWindowData) Hide() {
-	if t.mngWindow != nil {
-		t.mngWindow.Hide()
-	}
+	// if t.mngWindow != nil {
+	//	t.mngWindow.Hide()
+	// }
 	if t.mngWindowV2 != nil {
 		t.mngWindowV2.Hide()
 	}
