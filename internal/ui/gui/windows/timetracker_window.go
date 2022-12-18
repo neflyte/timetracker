@@ -213,6 +213,17 @@ func (t *timetrackerWindowData) Init() error {
 	// manage window v2
 	t.mngWindowV2 = newManageWindowV2(*t.App)
 	t.mngWindowV2.Hide()
+	t.mngWindowV2.Observable().ForEach(
+		func(item interface{}) {
+			switch item.(type) {
+			case ManageWindowV2TasksChangedEvent:
+				t.Log.Debug().Msg("got mngWindowV2 tasks changed event; refreshing task list")
+				t.TaskList.Refresh()
+			}
+		},
+		utils.ObservableErrorHandler("mngWindowV2", t.Log),
+		utils.ObservableCloseHandler("mngWindowV2", t.Log),
+	)
 	// Also set up the report window and hide it
 	t.rptWindow = newReportWindow(*t.App)
 	t.rptWindow.Hide()
