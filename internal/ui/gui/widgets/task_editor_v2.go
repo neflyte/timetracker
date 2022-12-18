@@ -58,6 +58,22 @@ func (t *TaskEditorV2) initUI() {
 	t.container = container.NewVBox(t.synopsisLabel, t.synopsisEntry, t.descriptionLabel, t.descriptionEntry)
 }
 
+// Reset resets the editor widget to its default state
+func (t *TaskEditorV2) Reset() {
+	log := logger.GetFuncLogger(t.log, "Reset")
+	t.taskID = 0
+	err := t.taskSynopsisBinding.Set("")
+	if err != nil {
+		log.Err(err).
+			Msg("error resetting synopsis binding")
+	}
+	err = t.taskDescriptionBinding.Set("")
+	if err != nil {
+		log.Err(err).
+			Msg("error resetting description binding")
+	}
+}
+
 // Task returns the task currently being edited
 func (t *TaskEditorV2) Task() models.Task {
 	log := logger.GetFuncLogger(t.log, "Task")

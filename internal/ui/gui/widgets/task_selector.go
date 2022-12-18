@@ -142,6 +142,7 @@ func (t *TaskSelector) SetList(tasks models.TaskList) {
 		log.Err(err).
 			Msg("unable to set tasksListBinding")
 	}
+	t.tasksList.UnselectAll()
 	t.tasksList.Refresh()
 	// Reset the selected task
 	t.selectedTask = selectedTaskNone
