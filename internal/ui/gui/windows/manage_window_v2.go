@@ -1,6 +1,7 @@
 package windows
 
 import (
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
@@ -24,15 +25,16 @@ var _ fyne.Window = (*manageWindowV2Impl)(nil)
 
 type manageWindowV2Impl struct {
 	fyne.Window
-	log          zerolog.Logger
-	app          *fyne.App
-	container    *fyne.Container
-	buttonHBox   *fyne.Container
-	createButton *widget.Button
-	editButton   *widget.Button
-	deleteButton *widget.Button
-	taskSelector *widgets.TaskSelector
-	taskEditor   *widgets.TaskEditorV2
+	log                 zerolog.Logger
+	app                 *fyne.App
+	container           *fyne.Container
+	buttonHBox          *fyne.Container
+	createButton        *widget.Button
+	editButton          *widget.Button
+	deleteButton        *widget.Button
+	taskSelector        *widgets.TaskSelector
+	taskEditor          *widgets.TaskEditorV2
+	taskEditorContainer *fyne.Container
 }
 
 func newManageWindowV2(app fyne.App) manageWindowV2 {
@@ -49,10 +51,9 @@ func newManageWindowV2(app fyne.App) manageWindowV2 {
 }
 
 func (m *manageWindowV2Impl) Init() error {
-	log := logger.GetFuncLogger(m.log, "Init")
-	m.createButton = widget.NewButtonWithIcon("New", theme.ContentAddIcon(), func() {})
+	m.createButton = widget.NewButtonWithIcon("New", theme.ContentAddIcon(), m.doCreateTask)
 	m.editButton = widget.NewButtonWithIcon("Edit", theme.DocumentCreateIcon(), m.doEditTask)
-	m.deleteButton = widget.NewButtonWithIcon("Delete", theme.DeleteIcon(), func() {})
+	m.deleteButton = widget.NewButtonWithIcon("Delete", theme.DeleteIcon(), m.doDeleteTask)
 	m.buttonHBox = container.NewBorder(
 		nil,
 		nil,
@@ -67,22 +68,11 @@ func (m *manageWindowV2Impl) Init() error {
 	)
 	m.container = container.NewBorder(m.buttonHBox, nil, nil, nil, m.taskSelector)
 	m.taskEditor = widgets.NewTaskEditorV2()
+	m.taskEditorContainer = container.NewMax(m.taskEditor)
 	m.Window.SetCloseIntercept(m.Hide)
 	m.Window.SetContent(m.container)
-	// get the size of the content with everything visible
-	siz := m.Window.Content().Size()
-	log.Debug().
-		Float32("width", siz.Width).
-		Float32("height", siz.Height).
-		Msg("content size")
-	if siz.Width < minimumWindowWidth {
-		siz.Width = minimumWindowWidth
-	}
-	if siz.Height < minimumWindowHeight {
-		siz.Height = minimumWindowHeight
-	}
 	// resize the window to fit the content
-	m.Window.Resize(siz)
+	resizeToMinimum(m.Window, minimumWindowWidth, minimumWindowHeight)
 	return nil
 }
 
@@ -132,7 +122,7 @@ func (m *manageWindowV2Impl) doEditTask() {
 			"Edit task", // i18n
 			"SAVE",      // i18n
 			"CANCEL",    // i18n
-			container.NewMax(m.taskEditor),
+			m.taskEditorContainer,
 			m.handleEditTaskResult,
 			m.Window,
 		).Show()
@@ -159,4 +149,69 @@ func (m *manageWindowV2Impl) handleEditTaskResult(saved bool) {
 	}
 	// refresh task list
 	go m.refreshTasks()
+}
+
+func (m *manageWindowV2Impl) doCreateTask() {
+	m.taskEditor.Reset()
+	dialog.NewCustomConfirm(
+		"Create new task", // i18n
+		"SAVE",            // i18n
+		"CANCEL",          // i18n
+		m.taskEditorContainer,
+		m.handleCreateTaskResult,
+		m.Window,
+	).Show()
+}
+
+func (m *manageWindowV2Impl) handleCreateTaskResult(created bool) {
+	if !created {
+		return
+	}
+	log := logger.GetFuncLogger(m.log, "handleCreateTaskResult")
+	newTask := m.taskEditor.Task()
+	if newTask == nil {
+		log.Error().
+			Msg("new task was nil; this is unexpected")
+		return
+	}
+	err := newTask.Create()
+	if err != nil {
+		log.Err(err).
+			Msg("error creating new task")
+		return
+	}
+	go m.refreshTasks()
+}
+
+func (m *manageWindowV2Impl) doDeleteTask() {
+	selectedTask := m.taskSelector.Selected()
+	if selectedTask == nil {
+		return
+	}
+	dialog.NewConfirm(
+		"Delete task", // i18n
+		fmt.Sprintf("Are you sure you want to delete this task?\n\n%s", selectedTask), // i18n
+		m.handleDeleteTaskResult,
+		m.Window,
+	).Show()
+}
+
+func (m *manageWindowV2Impl) handleDeleteTaskResult(deleted bool) {
+	if !deleted {
+		return
+	}
+	selectedTask := m.taskSelector.Selected()
+	if selectedTask == nil {
+		return
+	}
+	log := logger.GetFuncLogger(m.log, "handleDeleteTaskResult")
+	err := selectedTask.Delete()
+	if err != nil {
+		log.Err(err).
+			Str("task", selectedTask.String()).
+			Msg("error deleting task")
+	}
+	log.Debug().
+		Msg("deleted task successfully")
+	m.refreshTasks()
 }
