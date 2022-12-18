@@ -4,6 +4,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
@@ -49,9 +50,9 @@ func newManageWindowV2(app fyne.App) manageWindowV2 {
 
 func (m *manageWindowV2Impl) Init() error {
 	log := logger.GetFuncLogger(m.log, "Init")
-	m.createButton = widget.NewButton("New", func() {})
-	m.editButton = widget.NewButton("Edit", m.doEditTask)
-	m.deleteButton = widget.NewButton("Delete", func() {})
+	m.createButton = widget.NewButtonWithIcon("New", theme.ContentAddIcon(), func() {})
+	m.editButton = widget.NewButtonWithIcon("Edit", theme.DocumentCreateIcon(), m.doEditTask)
+	m.deleteButton = widget.NewButtonWithIcon("Delete", theme.DeleteIcon(), func() {})
 	m.buttonHBox = container.NewBorder(
 		nil,
 		nil,
@@ -74,8 +75,12 @@ func (m *manageWindowV2Impl) Init() error {
 		Float32("width", siz.Width).
 		Float32("height", siz.Height).
 		Msg("content size")
-	// HACK: add a bit of a height buffer, so we can try to fit everything in the window nicely
-	siz.Height += float32(windowHeightBuffer)
+	if siz.Width < minimumWindowWidth {
+		siz.Width = minimumWindowWidth
+	}
+	if siz.Height < minimumWindowHeight {
+		siz.Height = minimumWindowHeight
+	}
 	// resize the window to fit the content
 	m.Window.Resize(siz)
 	return nil
@@ -102,7 +107,7 @@ func (m *manageWindowV2Impl) refreshTasks() {
 			Msg("error reading all tasks")
 		return
 	}
-	log.Trace().
+	log.Debug().
 		Int("count", len(tasks)).
 		Msg("read tasks successfully")
 	m.taskSelector.SetList(models.TaskDatas(tasks).AsTaskList())
