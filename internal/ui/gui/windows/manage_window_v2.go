@@ -11,14 +11,22 @@ import (
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
 	"github.com/neflyte/timetracker/internal/utils"
+	"github.com/reactivex/rxgo/v2"
 	"github.com/rs/zerolog"
 )
+
+const (
+	manageWindowV2EventChannelSize = 2
+)
+
+type ManageWindowV2TasksChangedEvent struct{}
 
 type manageWindowV2 interface {
 	windowBase
 	Show()
 	Hide()
 	Close()
+	Observable() rxgo.Observable
 }
 
 var _ fyne.Window = (*manageWindowV2Impl)(nil)
@@ -35,13 +43,15 @@ type manageWindowV2Impl struct {
 	taskSelector        *widgets.TaskSelector
 	taskEditor          *widgets.TaskEditorV2
 	taskEditorContainer *fyne.Container
+	eventChan           chan rxgo.Item
 }
 
 func newManageWindowV2(app fyne.App) manageWindowV2 {
 	mw := &manageWindowV2Impl{
-		app:    &app,
-		log:    logger.GetStructLogger("manageWindowV2Impl"),
-		Window: app.NewWindow("Manage Tasks"),
+		app:       &app,
+		log:       logger.GetStructLogger("manageWindowV2Impl"),
+		eventChan: make(chan rxgo.Item, manageWindowV2EventChannelSize),
+		Window:    app.NewWindow("Manage Tasks"),
 	}
 	err := mw.Init()
 	if err != nil {
@@ -87,6 +97,10 @@ func (m *manageWindowV2Impl) Close() {
 func (m *manageWindowV2Impl) Show() {
 	m.Window.Show()
 	go m.refreshTasks()
+}
+
+func (m *manageWindowV2Impl) Observable() rxgo.Observable {
+	return rxgo.FromEventSource(m.eventChan)
 }
 
 func (m *manageWindowV2Impl) refreshTasks() {
@@ -149,6 +163,8 @@ func (m *manageWindowV2Impl) handleEditTaskResult(saved bool) {
 	}
 	// refresh task list
 	go m.refreshTasks()
+	// send a refresh event
+	m.eventChan <- rxgo.Of(ManageWindowV2TasksChangedEvent{})
 }
 
 func (m *manageWindowV2Impl) doCreateTask() {
@@ -181,6 +197,8 @@ func (m *manageWindowV2Impl) handleCreateTaskResult(created bool) {
 		return
 	}
 	go m.refreshTasks()
+	// send a refresh event
+	m.eventChan <- rxgo.Of(ManageWindowV2TasksChangedEvent{})
 }
 
 func (m *manageWindowV2Impl) doDeleteTask() {
@@ -213,5 +231,7 @@ func (m *manageWindowV2Impl) handleDeleteTaskResult(deleted bool) {
 	}
 	log.Debug().
 		Msg("deleted task successfully")
-	m.refreshTasks()
+	go m.refreshTasks()
+	// send a refresh event
+	m.eventChan <- rxgo.Of(ManageWindowV2TasksChangedEvent{})
 }
