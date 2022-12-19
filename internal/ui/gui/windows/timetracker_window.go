@@ -446,7 +446,7 @@ func (t *timetrackerWindowData) doSelectTask() {
 		"Select a task", // i18n
 		"SELECT",        // i18n
 		"CANCEL",        // i18n
-		t.taskSelector,
+		container.NewMax(t.taskSelector),
 		t.handleSelectTaskResult,
 		t.Window,
 	).Show()
@@ -462,6 +462,9 @@ func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
 		log.Error().Msg("selected task is nil; this is unexpected_")
 		return
 	}
+	log.Debug().
+		Str("task", selectedTask.String()).
+		Msg("got selected task")
 	// TODO: do something with the selected task
 }
 

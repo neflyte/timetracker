@@ -15,6 +15,7 @@ import (
 const (
 	selectedTaskNone            = widget.ListItemID(-1)
 	taskSelectorCommandChanSize = 2
+	taskSelectorMinimumWidth    = float32(250)
 )
 
 // TaskSelectorSelectedEvent contains the task that is sent to the command channel when a selection happens
@@ -62,6 +63,15 @@ func (t *TaskSelector) initUI() {
 	t.tasksList.OnSelected = t.taskWasSelected
 	// t.tasksList.OnUnselected = t.taskWasUnselected
 	t.container = container.NewBorder(t.filterHBox, nil, nil, nil, t.tasksList)
+}
+
+// MinSize overrides the minimum size of this widget. A minimum width is enforced.
+func (t *TaskSelector) MinSize() fyne.Size {
+	minsize := t.BaseWidget.MinSize()
+	if minsize.Width < taskSelectorMinimumWidth {
+		minsize.Width = taskSelectorMinimumWidth
+	}
+	return minsize
 }
 
 // createTaskWidget creates new Task widgets for the tasksList widget
