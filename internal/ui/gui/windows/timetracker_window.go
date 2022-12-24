@@ -30,6 +30,8 @@ const (
 	taskNameTrimLength = 32
 	// windowHeightBuffer is the number of pixels to increase a window height by to try to fit its contents correctly
 	windowHeightBuffer = 50
+	// dialogSizeOffset is the number of pixels to subtract from the parent window's size when setting a dialog's minimum size
+	dialogSizeOffset = 50
 )
 
 var (
@@ -54,26 +56,24 @@ type TimetrackerWindow interface {
 type timetrackerWindowData struct {
 	fyne.Window
 
-	App               *fyne.App
-	Container         *fyne.Container
-	StatusBox         *fyne.Container
-	SubStatusBox      *fyne.Container
-	ButtonBox         *fyne.Container
-	TaskList          *widgets.Tasklist
-	BtnSelectTask     *widget.Button
-	BtnCreateAndStart *widget.Button
-	BtnStartTask      *widget.Button
-	BtnStopTask       *widget.Button
-	// BtnManageTasks              *widget.Button
+	App                         *fyne.App
+	Container                   *fyne.Container
+	StatusBox                   *fyne.Container
+	SubStatusBox                *fyne.Container
+	ButtonBox                   *fyne.Container
+	TaskList                    *widgets.Tasklist
+	BtnSelectTask               *widget.Button
+	BtnCreateAndStart           *widget.Button
+	BtnStartTask                *widget.Button
+	BtnStopTask                 *widget.Button
 	BtnManageTasksV2            *widget.Button
 	BtnReport                   *widget.Button
 	BtnAbout                    *widget.Button
 	createNewTaskAndStartDialog dialogs.CreateAndStartTaskDialog
 	Log                         zerolog.Logger
-	// mngWindow                   manageWindow
-	mngWindowV2  manageWindowV2
-	rptWindow    reportWindow
-	taskSelector *widgets.TaskSelector
+	mngWindowV2                 manageWindowV2
+	rptWindow                   reportWindow
+	taskSelector                *widgets.TaskSelector
 
 	LblStatus      *widget.Label
 	LblStartTime   *widget.Label
@@ -122,7 +122,6 @@ func (t *timetrackerWindowData) Init() error {
 	}))
 	t.BtnSelectTask = widget.NewButtonWithIcon("", theme.MoreHorizontalIcon(), t.doSelectTask)
 	t.taskSelector = widgets.NewTaskSelector()
-	// t.BtnManageTasks = widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), t.doManageTasks)
 	t.BtnManageTasksV2 = widget.NewButtonWithIcon("MANAGE v2", theme.SettingsIcon(), t.doManageTasksV2)
 	t.BtnReport = widget.NewButtonWithIcon("REPORT", theme.FileIcon(), t.doReport)
 	t.BtnAbout = widget.NewButton("ABOUT", t.doAbout)
@@ -197,24 +196,6 @@ func (t *timetrackerWindowData) Init() error {
 	t.setupObservables()
 	// Load the window's data
 	t.primeWindowData()
-	// Set up the Manage Window as well
-	// t.mngWindow = newManageWindow(*t.App)
-	// t.mngWindow.Get().TaskListChangedObservable.ForEach(
-	//	func(item interface{}) {
-	//		changed, ok := item.(bool)
-	//		if ok && changed {
-	//			t.TaskList.Refresh()
-	//		}
-	//	},
-	//	func(err error) {
-	//		t.Log.Err(err).Msg("error from tasklist changed observable")
-	//	},
-	//	func() {
-	//		t.Log.Trace().Msg("tasklist changed observable is finished")
-	//	},
-	//)
-	// Hide the Manage Window by default
-	// t.mngWindow.Hide()
 	// manage window v2
 	t.mngWindowV2 = newManageWindowV2(*t.App)
 	t.mngWindowV2.Hide()
@@ -423,10 +404,6 @@ func (t *timetrackerWindowData) doStopTask() {
 	appstate.SetRunningTimesheet(nil)
 }
 
-// func (t *timetrackerWindowData) doManageTasks() {
-//	t.mngWindow.Show()
-// }
-
 func (t *timetrackerWindowData) doManageTasksV2() {
 	t.mngWindowV2.Show()
 }
@@ -442,14 +419,26 @@ func (t *timetrackerWindowData) doSelectTask() {
 	}
 	allTasks := models.TaskDatas(allTaskDatas).AsTaskList()
 	t.taskSelector.SetList(allTasks)
-	dialog.NewCustomConfirm(
+	selectTaskDialog := dialog.NewCustomConfirm(
 		"Select a task", // i18n
 		"SELECT",        // i18n
 		"CANCEL",        // i18n
 		container.NewMax(t.taskSelector),
 		t.handleSelectTaskResult,
 		t.Window,
-	).Show()
+	)
+	// Resize the dialog so it is wider than normal
+	dsize := selectTaskDialog.MinSize()
+	winsize := t.Window.Canvas().Size()
+	if dsize.Width < winsize.Width-dialogSizeOffset {
+		dsize.Width = winsize.Width - dialogSizeOffset
+	}
+	if dsize.Height < winsize.Height-dialogSizeOffset {
+		dsize.Height = winsize.Height - dialogSizeOffset
+	}
+	selectTaskDialog.Resize(dsize)
+	// Show the dialog
+	selectTaskDialog.Show()
 }
 
 func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
@@ -515,7 +504,6 @@ func (t *timetrackerWindowData) ShowAndStopRunningTask() {
 // ShowWithManageWindow shows the main window followed by the Manage window
 func (t *timetrackerWindowData) ShowWithManageWindow() {
 	t.Show()
-	// t.doManageTasks()
 	t.doManageTasksV2()
 }
 
@@ -539,9 +527,6 @@ func (t *timetrackerWindowData) ShowAndDisplayCreateAndStartDialog() {
 
 // Hide hides the main window and the manage window
 func (t *timetrackerWindowData) Hide() {
-	// if t.mngWindow != nil {
-	//	t.mngWindow.Hide()
-	// }
 	if t.mngWindowV2 != nil {
 		t.mngWindowV2.Hide()
 	}
