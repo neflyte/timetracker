@@ -51,7 +51,8 @@ func Execute() {
 	}
 	err := rootCmd.Execute()
 	if err != nil {
-		log.Err(err).Msg("error executing root command")
+		log.Err(err).
+			Msg("error executing root command")
 		os.Exit(1)
 	}
 }
@@ -62,31 +63,43 @@ func initDatabase() {
 	if configFile == "" {
 		userConfigDir, err := os.UserConfigDir()
 		if err != nil {
-			log.Printf("error getting user config dir: %s\n", err)
+			log.Err(err).
+				Msg("error getting user config dir")
 			userConfigDir = "."
 		} else {
 			userConfigDir = path.Join(userConfigDir, "timetracker")
 			// Make sure this directory exists...
 			mkdirErr := os.MkdirAll(userConfigDir, configDirectoryMode)
 			if mkdirErr != nil {
-				log.Fatal().Msgf("error creating configuration directory: %s", mkdirErr.Error())
+				log.Fatal().
+					Err(mkdirErr).
+					Msg("error creating configuration directory")
+				return
 			}
 		}
 		configFile = path.Join(userConfigDir, defaultDatabaseFileName)
 	}
-	log.Printf("configFile=%s\n", configFile)
+	log.Debug().
+		Str("configFile", configFile).
+		Msg("resolved config file")
 	db, err := database.Open(configFile)
 	if err != nil {
-		log.Fatal().Msgf("error opening database at %s: %s\n", configFile, err)
+		log.Fatal().
+			Err(err).
+			Str("database", configFile).
+			Msg("error opening database")
 	}
-	log.Printf("database opened")
+	log.Debug().Msg("database opened")
 	database.Set(db)
 	err = db.AutoMigrate(new(models.TaskData), new(models.TimesheetData))
 	if err != nil {
 		cleanUp(nil, nil)
-		log.Fatal().Msgf("error auto-migrating database schema: %s\n", err)
+		log.Fatal().
+			Err(err).
+			Msg("error auto-migrating database schema")
+		return
 	}
-	log.Printf("schema migrated (if necessary)")
+	log.Debug().Msg("schema migrated (if necessary)")
 }
 
 func initLogger() {

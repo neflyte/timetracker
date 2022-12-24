@@ -59,8 +59,10 @@ func (td *TaskData) Clone() Task {
 	return clone
 }
 
+// TaskDatas is a helper type for a slice of TaskData structs
 type TaskDatas []TaskData
 
+// AsTaskList returns the slice of TaskData structs as a slice of Task interfaces
 func (td TaskDatas) AsTaskList() TaskList {
 	taskList := make(TaskList, len(td))
 	for idx := range td {
@@ -95,7 +97,7 @@ func (td *TaskData) Data() *TaskData {
 
 // String implements fmt.Stringer
 func (td *TaskData) String() string {
-	return fmt.Sprintf("[%d] %s: %s", td.ID, td.Synopsis, td.Description)
+	return fmt.Sprintf("%s (#%d)", td.Synopsis, td.ID)
 }
 
 // Create creates a new task
