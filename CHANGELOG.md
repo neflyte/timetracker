@@ -6,10 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.3] - TBD
 ### Added
+- New task widget
+- New task selector widget
+- New task editor widget
+- New task management window
 
 ### Changed
+- Simplified main window UI
 
 ### Removed
+- Task selector pick list
 
 ## [0.3.2] - 2022-12-03
 ### Added
