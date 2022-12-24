@@ -87,7 +87,7 @@ func (t *Task) SetTask(taskData models.Task) {
 	t.taskID = 0
 	t.task = taskData
 	if taskData == nil {
-		log.Debug().
+		log.Trace().
 			Msg("taskData is nil")
 		return
 	}
