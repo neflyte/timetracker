@@ -45,18 +45,24 @@ func preDoGUI(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("preDoGUI")
 	userConfigDir, err := ensureUserHomeDirectory()
 	if err != nil {
-		log.Err(err).Msgf("error ensuring user home directory exists")
+		log.Err(err).
+			Msg("error ensuring user home directory exists")
 		return err
 	}
 	guiCmdLockfilePath = path.Join(userConfigDir, guiPidfile)
-	log.Trace().Msgf("guiCmdLockfilePath=%s", guiCmdLockfilePath)
+	log.Trace().
+		Msgf("guiCmdLockfilePath=%s", guiCmdLockfilePath)
 	pidExists, err := utils.CheckPidfile(guiCmdLockfilePath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) && !errors.Is(err, utils.ErrStalePidfile) {
-		log.Err(err).Msgf("error checking pidfile %s", guiCmdLockfilePath)
+		log.Err(err).
+			Str("pidfile", guiCmdLockfilePath).
+			Msg("error checking pidfile %s")
 	}
 	log.Trace().Msgf("pidExists=%t", pidExists)
 	if pidExists {
-		log.Error().Msgf("pidfile %s exists and its process is running; exiting", guiCmdLockfilePath)
+		log.Error().
+			Str("pidfile", guiCmdLockfilePath).
+			Msgf("pidfile exists and its process is running; exiting")
 		return errors.New("another process is already running")
 	}
 	if errors.Is(err, utils.ErrStalePidfile) {
@@ -64,15 +70,21 @@ func preDoGUI(_ *cobra.Command, _ []string) error {
 	}
 	guiCmdLockfile, err = lockfile.New(guiCmdLockfilePath)
 	if err != nil {
-		log.Err(err).Msgf("error creating pidfile; pidPath=%s", guiCmdLockfilePath)
+		log.Err(err).
+			Str("pidfile", guiCmdLockfilePath).
+			Msg("error creating pidfile")
 		return err
 	}
 	err = guiCmdLockfile.TryLock()
 	if err != nil {
-		log.Err(err).Msgf("error locking pidfile; pidPath=%s", guiCmdLockfilePath)
+		log.Err(err).
+			Str("pidfile", guiCmdLockfilePath).
+			Msg("error locking pidfile")
 		return err
 	}
-	log.Debug().Msgf("locked pidfile %s", guiCmdLockfilePath)
+	log.Debug().
+		Str("pidfile", guiCmdLockfilePath).
+		Msg("locked pidfile")
 	// Write the AppVersion to the appstate Map so gui components can access it without a direct binding
 	appstate.Map().Store(appstate.KeyAppVersion, AppVersion)
 	return nil
@@ -82,15 +94,23 @@ func postDoGUI(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("postDoGUI")
 	err := guiCmdLockfile.Unlock()
 	if err != nil {
-		log.Err(err).Msgf("error releasing pidfile %s", guiCmdLockfilePath)
-		log.Warn().Msgf("attempting to force-remove pidfile %s", guiCmdLockfilePath)
+		log.Err(err).
+			Str("pidfile", guiCmdLockfilePath).
+			Msg("error releasing pidfile")
+		log.Warn().
+			Str("pidfile", guiCmdLockfilePath).
+			Msg("attempting to force-remove pidfile")
 		fileErr := os.Remove(guiCmdLockfilePath)
 		if fileErr != nil {
-			log.Err(fileErr).Msgf("error force-removing pidfile %s", guiCmdLockfilePath)
+			log.Err(fileErr).
+				Str("pidfile", guiCmdLockfilePath).
+				Msg("error force-removing pidfile")
 		}
 		return err
 	}
-	log.Debug().Msgf("unlocked pidfile %s", guiCmdLockfilePath)
+	log.Debug().
+		Str("pidfile", guiCmdLockfilePath).
+		Msg("unlocked pidfile")
 	return nil
 }
 
@@ -126,7 +146,9 @@ func ensureUserHomeDirectory() (string, error) {
 	if userConfigDir != "." {
 		err = os.MkdirAll(userConfigDir, configDirectoryMode)
 		if err != nil {
-			log.Err(err).Msgf("error creating directories for pidfile; userConfigDir=%s", userConfigDir)
+			log.Err(err).
+				Str("userConfigDir", userConfigDir).
+				Msg("error creating directories for pidfile")
 			return "", err
 		}
 	}
@@ -135,9 +157,13 @@ func ensureUserHomeDirectory() (string, error) {
 
 func removeStalePidfile(pidfile string) {
 	log := logger.GetLogger("removeStalePidfile")
-	log.Debug().Msgf("attempting to remove stale pidfile %s", pidfile)
+	log.Debug().
+		Str("pidfile", pidfile).
+		Msg("attempting to remove stale pidfile")
 	err := os.Remove(pidfile)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		log.Err(err).Msgf("error removing existing pidfile %s", pidfile)
+		log.Err(err).
+			Str("pidfile", pidfile).
+			Msg("error removing existing pidfile")
 	}
 }

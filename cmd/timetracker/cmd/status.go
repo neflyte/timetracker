@@ -36,7 +36,8 @@ func status(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("status")
 	timesheets, err := models.NewTimesheet().SearchOpen()
 	if err != nil {
-		log.Err(err).Msg("error getting running timesheet")
+		log.Err(err).
+			Msg("error getting running timesheet")
 		fmt.Print(color.RedString(constants.UnicodeHeavyX))
 		if verbose {
 			fmt.Print("Error:", color.WhiteString(err.Error()))
