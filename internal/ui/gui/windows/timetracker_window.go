@@ -27,14 +27,11 @@ const (
 	taskNameTrimLength = 32
 	// windowHeightBuffer is the number of pixels to increase a window height by to try to fit its contents correctly
 	windowHeightBuffer = 50
-	// dialogSizeOffset is the number of pixels to subtract from the parent window's size when setting a dialog's minimum size
-	dialogSizeOffset = 50
 )
 
 // TimetrackerWindow is the main timetracker GUI window interface
 type TimetrackerWindow interface {
 	windowBase
-
 	ShowAbout()
 	ShowWithError(err error)
 	ShowWithManageWindow()
@@ -91,7 +88,9 @@ func NewTimetrackerWindow(app fyne.App) TimetrackerWindow {
 	}
 	err := ttw.Init()
 	if err != nil {
-		ttw.log.Err(err).Msg("error initializing window")
+		ttw.log.
+			Err(err).
+			Msg("error initializing window")
 	}
 	return ttw
 }
@@ -163,7 +162,11 @@ func (t *timetrackerWindowData) Init() error {
 	t.subStatusBox.Hide()
 	t.Window.SetCloseIntercept(t.Close)
 	// Set up our observables
-	t.setupObservables()
+	appstate.Observables()[appstate.KeyRunningTimesheet].ForEach(
+		t.runningTimesheetChanged,
+		utils.ObservableErrorHandler(appstate.KeyRunningTimesheet, t.log),
+		utils.ObservableCloseHandler(appstate.KeyRunningTimesheet, t.log),
+	)
 	// Load the window's data
 	t.primeWindowData()
 	// Also set up the manage window and hide it
@@ -178,7 +181,8 @@ func (t *timetrackerWindowData) Init() error {
 // primeWindowData primes the window with some data
 func (t *timetrackerWindowData) primeWindowData() {
 	log := logger.GetFuncLogger(t.log, "primeWindowData")
-	log.Trace().Msg("started")
+	log.Trace().
+		Msg("started")
 	err := t.selectedTaskBinding.Set("select a task -->")
 	if err != nil {
 		log.Err(err).
@@ -209,20 +213,8 @@ func (t *timetrackerWindowData) primeWindowData() {
 		t.btnStopTask.Disable()
 		t.selectedTask = nil
 	}
-	log.Trace().Msg("done")
-}
-
-func (t *timetrackerWindowData) setupObservables() {
-	log := logger.GetFuncLogger(t.log, "setupObservables")
-	appstate.Observables()[appstate.KeyRunningTimesheet].ForEach(
-		t.runningTimesheetChanged,
-		func(err error) {
-			log.Err(err).Msg("error getting running timesheet from observable")
-		},
-		func() {
-			log.Trace().Msg("running timesheet observable is done")
-		},
-	)
+	log.Trace().
+		Msg("done")
 }
 
 func (t *timetrackerWindowData) selectedTaskChanged() {
@@ -278,22 +270,28 @@ func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
 		t.btnStartTask.Disable()
 		t.selectedTask = models.NewTaskWithData(runningTS.Task)
 		runningTaskString := fmt.Sprintf(
-			"Running task: %s",
+			"Running task: %s", // i18n
 			utils.TrimWithEllipsis(runningTS.Task.String(), taskNameTrimLength),
 		)
 		err := t.bindRunningTask.Set(runningTaskString)
 		if err != nil {
-			log.Err(err).Msgf("error setting running task to %s", runningTS.Task.String())
+			log.Err(err).
+				Str("newTask", runningTS.Task.String()).
+				Msg("error setting running task")
 		}
 		startTimeDisplay := runningTS.StartTime.Format(time.RFC1123Z)
 		err = t.bindStartTime.Set(startTimeDisplay)
 		if err != nil {
-			log.Err(err).Msgf("error setting start time to %s", startTimeDisplay)
+			log.Err(err).
+				Str("startTime", startTimeDisplay).
+				Msg("error setting start time")
 		}
 		elapsedTimeDisplay := time.Since(runningTS.StartTime).Truncate(time.Second).String()
 		err = t.bindElapsedTime.Set(elapsedTimeDisplay)
 		if err != nil {
-			log.Err(err).Msgf("error setting elapsed time to %s", elapsedTimeDisplay)
+			log.Err(err).
+				Str("elapsedTime", elapsedTimeDisplay).
+				Msg("error setting elapsed time")
 		}
 		// Start the elapsed time counter
 		go t.elapsedTimeLoop(runningTS.StartTime, t.elapsedTimeQuitChan)
@@ -308,7 +306,8 @@ func (t *timetrackerWindowData) doCreateAndStartTask() {
 
 func (t *timetrackerWindowData) doStartTask() {
 	log := logger.GetFuncLogger(t.log, "doStartTask")
-	log.Trace().Msg("started")
+	log.Trace().
+		Msg("started")
 	if t.selectedTask == nil {
 		log.Error().
 			Msg("no task was selected")
@@ -332,7 +331,8 @@ func (t *timetrackerWindowData) doStartTask() {
 	timesheet.Data().StartTime = time.Now()
 	err := timesheet.Create()
 	if err != nil {
-		log.Err(err).Msg("error creating new timesheet")
+		log.Err(err).
+			Msg("error creating new timesheet")
 		dialog.NewError(err, t.Window).Show()
 		return
 	}
@@ -343,16 +343,19 @@ func (t *timetrackerWindowData) doStartTask() {
 	t.btnStopTask.Enable()
 	t.btnStartTask.Disable()
 	appstate.SetRunningTimesheet(timesheet.Data())
-	log.Trace().Msg("done")
+	log.Trace().
+		Msg("done")
 }
 
 func (t *timetrackerWindowData) doStopTask() {
 	log := logger.GetFuncLogger(t.log, "doStopTask")
 	// Stop the running task
-	log.Debug().Msg("stopping running task")
+	log.Debug().
+		Msg("stopping running task")
 	stoppedTimesheet, err := models.NewTask().StopRunningTask()
 	if err != nil && !errors.Is(err, tterrors.ErrNoRunningTask{}) {
-		log.Err(err).Msg(tterrors.StopRunningTaskError)
+		log.Err(err).
+			Msg(tterrors.StopRunningTaskError)
 		dialog.NewError(err, t.Window).Show()
 	}
 	// Show notification that task has stopped
@@ -382,20 +385,12 @@ func (t *timetrackerWindowData) doSelectTask() {
 		"Select a task", // i18n
 		"SELECT",        // i18n
 		"CANCEL",        // i18n
-		container.NewMax(t.taskSelector),
+		t.taskSelector,
 		t.handleSelectTaskResult,
 		t.Window,
 	)
 	// Resize the dialog so it is wider than normal
-	dsize := selectTaskDialog.MinSize()
-	winsize := t.Window.Canvas().Size()
-	if dsize.Width < winsize.Width-dialogSizeOffset {
-		dsize.Width = winsize.Width - dialogSizeOffset
-	}
-	if dsize.Height < winsize.Height-dialogSizeOffset {
-		dsize.Height = winsize.Height - dialogSizeOffset
-	}
-	selectTaskDialog.Resize(dsize)
+	dialogs.ResizeDialogToWindowWithPadding(selectTaskDialog, t.Window, dialogSizeOffset)
 	// Show the dialog
 	selectTaskDialog.Show()
 }
@@ -407,7 +402,8 @@ func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
 	}
 	selectedTask := t.taskSelector.Selected()
 	if selectedTask == nil {
-		log.Error().Msg("selected task is nil; this is unexpected_")
+		log.Error().
+			Msg("selected task is nil; this is unexpected")
 		return
 	}
 	err := t.selectedTaskBinding.Set(selectedTask.String())
@@ -436,7 +432,7 @@ func (t *timetrackerWindowData) doAbout() {
 		}
 	}
 	dialog.NewInformation(
-		"About Timetracker",
+		"About Timetracker", // i18n
 		fmt.Sprintf("Timetracker %s\n\nhttps://github.com/neflyte/timetracker", appVersion),
 		t.Window,
 	).Show()
@@ -451,7 +447,7 @@ func (t *timetrackerWindowData) Show() {
 func (t *timetrackerWindowData) ShowAndStopRunningTask() {
 	openTimesheets, searchErr := models.NewTimesheet().SearchOpen()
 	if searchErr != nil {
-		t.ShowWithError(searchErr)
+		t.ShowWithError(searchErr) // i18n
 		return
 	}
 	if len(openTimesheets) == 0 {
@@ -513,7 +509,8 @@ func (t *timetrackerWindowData) maybeStopRunningTask(stopTask bool) {
 	}
 	stoppedTimesheet, err := models.NewTask().StopRunningTask()
 	if err != nil {
-		log.Err(err).Msg("error stopping the running task")
+		log.Err(err).
+			Msg("error stopping the running task")
 		dialog.NewError(err, t.Window).Show()
 	}
 	// Show notification that the task has stopped
@@ -535,26 +532,34 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 	}
 	taskData := t.createNewTaskAndStartDialog.GetTask()
 	if taskData == nil {
-		log.Error().Msg("taskData was nil; this is unexpected")
+		log.Error().
+			Msg("taskData was nil; this is unexpected")
 		return
 	}
 	// Create the new task
 	err := taskData.Create()
 	if err != nil {
-		log.Err(err).Msgf("error creating new task %s", taskData.String())
+		log.Err(err).
+			Str("newTask", taskData.String()).
+			Msgf("error creating new task")
 		return
 	}
-	log.Debug().Msgf("created new task %s", taskData.String())
+	log.Debug().
+		Str("newTask", taskData.String()).
+		Msgf("created new task")
 	// reset the create dialog now that the task has been created
 	t.createNewTaskAndStartDialog.Reset()
 	// Stop the running task
 	stoppedTimesheet, err := taskData.StopRunningTask()
 	if err != nil && !errors.Is(err, tterrors.ErrNoRunningTask{}) {
-		log.Err(err).Msg("error stopping current task")
+		log.Err(err).
+			Msg("error stopping current task")
 		return
 	}
 	if stoppedTimesheet != nil {
-		log.Debug().Msgf("stopped running task %s", stoppedTimesheet.String())
+		log.Debug().
+			Str("task", stoppedTimesheet.String()).
+			Msg("stopped running task")
 		// Show notification that task has stopped
 		notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)                     // i18n
 		notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp)) // i18n
@@ -566,14 +571,18 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 	timesheet.Data().StartTime = time.Now()
 	err = timesheet.Create()
 	if err != nil {
-		log.Err(err).Msg("error stopping current task")
+		log.Err(err).
+			Msg("error stopping current task")
 		return
 	}
 	// Show notification that task has started
 	notificationTitle := fmt.Sprintf("Task %s started", taskData.Synopsis)                              // i18n
 	notificationContents := fmt.Sprintf("Started at %s", timesheet.Data().StartTime.Format(time.Stamp)) // i18n
 	(*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
-	log.Debug().Msgf("task %s started at %s", taskData.String(), timesheet.Data().StartTime.String())
+	log.Debug().
+		Str("task", taskData.String()).
+		Str("startTime", timesheet.Data().StartTime.String()).
+		Msg("task started")
 	appstate.SetRunningTimesheet(timesheet.Data())
 }
 
@@ -593,10 +602,12 @@ func (t *timetrackerWindowData) elapsedTimeLoop(startTime time.Time, quitChan ch
 	defer func() {
 		err := t.bindElapsedTime.Set("")
 		if err != nil {
-			log.Err(err).Msg("error setting elapsed time display to empty")
+			log.Err(err).
+				Msg("error setting elapsed time display to empty")
 		}
 	}()
-	log.Debug().Msg("loop starting")
+	log.Debug().
+		Msg("loop starting")
 	defer log.Debug().Msg("loop ending")
 	for {
 		select {
@@ -604,7 +615,9 @@ func (t *timetrackerWindowData) elapsedTimeLoop(startTime time.Time, quitChan ch
 			elapsedTime := time.Since(startTime).Truncate(time.Second).String()
 			err := t.bindElapsedTime.Set(elapsedTime)
 			if err != nil {
-				log.Err(err).Msgf("error setting elapsed time binding to %s: %s", elapsedTime, err.Error())
+				log.Err(err).
+					Str("elapsedTime", elapsedTime).
+					Msg("error setting elapsed time binding")
 			}
 		case <-quitChan:
 			return
