@@ -2,6 +2,7 @@ package windows
 
 import (
 	"fmt"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
@@ -9,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/neflyte/timetracker/internal/ui/gui/dialogs"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
 	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/reactivex/rxgo/v2"
@@ -33,29 +35,28 @@ var _ fyne.Window = (*manageWindowV2Impl)(nil)
 
 type manageWindowV2Impl struct {
 	fyne.Window
-	log                 zerolog.Logger
-	app                 *fyne.App
-	container           *fyne.Container
-	buttonHBox          *fyne.Container
-	createButton        *widget.Button
-	editButton          *widget.Button
-	deleteButton        *widget.Button
-	taskSelector        *widgets.TaskSelector
-	taskEditor          *widgets.TaskEditorV2
-	taskEditorContainer *fyne.Container
-	eventChan           chan rxgo.Item
+	log          zerolog.Logger
+	container    *fyne.Container
+	buttonHBox   *fyne.Container
+	createButton *widget.Button
+	editButton   *widget.Button
+	deleteButton *widget.Button
+	taskSelector *widgets.TaskSelector
+	taskEditor   *widgets.TaskEditorV2
+	eventChan    chan rxgo.Item
 }
 
 func newManageWindowV2(app fyne.App) manageWindowV2 {
 	mw := &manageWindowV2Impl{
-		app:       &app,
 		log:       logger.GetStructLogger("manageWindowV2Impl"),
 		eventChan: make(chan rxgo.Item, manageWindowV2EventChannelSize),
-		Window:    app.NewWindow("Manage Tasks"),
+		Window:    app.NewWindow("Manage Tasks"), // i18n
 	}
 	err := mw.Init()
 	if err != nil {
-		mw.log.Err(err).Msg("error initializing window")
+		mw.log.
+			Err(err).
+			Msg("error initializing window")
 	}
 	return mw
 }
@@ -78,7 +79,6 @@ func (m *manageWindowV2Impl) Init() error {
 	)
 	m.container = container.NewBorder(m.buttonHBox, nil, nil, nil, m.taskSelector)
 	m.taskEditor = widgets.NewTaskEditorV2()
-	m.taskEditorContainer = container.NewMax(m.taskEditor)
 	m.Window.SetCloseIntercept(m.Hide)
 	m.Window.SetContent(m.container)
 	// resize the window to fit the content
@@ -119,8 +119,7 @@ func (m *manageWindowV2Impl) refreshTasks() {
 
 func (m *manageWindowV2Impl) handleTaskSelectorEvent(item interface{}) {
 	log := logger.GetFuncLogger(m.log, "handleTaskSelectorEvent")
-	switch event := item.(type) {
-	case widgets.TaskSelectorSelectedEvent:
+	if event, ok := item.(widgets.TaskSelectorSelectedEvent); ok {
 		if event.SelectedTask != nil {
 			log.Debug().
 				Str("selected", event.SelectedTask.String()).
@@ -132,14 +131,16 @@ func (m *manageWindowV2Impl) handleTaskSelectorEvent(item interface{}) {
 func (m *manageWindowV2Impl) doEditTask() {
 	if m.taskSelector.HasSelected() {
 		m.taskEditor.SetTask(m.taskSelector.Selected())
-		dialog.NewCustomConfirm(
+		editDialog := dialog.NewCustomConfirm(
 			"Edit task", // i18n
 			"SAVE",      // i18n
 			"CANCEL",    // i18n
-			m.taskEditorContainer,
+			m.taskEditor,
 			m.handleEditTaskResult,
 			m.Window,
-		).Show()
+		)
+		dialogs.ResizeDialogToWindowWithPadding(editDialog, m.Window, dialogSizeOffset)
+		editDialog.Show()
 	}
 }
 
@@ -169,14 +170,16 @@ func (m *manageWindowV2Impl) handleEditTaskResult(saved bool) {
 
 func (m *manageWindowV2Impl) doCreateTask() {
 	m.taskEditor.Reset()
-	dialog.NewCustomConfirm(
+	createDialog := dialog.NewCustomConfirm(
 		"Create new task", // i18n
 		"SAVE",            // i18n
 		"CANCEL",          // i18n
-		m.taskEditorContainer,
+		m.taskEditor,
 		m.handleCreateTaskResult,
 		m.Window,
-	).Show()
+	)
+	dialogs.ResizeDialogToWindowWithPadding(createDialog, m.Window, dialogSizeOffset)
+	createDialog.Show()
 }
 
 func (m *manageWindowV2Impl) handleCreateTaskResult(created bool) {

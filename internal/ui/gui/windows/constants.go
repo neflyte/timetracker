@@ -11,6 +11,8 @@ const (
 	// prefKeyCloseWindow = "close-window"
 	// prefKeyCloseWindowStopTask is the preferences key for the flag which causes the main window to close after creating a new task
 	prefKeyCloseWindowStopTask = "close-window:stop-task"
+	// dialogSizeOffset is the number of pixels to subtract from the parent window's size when setting a dialog's minimum size
+	dialogSizeOffset = 50
 )
 
 var (
