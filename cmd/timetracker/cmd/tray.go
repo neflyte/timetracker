@@ -33,18 +33,23 @@ func preDoTray(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("preDoTray")
 	userConfigDir, err := ensureUserHomeDirectory()
 	if err != nil {
-		log.Err(err).Msgf("error ensuring user home directory exists")
+		log.Err(err).
+			Msg("error ensuring user home directory exists")
 		return err
 	}
 	trayCmdLockfilePath = path.Join(userConfigDir, trayPidfile)
 	log.Trace().Msgf("trayCmdLockfilePath=%s", trayCmdLockfilePath)
 	pidExists, err := utils.CheckPidfile(trayCmdLockfilePath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) && !errors.Is(err, utils.ErrStalePidfile) {
-		log.Err(err).Msgf("error checking pidfile %s", trayCmdLockfilePath)
+		log.Err(err).
+			Str("pidfile", trayCmdLockfilePath).
+			Msg("error checking pidfile")
 	}
 	log.Trace().Msgf("pidExists=%t", pidExists)
 	if pidExists {
-		log.Error().Msgf("pidfile %s exists and its process is running; exiting", trayCmdLockfilePath)
+		log.Error().
+			Str("pidfile", trayCmdLockfilePath).
+			Msg("pidfile exists and its process is running; exiting")
 		return errors.New("another process is already running")
 	}
 	if errors.Is(err, utils.ErrStalePidfile) {
@@ -52,15 +57,21 @@ func preDoTray(_ *cobra.Command, _ []string) error {
 	}
 	trayCmdLockFile, err = lockfile.New(trayCmdLockfilePath)
 	if err != nil {
-		log.Err(err).Msgf("error creating pidfile; trayCmdLockfilePath=%s", trayCmdLockfilePath)
+		log.Err(err).
+			Str("pidfile", trayCmdLockfilePath).
+			Msg("error creating pidfile")
 		return err
 	}
 	err = trayCmdLockFile.TryLock()
 	if err != nil {
-		log.Err(err).Msgf("error locking pidfile; trayCmdLockfilePath=%s", trayCmdLockfilePath)
+		log.Err(err).
+			Str("pidfile", trayCmdLockfilePath).
+			Msg("error locking pidfile")
 		return err
 	}
-	log.Debug().Msgf("locked pidfile %s", trayCmdLockfilePath)
+	log.Debug().
+		Str("pidfile", trayCmdLockfilePath).
+		Msg("locked pidfile")
 	return nil
 }
 
@@ -68,21 +79,37 @@ func postDoTray(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("postDoTray")
 	err := trayCmdLockFile.Unlock()
 	if err != nil {
-		log.Err(err).Msgf("error releasing pidfile %s", trayCmdLockfilePath)
-		log.Warn().Msgf("attempting to force-remove pidfile %s", trayCmdLockfilePath)
+		log.Err(err).
+			Str("pidfile", trayCmdLockfilePath).
+			Msg("error releasing pidfile")
+		log.Warn().
+			Str("pidfile", trayCmdLockfilePath).
+			Msg("attempting to force-remove pidfile")
 		fileErr := os.Remove(trayCmdLockfilePath)
 		if fileErr != nil {
-			log.Err(fileErr).Msgf("error force-removing pidfile %s", trayCmdLockfilePath)
+			log.Err(fileErr).
+				Str("pidfile", trayCmdLockfilePath).
+				Msg("error force-removing pidfile")
 		}
 		return err
 	}
-	log.Debug().Msgf("unlocked pidfile %s", trayCmdLockfilePath)
+	log.Debug().
+		Str("pidfile", trayCmdLockfilePath).
+		Msg("unlocked pidfile")
 	return nil
 }
 
 func doTray(_ *cobra.Command, _ []string) error {
+	log := logger.GetLogger("doTray")
 	// Write the AppVersion to the appstate Map so gui components can access it without a direct binding
 	appstate.Map().Store(appstate.KeyAppVersion, AppVersion)
-	tray.Run()
+	// Start the tray
+	tray.Run(func() {
+		err := postDoTray(nil, nil)
+		if err != nil {
+			log.Err(err).
+				Msg("error running postDoTray")
+		}
+	})
 	return nil
 }
