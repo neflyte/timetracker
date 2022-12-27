@@ -55,7 +55,11 @@ func (t *TaskEditorV2) initUI() {
 	t.descriptionEntry.Validator = nil
 	t.descriptionEntry.MultiLine = true
 	t.descriptionEntry.Wrapping = fyne.TextWrapWord
-	t.container = container.NewVBox(t.synopsisLabel, t.synopsisEntry, t.descriptionLabel, t.descriptionEntry)
+	t.container = container.NewVBox(
+		container.NewBorder(nil, nil, t.synopsisLabel, nil, t.synopsisEntry),
+		t.descriptionLabel,
+		t.descriptionEntry,
+	)
 }
 
 // Reset resets the editor widget to its default state
