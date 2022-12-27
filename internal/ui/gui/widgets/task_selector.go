@@ -25,20 +25,28 @@ type TaskSelectorSelectedEvent struct {
 	SelectedTask models.Task
 }
 
+// TaskSelectorErrorEvent contains an error that occurred during the lifetime of the widget
+type TaskSelectorErrorEvent struct {
+	// Err is the underlying error
+	Err error
+}
+
 var _ fyne.Widget = (*TaskSelector)(nil)
 
 // TaskSelector is the implementation of the task selector widget
 type TaskSelector struct {
 	widget.BaseWidget
-	log              zerolog.Logger
-	container        *fyne.Container
-	filterHBox       *fyne.Container
-	filterEntry      *widget.Entry
-	sortButton       *widget.Button
-	tasksList        *widget.List
-	tasksListBinding binding.UntypedList
-	selectedTask     widget.ListItemID
-	commandChan      chan rxgo.Item
+	log                   zerolog.Logger
+	container             *fyne.Container
+	filterHBox            *fyne.Container
+	filterEntry           *widget.Entry
+	filterBinding         binding.String
+	filterBindingListener binding.DataListener
+	sortButton            *widget.Button
+	tasksList             *widget.List
+	tasksListBinding      binding.UntypedList
+	selectedTask          widget.ListItemID
+	commandChan           chan rxgo.Item
 }
 
 // NewTaskSelector returns a pointer to a new, initialized instance of TaskSelector
@@ -46,23 +54,37 @@ func NewTaskSelector() *TaskSelector {
 	ts := &TaskSelector{
 		log:              logger.GetStructLogger("TaskSelector"),
 		tasksListBinding: binding.NewUntypedList(),
+		filterBinding:    binding.NewString(),
 		selectedTask:     selectedTaskNone,
 		commandChan:      make(chan rxgo.Item, taskSelectorCommandChanSize),
 	}
 	ts.ExtendBaseWidget(ts)
 	ts.initUI()
+	ts.filterBinding.AddListener(ts.filterBindingListener)
 	return ts
 }
 
 // initUI initializes UI widgets
 func (t *TaskSelector) initUI() {
-	t.filterEntry = widget.NewEntry()
-	t.filterEntry.SetPlaceHolder("Filter tasks")            // i18n
-	t.sortButton = widget.NewButton("Sort", t.showSortMenu) // i18n
+	t.filterEntry = widget.NewEntryWithData(t.filterBinding)
+	t.filterEntry.SetPlaceHolder("Filter tasks") // i18n
+	t.filterEntry.Validator = nil
+	t.filterBindingListener = binding.NewDataListener(func() {
+		// Filter text has changed; re-filter the tasks.
+		t.log.Debug().
+			Msg("filterBinding changed; re-filtering tasks")
+		t.FilterTasks()
+	})
+	t.sortButton = widget.NewButton("Sort", t.doShowSortMenu) // i18n
 	t.filterHBox = container.NewBorder(nil, nil, nil, t.sortButton, t.filterEntry)
 	t.tasksList = widget.NewListWithData(t.tasksListBinding, t.createTaskWidget, t.updateTaskWidget)
-	t.tasksList.OnSelected = t.taskWasSelected
+	t.tasksList.OnSelected = t.handleTaskSelected
 	t.container = container.NewBorder(t.filterHBox, nil, nil, nil, t.tasksList)
+}
+
+// Observable returns an rxgo Observable for the widget's command channel
+func (t *TaskSelector) Observable() rxgo.Observable {
+	return rxgo.FromEventSource(t.commandChan)
 }
 
 // MinSize overrides the minimum size of this widget. A minimum width is enforced.
@@ -72,6 +94,58 @@ func (t *TaskSelector) MinSize() fyne.Size {
 		minsize.Width = taskSelectorMinimumWidth
 	}
 	return minsize
+}
+
+// SetList sets the list of Task objects used in the selector
+// Deprecated
+func (t *TaskSelector) SetList(tasks models.TaskList) {
+	log := logger.GetFuncLogger(t.log, "SetList")
+	err := t.tasksListBinding.Set(models.TaskListToSliceIntf(tasks))
+	if err != nil {
+		log.Err(err).
+			Msg("unable to set tasksListBinding")
+	}
+	t.tasksList.UnselectAll()
+	t.tasksList.Refresh()
+	// Reset the selected task
+	t.selectedTask = selectedTaskNone
+}
+
+// HasSelected indicates whether a selection has been made or not
+func (t *TaskSelector) HasSelected() bool {
+	return t.selectedTask != selectedTaskNone
+}
+
+// Selected returns the selected task or nil if there is no selection
+func (t *TaskSelector) Selected() models.Task {
+	if !t.HasSelected() {
+		// nothing selected
+		return nil
+	}
+	taskList := t.list()
+	if len(taskList) == 0 {
+		// empty list
+		return nil
+	}
+	if t.selectedTask >= len(taskList) {
+		// index out of bounds
+		return nil
+	}
+	return taskList[t.selectedTask]
+}
+
+// Reset resets the widget to its default state
+func (t *TaskSelector) Reset() {
+	log := logger.GetFuncLogger(t.log, "Reset")
+	t.tasksList.UnselectAll()
+	t.selectedTask = selectedTaskNone
+	t.filterBinding.RemoveListener(t.filterBindingListener)
+	err := t.filterBinding.Set("")
+	if err != nil {
+		log.Err(err).
+			Msg("error resetting filter binding")
+	}
+	t.filterBinding.AddListener(t.filterBindingListener)
 }
 
 // createTaskWidget creates new Task widgets for the tasksList widget
@@ -118,22 +192,21 @@ func (t *TaskSelector) updateTaskWidget(item binding.DataItem, canvasObject fyne
 	taskWidget.SetTask(task)
 }
 
-func (t *TaskSelector) taskWasSelected(id widget.ListItemID) {
+// handleTaskSelected unselects any existing selection and sets the selection to the provided ID
+func (t *TaskSelector) handleTaskSelected(id widget.ListItemID) {
+	// If there was an existing selection, unselect it and send a selection event
 	if t.selectedTask != selectedTaskNone {
 		t.tasksList.Unselect(t.selectedTask)
 		t.commandChan <- rxgo.Of(TaskSelectorSelectedEvent{nil})
 	}
+	// Set the selected task
 	t.selectedTask = id
+	// Send a selection event with the new task ID
 	t.commandChan <- rxgo.Of(TaskSelectorSelectedEvent{t.Selected()})
 }
 
-// Observable returns an rxgo Observable for the widget's command channel
-func (t *TaskSelector) Observable() rxgo.Observable {
-	return rxgo.FromEventSource(t.commandChan)
-}
-
-// List returns the list of Task objects used in the selector
-func (t *TaskSelector) List() models.TaskList {
+// list returns the slice of Task objects used in the selector
+func (t *TaskSelector) list() models.TaskList {
 	log := logger.GetFuncLogger(t.log, "List")
 	taskListIntf, err := t.tasksListBinding.Get()
 	if err != nil {
@@ -144,46 +217,61 @@ func (t *TaskSelector) List() models.TaskList {
 	return models.TaskListFromSliceIntf(taskListIntf)
 }
 
-// SetList sets the list of Task objects used in the selector
-func (t *TaskSelector) SetList(tasks models.TaskList) {
-	log := logger.GetFuncLogger(t.log, "SetList")
-	err := t.tasksListBinding.Set(models.TaskListToSliceIntf(tasks))
+// doShowSortMenu displays the task sort menu
+func (t *TaskSelector) doShowSortMenu() {
+	log := logger.GetFuncLogger(t.log, "doShowSortMenu")
+	log.Warn().
+		Msg("implementation missing")
+}
+
+// FilterTasks loads and filters tasks from the database
+func (t *TaskSelector) FilterTasks() {
+	var (
+		err               error
+		filteredTaskDatas []models.TaskData
+	)
+	log := logger.GetFuncLogger(t.log, "FilterTasks")
+	// Get the filter text
+	filterText := t.getFilterText()
+	// Search (filter) tasks
+	if filterText == "" {
+		filteredTaskDatas, err = models.NewTask().LoadAll(false)
+	} else {
+		filteredTaskDatas, err = models.NewTask().Search(filterText)
+	}
 	if err != nil {
 		log.Err(err).
-			Msg("unable to set tasksListBinding")
+			Str("filter", filterText).
+			Msg("unable to filter tasks")
+		t.commandChan <- rxgo.Of(TaskSelectorErrorEvent{Err: err})
+		return
 	}
-	t.tasksList.UnselectAll()
-	t.tasksList.Refresh()
-	// Reset the selected task
-	t.selectedTask = selectedTaskNone
+	log.Debug().
+		Str("filter", filterText).
+		Int("count", len(filteredTaskDatas)).
+		Msg("task filter results")
+	// Update list binding with results of search
+	err = t.tasksListBinding.Set(
+		models.TaskListToSliceIntf(
+			models.TaskDatas(filteredTaskDatas).AsTaskList(),
+		),
+	)
+	if err != nil {
+		log.Err(err).
+			Msg("unable to set tasks list binding")
+	}
 }
 
-// HasSelected indicates whether a selection has been made or not
-func (t *TaskSelector) HasSelected() bool {
-	return t.selectedTask != selectedTaskNone
-}
-
-// Selected returns the selected task or nil if there is no selection
-func (t *TaskSelector) Selected() models.Task {
-	if !t.HasSelected() {
-		// nothing selected
-		return nil
+// getFilterText returns the text to be used as a filter for tasks
+func (t *TaskSelector) getFilterText() string {
+	log := logger.GetFuncLogger(t.log, "getFilterText")
+	filterText, err := t.filterBinding.Get()
+	if err != nil {
+		log.Err(err).
+			Msg("unable to get filter text from binding")
+		return ""
 	}
-	taskList := t.List()
-	if len(taskList) == 0 {
-		// empty list
-		return nil
-	}
-	if t.selectedTask >= len(taskList) {
-		// index out of bounds
-		return nil
-	}
-	return taskList[t.selectedTask]
-}
-
-func (t *TaskSelector) showSortMenu() {
-	t.log.Warn().
-		Msg("showSortMenu(): IMPLEMENTATION MISSING")
+	return filterText
 }
 
 // CreateRenderer returns a new WidgetRenderer for this widget.

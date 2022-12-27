@@ -9,7 +9,6 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/logger"
-	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/gui/dialogs"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
 	"github.com/neflyte/timetracker/internal/utils"
@@ -95,26 +94,12 @@ func (m *manageWindowV2Impl) Close() {
 }
 
 func (m *manageWindowV2Impl) Show() {
+	m.taskSelector.Reset()
 	m.Window.Show()
-	go m.refreshTasks()
 }
 
 func (m *manageWindowV2Impl) Observable() rxgo.Observable {
 	return rxgo.FromEventSource(m.eventChan)
-}
-
-func (m *manageWindowV2Impl) refreshTasks() {
-	log := logger.GetFuncLogger(m.log, "refreshTasks")
-	tasks, err := models.NewTask().LoadAll(false)
-	if err != nil {
-		log.Err(err).
-			Msg("error reading all tasks")
-		return
-	}
-	log.Debug().
-		Int("count", len(tasks)).
-		Msg("read tasks successfully")
-	m.taskSelector.SetList(models.TaskDatas(tasks).AsTaskList())
 }
 
 func (m *manageWindowV2Impl) handleTaskSelectorEvent(item interface{}) {
@@ -162,8 +147,8 @@ func (m *manageWindowV2Impl) handleEditTaskResult(saved bool) {
 			Msg("error updating task")
 		return
 	}
-	// refresh task list
-	go m.refreshTasks()
+	// re-filter task list
+	go m.taskSelector.FilterTasks()
 	// send a refresh event
 	m.eventChan <- rxgo.Of(ManageWindowV2TasksChangedEvent{})
 }
@@ -199,7 +184,8 @@ func (m *manageWindowV2Impl) handleCreateTaskResult(created bool) {
 			Msg("error creating new task")
 		return
 	}
-	go m.refreshTasks()
+	// re-filter task list
+	go m.taskSelector.FilterTasks()
 	// send a refresh event
 	m.eventChan <- rxgo.Of(ManageWindowV2TasksChangedEvent{})
 }
@@ -234,7 +220,8 @@ func (m *manageWindowV2Impl) handleDeleteTaskResult(deleted bool) {
 	}
 	log.Debug().
 		Msg("deleted task successfully")
-	go m.refreshTasks()
+	// re-filter task list
+	go m.taskSelector.FilterTasks()
 	// send a refresh event
 	m.eventChan <- rxgo.Of(ManageWindowV2TasksChangedEvent{})
 }
