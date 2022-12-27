@@ -1,6 +1,8 @@
 package widgets
 
 import (
+	"reflect"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
@@ -9,7 +11,6 @@ import (
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/reactivex/rxgo/v2"
 	"github.com/rs/zerolog"
-	"reflect"
 )
 
 const (
@@ -56,12 +57,11 @@ func NewTaskSelector() *TaskSelector {
 // initUI initializes UI widgets
 func (t *TaskSelector) initUI() {
 	t.filterEntry = widget.NewEntry()
-	t.filterEntry.SetPlaceHolder("Filter tasks")
-	t.sortButton = widget.NewButton("Sort", t.showSortMenu)
+	t.filterEntry.SetPlaceHolder("Filter tasks")            // i18n
+	t.sortButton = widget.NewButton("Sort", t.showSortMenu) // i18n
 	t.filterHBox = container.NewBorder(nil, nil, nil, t.sortButton, t.filterEntry)
 	t.tasksList = widget.NewListWithData(t.tasksListBinding, t.createTaskWidget, t.updateTaskWidget)
 	t.tasksList.OnSelected = t.taskWasSelected
-	// t.tasksList.OnUnselected = t.taskWasUnselected
 	t.container = container.NewBorder(t.filterHBox, nil, nil, nil, t.tasksList)
 }
 
