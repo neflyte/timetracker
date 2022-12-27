@@ -371,16 +371,7 @@ func (t *timetrackerWindowData) doManageTasksV2() {
 }
 
 func (t *timetrackerWindowData) doSelectTask() {
-	log := logger.GetFuncLogger(t.log, "doSelectTask")
-	allTaskDatas, err := models.NewTask().LoadAll(false)
-	if err != nil {
-		log.Err(err).
-			Msg("error loading all tasks")
-		dialog.NewError(err, t.Window).Show()
-		return
-	}
-	allTasks := models.TaskDatas(allTaskDatas).AsTaskList()
-	t.taskSelector.SetList(allTasks)
+	t.taskSelector.Reset()
 	selectTaskDialog := dialog.NewCustomConfirm(
 		"Select a task", // i18n
 		"SELECT",        // i18n
