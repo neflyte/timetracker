@@ -2,7 +2,9 @@ package windows
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -12,7 +14,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/internal/constants"
-	"github.com/neflyte/timetracker/internal/errors"
+	tterrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
@@ -39,40 +41,39 @@ type reportWindow interface {
 
 type reportWindowData struct {
 	fyne.Window
-
-	log zerolog.Logger
-
-	Container *fyne.Container
-
+	log              zerolog.Logger
+	container        *fyne.Container
 	headerContainer  *fyne.Container
 	startDateLabel   *widget.Label
 	endDateLabel     *widget.Label
 	startDateInput   *widgets.DateEntry
 	startDateBinding binding.String
+	startDateEntry   *widget.Entry
 	endDateInput     *widgets.DateEntry
 	endDateBinding   binding.String
 	runReportButton  *widget.Button
 	exportButton     *widget.Button
-
-	resultTable  *widget.Table
-	tableColumns int
-	tableRows    int
-
-	taskReport models.TaskReport
+	resultTable      *widget.Table
+	tableColumns     int
+	tableRows        int
+	taskReport       models.TaskReport
 }
 
 func newReportWindow(app fyne.App) reportWindow {
 	log := logger.GetLogger("newReportWindow")
 	newWindow := &reportWindowData{
-		Window:       app.NewWindow("Task Report"),
-		log:          logger.GetStructLogger("reportWindowData"),
-		tableRows:    0,
-		tableColumns: 0,
-		taskReport:   make([]models.TaskReportData, 0),
+		Window:           app.NewWindow("Task Report"), // i18n
+		log:              logger.GetStructLogger("reportWindowData"),
+		startDateBinding: binding.NewString(),
+		endDateBinding:   binding.NewString(),
+		tableRows:        0,
+		tableColumns:     0,
+		taskReport:       make([]models.TaskReportData, 0),
 	}
 	err := newWindow.Init()
 	if err != nil {
-		log.Err(err).Msg("error initializing window")
+		log.Err(err).
+			Msg("error initializing window")
 	}
 	return newWindow
 }
@@ -80,22 +81,30 @@ func newReportWindow(app fyne.App) reportWindow {
 // Init initializes the window
 func (w *reportWindowData) Init() error {
 	// Header container
-	w.startDateBinding = binding.NewString()
-	w.endDateBinding = binding.NewString()
-	w.startDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.startDateBinding)
-	w.startDateInput.Bind(w.startDateBinding)
-	w.endDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.endDateBinding)
+	w.startDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.startDateBinding) // l10n
+	w.startDateInput.Validator = nil
+	// w.startDateInput.Bind(w.startDateBinding)
+	w.startDateEntry = widget.NewEntryWithData(w.startDateBinding)
+	w.startDateEntry.Validator = func(entryText string) error {
+		if entryText == "" {
+			return errors.New("date cannot be empty")
+		}
+		_, err := time.Parse(constants.TimestampDateLayout, entryText)
+		return err
+	}
+	w.endDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.endDateBinding) // l10n
 	w.endDateInput.Bind(w.endDateBinding)
-	w.startDateLabel = widget.NewLabel("Start date:")
-	w.endDateLabel = widget.NewLabel("End date:")
-	w.runReportButton = widget.NewButtonWithIcon("RUN", theme.MediaPlayIcon(), w.doRunReport)
-	w.exportButton = widget.NewButtonWithIcon("EXPORT", theme.DownloadIcon(), w.doExport)
-	w.exportButton.Disable() // Initialize the export button in a disabled state
+	w.startDateLabel = widget.NewLabel("Start date:")                                         // i18n
+	w.endDateLabel = widget.NewLabel("End date:")                                             // i18n
+	w.runReportButton = widget.NewButtonWithIcon("RUN", theme.MediaPlayIcon(), w.doRunReport) // i18n
+	w.exportButton = widget.NewButtonWithIcon("EXPORT", theme.DownloadIcon(), w.doExport)     // i18n
+	w.exportButton.Disable()                                                                  // Initialize the export button in a disabled state
 	w.headerContainer = container.NewBorder(
 		nil, nil,
 		container.NewHBox(
 			w.startDateLabel,
-			w.startDateInput,
+			// w.startDateInput,
+			w.startDateEntry,
 			w.endDateLabel,
 			w.endDateInput,
 		),
@@ -117,7 +126,9 @@ func (w *reportWindowData) Init() error {
 
 			label, isLabel := object.(*widget.Label)
 			if !isLabel {
-				w.log.Error().Msgf("expected *widget.Label but got %T instead", object)
+				w.log.Error().
+					Str("unexpectedType", reflect.TypeOf(object).String()).
+					Msg("expected *widget.Label but got unexpected type")
 				return
 			}
 			if cell.Row == 0 {
@@ -146,13 +157,13 @@ func (w *reportWindowData) Init() error {
 	for idx, colWidth := range tableColumnWidths {
 		w.resultTable.SetColumnWidth(idx, colWidth)
 	}
-	w.Container = container.NewPadded(
+	w.container = container.NewPadded(
 		container.NewBorder(
 			w.headerContainer, nil, nil, nil,
 			w.resultTable,
 		),
 	)
-	w.Window.SetContent(container.NewMax(w.Container))
+	w.Window.SetContent(container.NewMax(w.container))
 	w.Window.SetCloseIntercept(w.Hide)
 	w.Window.SetFixedSize(true)
 	w.Window.Resize(minimumWindowSize)
@@ -167,12 +178,14 @@ func (w *reportWindowData) Show() {
 }
 
 func (w *reportWindowData) doRunReport() {
+	log := logger.GetFuncLogger(w.log, "doRunReport")
 	// Validate date range
 	dStart, dEnd, err := w.validateDateRange()
 	if err != nil {
+		log.Err(err).
+			Msg("unable to validate date range")
 		// TODO: Show a more informative error
 		dialog.NewError(err, w).Show()
-		w.log.Err(err).Msg("unable to validate date range")
 		return
 	}
 	// Disable run button and enable when this function is done
@@ -197,10 +210,15 @@ func (w *reportWindowData) doRunReport() {
 	if err != nil {
 		// TODO: Show a more informative error
 		dialog.NewError(err, w).Show()
-		w.log.Err(err).Msgf("error running task report between %s and %s", dStart.Format(constants.TimestampDateLayout), dEnd.Format(constants.TimestampDateLayout))
+		log.Err(err).
+			Str("startDate", dStart.Format(constants.TimestampDateLayout)).
+			Str("endDate", dEnd.Format(constants.TimestampDateLayout)).
+			Msg("error running task report")
 		return
 	}
-	w.log.Debug().Msgf("loaded %d records for report", len(reportData))
+	log.Debug().
+		Int("count", len(reportData)).
+		Msgf("loaded records for report")
 	// Populate table
 	w.taskReport = reportData.Clone()
 	w.tableColumns = len(tableHeader)
@@ -223,7 +241,8 @@ func (w *reportWindowData) doExport() {
 func (w *reportWindowData) exportReportAsCSV(writeCloser fyne.URIWriteCloser, dialogErr error) {
 	log := logger.GetFuncLogger(w.log, "exportReportAsCSV")
 	if dialogErr != nil {
-		log.Err(dialogErr).Msg("error opening CSV file for writing")
+		log.Err(dialogErr).
+			Msg("error opening CSV file for writing")
 		return
 	}
 	// Write data to file
@@ -244,12 +263,14 @@ func (w *reportWindowData) exportReportAsCSV(writeCloser fyne.URIWriteCloser, di
 			csvOut.Flush()
 			err := writeCloser.Close()
 			if err != nil {
-				log.Err(err).Msg("error closing CSV file")
+				log.Err(err).
+					Msg("error closing CSV file")
 			}
 		}()
 		err := csvOut.WriteAll(csvData)
 		if err != nil {
-			log.Err(err).Msg("error exporting data to CSV")
+			log.Err(err).
+				Msg("error exporting data to CSV")
 			dialog.ShowError(err, w)
 			return
 		}
@@ -258,14 +279,21 @@ func (w *reportWindowData) exportReportAsCSV(writeCloser fyne.URIWriteCloser, di
 }
 
 func (w *reportWindowData) validateDateRange() (startDate time.Time, endDate time.Time, err error) {
+	log := logger.GetFuncLogger(w.log, "validateDateRange")
 	// Parse the start date
 	startDateString, err := w.startDateBinding.Get()
 	if err != nil {
+		log.Err(err).
+			Msg("error getting start date from binding")
 		return
 	}
 	startDate, err = time.Parse(constants.TimestampDateLayout, startDateString)
 	if err != nil {
-		err = errors.InvalidTaskReportStartDate{
+		log.Err(err).
+			Str("startDate", startDateString).
+			Str("timestampFormat", constants.TimestampDateLayout).
+			Msg("error parsing start date timestamp")
+		err = tterrors.InvalidTaskReportStartDate{
 			StartDate: startDateString,
 			Wrapped:   err,
 		}
@@ -274,11 +302,17 @@ func (w *reportWindowData) validateDateRange() (startDate time.Time, endDate tim
 	// Parse the end date
 	endDateString, err := w.endDateBinding.Get()
 	if err != nil {
+		log.Err(err).
+			Msg("error getting end date from binding")
 		return
 	}
 	endDate, err = time.Parse(constants.TimestampDateLayout, endDateString)
 	if err != nil {
-		err = errors.InvalidTaskReportEndDate{
+		log.Err(err).
+			Str("endDate", endDateString).
+			Str("timestampFormat", constants.TimestampDateLayout).
+			Msg("error parsing end date timestamp")
+		err = tterrors.InvalidTaskReportEndDate{
 			EndDate: endDateString,
 			Wrapped: err,
 		}
@@ -286,7 +320,11 @@ func (w *reportWindowData) validateDateRange() (startDate time.Time, endDate tim
 	}
 	// Check if end date happens before start date
 	if endDate.Before(startDate) {
-		err = errors.InvalidTaskReportEndDate{
+		log.Error().
+			Str("startDate", startDate.String()).
+			Str("endDate", endDate.String()).
+			Msg("end date cannot happen before start date")
+		err = tterrors.InvalidTaskReportEndDate{
 			EndDate: endDateString,
 			Wrapped: fmt.Errorf(
 				"end date (%s) cannot happen before start date (%s)",
