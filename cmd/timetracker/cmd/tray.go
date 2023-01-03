@@ -2,12 +2,12 @@ package cmd
 
 import (
 	"errors"
+	"github.com/neflyte/timetracker/internal/ui/tray"
 	"os"
 	"path"
 
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
-	"github.com/neflyte/timetracker/internal/ui/tray"
 	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/nightlyone/lockfile"
 	"github.com/spf13/cobra"
@@ -77,6 +77,8 @@ func preDoTray(_ *cobra.Command, _ []string) error {
 
 func postDoTray(_ *cobra.Command, _ []string) error {
 	log := logger.GetLogger("postDoTray")
+	log.Debug().
+		Msg("called")
 	err := trayCmdLockFile.Unlock()
 	if err != nil {
 		log.Err(err).
@@ -100,16 +102,19 @@ func postDoTray(_ *cobra.Command, _ []string) error {
 }
 
 func doTray(_ *cobra.Command, _ []string) error {
-	log := logger.GetLogger("doTray")
+	// log := logger.GetLogger("doTray")
 	// Write the AppVersion to the appstate Map so gui components can access it without a direct binding
 	appstate.Map().Store(appstate.KeyAppVersion, AppVersion)
 	// Start the tray
-	tray.Run(func() {
-		err := postDoTray(nil, nil)
-		if err != nil {
-			log.Err(err).
-				Msg("error running postDoTray")
-		}
-	})
+	//tray.Run(func() {
+	//	log.Debug().
+	//		Msg("calling postDoTray from tray.Run func")
+	//	err := postDoTray(nil, nil)
+	//	if err != nil {
+	//		log.Err(err).
+	//			Msg("error running postDoTray")
+	//	}
+	//})
+	tray.Run(nil)
 	return nil
 }
