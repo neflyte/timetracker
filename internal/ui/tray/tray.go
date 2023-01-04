@@ -172,7 +172,7 @@ func updateStatus(tsd *models.TimesheetData) {
 			log.Trace().
 				Str("object", tsd.String()).
 				Msg("got running timesheet")
-			systray.SetIcon(icons.Running)
+			systray.SetIcon(icons.IconV2Running.StaticContent)
 			statusText := fmt.Sprintf(
 				"Stop task %s (%s)", // i18n
 				tsd.Task.Synopsis,
