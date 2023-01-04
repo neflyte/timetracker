@@ -2,6 +2,7 @@ package windows
 
 import (
 	"fmt"
+	"github.com/neflyte/timetracker/internal/ui/icons"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -80,6 +81,7 @@ func (m *manageWindowV2Impl) Init() error {
 	m.taskEditor = widgets.NewTaskEditorV2()
 	m.Window.SetCloseIntercept(m.Hide)
 	m.Window.SetContent(m.container)
+	m.Window.SetIcon(icons.IconV2)
 	// resize the window to fit the content
 	resizeToMinimum(m.Window, minimumWindowWidth, minimumWindowHeight)
 	return nil

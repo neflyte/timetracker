@@ -80,7 +80,7 @@ func onReady() {
 	}
 	setTrayTitle("Timetracker")
 	systray.SetTooltip("Timetracker")
-	systray.SetIcon(icons.Check)
+	systray.SetIcon(icons.IconV2.StaticContent)
 	mStatus = systray.AddMenuItem(statusStartTaskTitle, statusStartTaskDescription)
 	mCreateAndStart = systray.AddMenuItem("Create and Start new task", "Display a dialog to input new task details and then start the task") // i18n
 	mManage = systray.AddMenuItem("Manage tasks", "Display the Manage Tasks window to add, change, or remove tasks")                         // i18n
@@ -165,7 +165,7 @@ func updateStatus(tsd *models.TimesheetData) {
 			// No running timesheet
 			log.Trace().
 				Msg("got nil running timesheet item")
-			systray.SetIcon(icons.Check)
+			systray.SetIcon(icons.IconV2.StaticContent)
 			mStatus.SetTitle(statusStartTaskTitle)
 			mStatus.SetTooltip(statusStartTaskDescription)
 		} else {

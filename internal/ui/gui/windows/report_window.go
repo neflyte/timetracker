@@ -3,6 +3,7 @@ package windows
 import (
 	"encoding/csv"
 	"fmt"
+	"github.com/neflyte/timetracker/internal/ui/icons"
 	"reflect"
 	"time"
 
@@ -113,6 +114,7 @@ func (w *reportWindowData) Init() error {
 		),
 	)
 	w.Window.SetContent(w.container)
+	w.Window.SetIcon(icons.IconV2)
 	w.Window.SetCloseIntercept(w.Hide)
 	w.Window.Resize(minimumWindowSize)
 	w.Window.Canvas().Focus(w.startDateEntry)
