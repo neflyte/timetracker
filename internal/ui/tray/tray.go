@@ -156,7 +156,7 @@ func updateStatus(tsd *models.TimesheetData) {
 				Err(lastStateError).
 				Msg("got last error")
 		}
-		systray.SetIcon(icons.Error)
+		systray.SetIcon(icons.IconV2Error.StaticContent)
 		mStatus.SetTitle("Error (click for details)")                   // i18n
 		mStatus.SetTooltip("An error occurred; click for more details") // i18n
 	} else {
