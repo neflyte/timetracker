@@ -2,7 +2,6 @@ package windows
 
 import (
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -22,7 +21,7 @@ import (
 )
 
 const (
-	dateEntryMinWidth  = 150.0
+	dateEntryMinWidth  = 120.0
 	columnTaskID       = 0
 	columnTaskSynopsis = 1
 	columnStartDate    = 2
@@ -46,10 +45,9 @@ type reportWindowData struct {
 	headerContainer  *fyne.Container
 	startDateLabel   *widget.Label
 	endDateLabel     *widget.Label
-	startDateInput   *widgets.DateEntry
+	startDateEntry   *widgets.MinWidthEntry
 	startDateBinding binding.String
-	startDateEntry   *widget.Entry
-	endDateInput     *widgets.DateEntry
+	endDateEntry     *widgets.MinWidthEntry
 	endDateBinding   binding.String
 	runReportButton  *widget.Button
 	exportButton     *widget.Button
@@ -81,19 +79,12 @@ func newReportWindow(app fyne.App) reportWindow {
 // Init initializes the window
 func (w *reportWindowData) Init() error {
 	// Header container
-	w.startDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.startDateBinding) // l10n
-	w.startDateInput.Validator = nil
-	// w.startDateInput.Bind(w.startDateBinding)
-	w.startDateEntry = widget.NewEntryWithData(w.startDateBinding)
-	w.startDateEntry.Validator = func(entryText string) error {
-		if entryText == "" {
-			return errors.New("date cannot be empty")
-		}
-		_, err := time.Parse(constants.TimestampDateLayout, entryText)
-		return err
-	}
-	w.endDateInput = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD", constants.TimestampDateLayout, w.endDateBinding) // l10n
-	w.endDateInput.Bind(w.endDateBinding)
+	w.startDateEntry = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD") // l10n
+	w.startDateEntry.Bind(w.startDateBinding)
+	w.startDateEntry.Validator = w.dateValidator
+	w.endDateEntry = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD") // l10n
+	w.endDateEntry.Bind(w.endDateBinding)
+	w.endDateEntry.Validator = w.dateValidator
 	w.startDateLabel = widget.NewLabel("Start date:")                                         // i18n
 	w.endDateLabel = widget.NewLabel("End date:")                                             // i18n
 	w.runReportButton = widget.NewButtonWithIcon("RUN", theme.MediaPlayIcon(), w.doRunReport) // i18n
@@ -102,57 +93,15 @@ func (w *reportWindowData) Init() error {
 	w.headerContainer = container.NewBorder(
 		nil, nil,
 		container.NewHBox(
-			w.startDateLabel,
-			// w.startDateInput,
-			w.startDateEntry,
-			w.endDateLabel,
-			w.endDateInput,
+			w.startDateLabel, w.startDateEntry,
+			w.endDateLabel, w.endDateEntry,
 		),
 		container.NewHBox(
-			w.runReportButton,
-			w.exportButton,
+			w.runReportButton, w.exportButton,
 		),
 	)
 	// Result table
-	w.resultTable = widget.NewTable(
-		func() (int, int) {
-			return w.tableRows, w.tableColumns
-		},
-		func() fyne.CanvasObject {
-			return widget.NewLabel("")
-		},
-		func(cell widget.TableCellID, object fyne.CanvasObject) {
-			var labelText string
-
-			label, isLabel := object.(*widget.Label)
-			if !isLabel {
-				w.log.Error().
-					Str("unexpectedType", reflect.TypeOf(object).String()).
-					Msg("expected *widget.Label but got unexpected type")
-				return
-			}
-			if cell.Row == 0 {
-				labelText = tableHeader[cell.Col]
-				label.TextStyle.Bold = true
-			} else {
-				taskReportData := w.taskReport[cell.Row-1]
-				switch cell.Col {
-				case columnTaskID:
-					labelText = fmt.Sprintf("%d", taskReportData.TaskID)
-				case columnTaskSynopsis:
-					labelText = taskReportData.TaskSynopsis
-				case columnStartDate:
-					labelText = taskReportData.StartDate.Time.Format(constants.TimestampDateLayout)
-				case columnDuration:
-					labelText = taskReportData.Duration().String()
-				default:
-					labelText = ""
-				}
-				label.TextStyle.Bold = false
-			}
-			label.SetText(labelText)
-		},
-	)
+	w.resultTable = widget.NewTable(w.resultTableLength, w.resultTableCreate, w.resultTableUpdate)
 	// Set table column widths
 	for idx, colWidth := range tableColumnWidths {
 		w.resultTable.SetColumnWidth(idx, colWidth)
@@ -163,18 +112,67 @@ func (w *reportWindowData) Init() error {
 			w.resultTable,
 		),
 	)
-	w.Window.SetContent(container.NewMax(w.container))
+	w.Window.SetContent(w.container)
 	w.Window.SetCloseIntercept(w.Hide)
-	w.Window.SetFixedSize(true)
 	w.Window.Resize(minimumWindowSize)
-	w.Window.Canvas().Focus(w.startDateInput)
+	w.Window.Canvas().Focus(w.startDateEntry)
 	return nil
 }
 
 // Show displays the window and focuses the start date entry widget
 func (w *reportWindowData) Show() {
-	w.Window.Canvas().Focus(w.startDateInput)
+	w.Window.Canvas().Focus(w.startDateEntry)
 	w.Window.Show()
+}
+
+func (w *reportWindowData) resultTableLength() (int, int) {
+	return w.tableRows, w.tableColumns
+}
+
+func (w *reportWindowData) resultTableCreate() fyne.CanvasObject {
+	return widget.NewLabel("")
+}
+
+func (w *reportWindowData) resultTableUpdate(cell widget.TableCellID, object fyne.CanvasObject) {
+	var (
+		log       = logger.GetFuncLogger(w.log, "resultTableUpdate")
+		labelText string
+	)
+	label, isLabel := object.(*widget.Label)
+	if !isLabel {
+		log.Error().
+			Str("unexpectedType", reflect.TypeOf(object).String()).
+			Msg("expected *widget.Label but got unexpected type")
+		return
+	}
+	if cell.Row == 0 {
+		labelText = tableHeader[cell.Col]
+		label.TextStyle.Bold = true
+	} else {
+		taskReportData := w.taskReport[cell.Row-1]
+		switch cell.Col {
+		case columnTaskID:
+			labelText = fmt.Sprintf("%d", taskReportData.TaskID)
+		case columnTaskSynopsis:
+			labelText = taskReportData.TaskSynopsis
+		case columnStartDate:
+			labelText = taskReportData.StartDate.Time.Format(constants.TimestampDateLayout)
+		case columnDuration:
+			labelText = taskReportData.Duration().String()
+		default:
+			labelText = ""
+		}
+		label.TextStyle.Bold = false
+	}
+	label.SetText(labelText)
+}
+
+func (w *reportWindowData) dateValidator(entry string) error {
+	if len(entry) == 0 {
+		return nil
+	}
+	_, err := time.Parse(constants.TimestampDateLayout, entry)
+	return err
 }
 
 func (w *reportWindowData) doRunReport() {
