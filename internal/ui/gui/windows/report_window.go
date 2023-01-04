@@ -79,10 +79,10 @@ func newReportWindow(app fyne.App) reportWindow {
 // Init initializes the window
 func (w *reportWindowData) Init() error {
 	// Header container
-	w.startDateEntry = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD") // l10n
+	w.startDateEntry = widgets.NewMinWidthEntry(dateEntryMinWidth, "YYYY-MM-DD") // l10n
 	w.startDateEntry.Bind(w.startDateBinding)
 	w.startDateEntry.Validator = w.dateValidator
-	w.endDateEntry = widgets.NewDateEntry(dateEntryMinWidth, "YYYY-MM-DD") // l10n
+	w.endDateEntry = widgets.NewMinWidthEntry(dateEntryMinWidth, "YYYY-MM-DD") // l10n
 	w.endDateEntry.Bind(w.endDateBinding)
 	w.endDateEntry.Validator = w.dateValidator
 	w.startDateLabel = widget.NewLabel("Start date:")                                         // i18n

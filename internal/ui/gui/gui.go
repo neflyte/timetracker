@@ -34,7 +34,8 @@ func StartGUI(app *fyne.App) {
 func InitGUI() *fyne.App {
 	log := logger.GetFuncLogger(guiLogger, "initGUI")
 	if guiInitialized {
-		log.Warn().Msg("GUI already initialized")
+		log.Warn().
+			Msg("GUI already initialized")
 		return nil
 	}
 	// Set up fyne
@@ -73,7 +74,8 @@ func ShowTimetrackerWindowAndShowCreateAndStartDialog() {
 func guiFunc(appPtr *fyne.App) {
 	log := logger.GetFuncLogger(guiLogger, "guiFunc")
 	if appPtr != nil {
-		defer log.Trace().Msg("done")
+		defer log.Trace().
+			Msg("done")
 		appInstance := *appPtr
 		// Start Signal catcher
 		signalFuncQuitChan := make(chan bool, 1)
@@ -87,15 +89,18 @@ func guiFunc(appPtr *fyne.App) {
 			guiStarted = false
 		}()
 		// start Fyne
-		log.Trace().Msg("calling appInstance.Run()")
+		log.Trace().
+			Msg("calling appInstance.Run()")
 		appInstance.Run()
-		log.Trace().Msg("fyne exited")
+		log.Trace().
+			Msg("fyne exited")
 		// stop signal catcher
 		signalFuncQuitChan <- true
 		// stop actionloop
 		actionLoopQuitChan <- true
 	} else {
-		log.Error().Msg("appPtr was nil; this is unexpected")
+		log.Error().
+			Msg("appPtr was nil; this is unexpected")
 	}
 }
 
@@ -107,20 +112,25 @@ func signalFunc(quitChan chan bool, appPtr *fyne.App) {
 		// Catch OS interrupt and SIGTERM signals
 		signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 		// Start signal loop
-		log.Trace().Msg("starting")
-		defer log.Trace().Msg("done")
+		log.Trace().
+			Msg("starting")
+		defer log.Trace().
+			Msg("done")
 		for {
 			select {
 			case <-signalChan:
-				log.Warn().Msg("caught os.Interrupt or SIGTERM; shutting down GUI")
+				log.Warn().
+					Msg("caught os.Interrupt or SIGTERM; shutting down GUI")
 				(*appPtr).Quit()
 				return
 			case <-quitChan:
-				log.Trace().Msg("quit channel fired; exiting function")
+				log.Trace().
+					Msg("quit channel fired; exiting function")
 				return
 			}
 		}
 	} else {
-		log.Error().Msg("appPtr was nil; this is unexpected")
+		log.Error().
+			Msg("appPtr was nil; this is unexpected")
 	}
 }

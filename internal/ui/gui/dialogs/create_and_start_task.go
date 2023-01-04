@@ -15,7 +15,7 @@ import (
 
 const (
 	// prefKeyCloseWindow is the preferences key for the flag which causes the main window to close after creating a new task
-	prefKeyCloseWindow = "close-window"
+	prefKeyCloseWindow = "close-window" // FIXME: there is a dupe of this in windows/constants.go
 	// dialogSizeOffset is the number of pixels to subtract from the parent window's size when setting a dialog's minimum size
 	dialogSizeOffset = 50
 )

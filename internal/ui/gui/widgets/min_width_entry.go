@@ -11,8 +11,8 @@ type MinWidthEntry struct {
 	minWidth float32
 }
 
-// NewDateEntry returns a new MinWidthEntry widget
-func NewDateEntry(minWidth float32, placeholder string) *MinWidthEntry {
+// NewMinWidthEntry returns a new MinWidthEntry widget
+func NewMinWidthEntry(minWidth float32, placeholder string) *MinWidthEntry {
 	newEntry := &MinWidthEntry{
 		minWidth: minWidth,
 	}

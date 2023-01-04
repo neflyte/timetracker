@@ -15,7 +15,7 @@ import (
 
 const (
 	// prefKeyCloseWindowStopTask is the preferences key for the flag which causes the main window to close after creating a new task
-	prefKeyCloseWindowStopTask = "close-window:stop-task"
+	prefKeyCloseWindowStopTask = "close-window:stop-task" // FIXME: there is a dupe of this in windows/constants.go
 )
 
 // StopTaskDialog is the main interface for the Stop Task dialog
