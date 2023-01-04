@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="512.0px"
+   height="512.0px"
+   viewBox="0 0 512.0 512.0"
+   version="1.1"
+   id="SVGRoot"
+   sodipodi:docname="icon-v2.svg"
+   inkscape:version="1.2.2 (1:1.2.2+202212051552+b0a8486541)"
+   inkscape:export-filename="icon-v2.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview412"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#505050"
+     inkscape:document-units="px"
+     showgrid="false"
+     inkscape:zoom="1.4142136"
+     inkscape:cx="125.86501"
+     inkscape:cy="261.98306"
+     inkscape:window-width="1920"
+     inkscape:window-height="1007"
+     inkscape:window-x="1920"
+     inkscape:window-y="40"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1">
+    <inkscape:grid
+       type="xygrid"
+       id="grid542" />
+  </sodipodi:namedview>
+  <defs
+     id="defs407">
+    <linearGradient
+       inkscape:collect="always"
+       id="linearGradient1539">
+      <stop
+         style="stop-color:#1b4315;stop-opacity:1;"
+         offset="0.32145345"
+         id="stop1535" />
+      <stop
+         style="stop-color:#4cc84a;stop-opacity:1;"
+         offset="1"
+         id="stop1537" />
+    </linearGradient>
+    <symbol
+       viewBox="0 0 24 24"
+       id="ic_watch_later_24px">
+      <path
+         d="M 12,2 C 6.5,2 2,6.5 2,12 2,17.5 6.5,22 12,22 17.5,22 22,17.5 22,12 22,6.5 17.5,2 12,2 Z M 16.2,16.2 11,13 V 7 h 1.5 v 5.2 l 4.5,2.7 z"
+         id="path101263" />
+    </symbol>
+    <symbol
+       viewBox="0 0 24 24"
+       id="ic_query_builder_24px">
+      <path
+         d="M 11.99,2 C 6.47,2 2,6.48 2,12 2,17.52 6.47,22 11.99,22 17.52,22 22,17.52 22,12 22,6.48 17.52,2 11.99,2 Z M 12,20 C 7.58,20 4,16.42 4,12 4,7.58 7.58,4 12,4 c 4.42,0 8,3.58 8,8 0,4.42 -3.58,8 -8,8 z M 12.5,7 H 11 v 6 l 5.25,3.15 0.75,-1.23 -4.5,-2.67 z"
+         id="path101021" />
+    </symbol>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient1539"
+       id="linearGradient1557"
+       x1="-0.50546002"
+       y1="512.50543"
+       x2="512.50543"
+       y2="-0.50546002"
+       gradientUnits="userSpaceOnUse"
+       spreadMethod="pad" />
+    <filter
+       style="color-interpolation-filters:sRGB;"
+       inkscape:label="Drop Shadow"
+       id="filter6746"
+       x="-0.011921763"
+       y="-0.011921821"
+       width="1.0312946"
+       height="1.0362622">
+      <feFlood
+         flood-opacity="0.498039"
+         flood-color="rgb(0,0,0)"
+         result="flood"
+         id="feFlood6736" />
+      <feComposite
+         in="flood"
+         in2="SourceGraphic"
+         operator="in"
+         result="composite1"
+         id="feComposite6738" />
+      <feGaussianBlur
+         in="composite1"
+         stdDeviation="2"
+         result="blur"
+         id="feGaussianBlur6740" />
+      <feOffset
+         dx="3"
+         dy="5"
+         result="offset"
+         id="feOffset6742" />
+      <feComposite
+         in="SourceGraphic"
+         in2="offset"
+         operator="over"
+         result="composite2"
+         id="feComposite6744" />
+    </filter>
+  </defs>
+  <g
+     inkscape:label="Background"
+     inkscape:groupmode="layer"
+     id="layer1"
+     style="display:inline">
+    <rect
+       style="fill:url(#linearGradient1557);fill-opacity:1;stroke:none;stroke-width:1.011;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:normal"
+       id="rect601"
+       width="512"
+       height="512"
+       x="0"
+       y="0"
+       ry="72.75457" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Clock">
+    <path
+       id="clock-face"
+       style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:5;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;filter:url(#filter6746)"
+       d="M 256 51.923828 A 201.31201 201.31201 0 0 0 54.6875 253.23438 A 201.31201 201.31201 0 0 0 256 454.54688 A 201.31201 201.31201 0 0 0 457.3125 253.23438 A 201.31201 201.31201 0 0 0 256 51.923828 z M 235.76953 93.365234 L 268.23047 93.365234 L 268.23047 239.72461 L 355.41602 326.9082 L 332.46289 349.86133 L 236.27734 253.67578 L 235.76953 253.67578 L 235.76953 93.365234 z " />
+  </g>
+</svg>
