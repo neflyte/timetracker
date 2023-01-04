@@ -3,6 +3,7 @@ package windows
 import (
 	"errors"
 	"fmt"
+	"github.com/neflyte/timetracker/internal/ui/icons"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -152,6 +153,7 @@ func (t *timetrackerWindowData) Init() error {
 		),
 	)
 	t.Window.SetContent(t.container)
+	t.Window.SetIcon(icons.IconV2)
 	// get the size of the content with everything visible
 	siz := t.Window.Content().Size()
 	// HACK: add a bit of a height buffer, so we can try to fit everything in the window nicely

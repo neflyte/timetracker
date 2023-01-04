@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"github.com/neflyte/timetracker/internal/ui/icons"
 	"os"
 	"os/signal"
 	"syscall"
@@ -40,6 +41,7 @@ func InitGUI() *fyne.App {
 	}
 	// Set up fyne
 	fyneApp = app.NewWithID("cc.ethereal.timetracker")
+	fyneApp.SetIcon(icons.IconV2)
 	// Create the main timetracker window
 	mainWindow = windows.NewTimetrackerWindow(fyneApp)
 	guiInitialized = true
