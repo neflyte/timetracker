@@ -29,7 +29,7 @@ const (
 )
 
 var (
-	tableColumnWidths = []float32{75, 250, 100}
+	tableColumnWidths = []float32{75, 250, 100, 100}
 	tableHeader       = []string{"Task ID", "Synopsis", "Started On", "Duration"}
 	csvTableHeader    = []string{"task_id", "synopsis", "started_on", "duration"}
 )
