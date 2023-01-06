@@ -8,7 +8,6 @@ require (
 	github.com/alexeyco/simpletable v1.0.0
 	github.com/bluele/factory-go v0.0.1
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
-	github.com/elliotchance/pie v1.39.0
 	github.com/fatih/color v1.13.0
 	github.com/gen2brain/beeep v0.0.0-20220909211152-5a9ec94374f6
 	github.com/gofrs/uuid v4.3.1+incompatible
@@ -18,7 +17,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.16 // indirect
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/nightlyone/lockfile v1.0.0
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/reactivex/rxgo/v2 v2.5.0
 	github.com/rivo/uniseg v0.2.0 // indirect
