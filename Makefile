@@ -1,6 +1,6 @@
 # timetracker Makefile
 
-.PHONY: build clean clean-coverage lint test dist dist-darwin dist-windows outdated ensure-fyne-cli
+.PHONY: build clean clean-coverage lint test dist dist-darwin dist-windows outdated ensure-fyne-cli generate-icons-darwin generate-icons-windows
 
 ifeq ($(OS),Windows_NT)
 APPVERSION=$(shell cmd /C type VERSION)
@@ -78,3 +78,16 @@ endif
 ensure-fyne-cli:
 	@echo "Checking for fyne CLI tool"
 	hash fyne 2>/dev/null || { cd && go install fyne.io/fyne/v2/cmd/fyne@latest; cd -; }
+
+generate-icons-darwin:
+	bash scripts/generate_icns.sh assets/images/icon-v2.svg assets/icons
+	bash scripts/generate_icns.sh assets/images/icon-v2-error.svg assets/icons
+	bash scripts/generate_icns.sh assets/images/icon-v2-notrunning.svg assets/icons
+	bash scripts/generate_icns.sh assets/images/icon-v2-running.svg assets/icons
+
+generate-icons-windows:
+	convert assets/images/icon-v2.svg -resize 256x256 assets/icons/icon-v2.ico
+	convert assets/images/icon-v2-error.svg -resize 256x256 assets/icons/icon-v2-error.ico
+	convert assets/images/icon-v2-notrunning.svg -resize 256x256 assets/icons/icon-v2-notrunning.ico
+	convert assets/images/icon-v2-running.svg -resize 256x256 assets/icons/icon-v2-running.ico
+
