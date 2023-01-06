@@ -1,14 +1,16 @@
 # timetracker Makefile
 
-.PHONY: build clean clean-coverage lint test dist dist-darwin dist-windows outdated ensure-fyne-cli generate-icons-darwin generate-icons-windows
+.PHONY: build clean clean-coverage lint test dist dist-darwin dist-windows outdated ensure-fyne-cli generate-icons-darwin generate-icons-windows generate-bundled-icons
 
 ifeq ($(OS),Windows_NT)
 APPVERSION=$(shell cmd /C type VERSION)
 else
 APPVERSION=$(shell cat VERSION)
 endif
-ifeq ($(OS),Darwin)
+ifneq ($(OS),Windows_NT)
 SHORTAPPVERSION=$(shell sed -E -e "s/v([0-9.]*).*/\1/" VERSION)
+else
+SHORTAPPVERSION="$(APPVERSION)"
 endif
 OSES=darwin linux
 GO_LDFLAGS=-ldflags "-X 'github.com/neflyte/timetracker/cmd/timetracker/cmd.AppVersion=$(APPVERSION)'"
@@ -62,7 +64,7 @@ dist: lint
 
 dist-darwin: ensure-fyne-cli lint
 	GOOS=darwin GOARCH=amd64 go build $(GO_LDFLAGS) -o dist/$(BINPREFIX)darwin-amd64 ./cmd/timetracker
-	fyne package -name Timetracker -os darwin -appID cc.ethereal.timetracker -appVersion "$(SHORTAPPVERSION)" -icon assets/images/Apps-Anydo-icon.png -executable dist/$(BINPREFIX)darwin-amd64
+	fyne package -name Timetracker -os darwin -appID cc.ethereal.timetracker -appVersion "$(SHORTAPPVERSION)" -icon assets/icons/icon-v2.png -executable dist/$(BINPREFIX)darwin-amd64
 	mv Timetracker.app dist/
 
 dist-windows: lint
@@ -91,3 +93,19 @@ generate-icons-windows:
 	convert assets/images/icon-v2-notrunning.svg -resize 256x256 assets/icons/icon-v2-notrunning.ico
 	convert assets/images/icon-v2-running.svg -resize 256x256 assets/icons/icon-v2-running.ico
 
+generate-bundled-icons:
+# macOS
+	fyne bundle --name IconV2 -o internal/ui/icons/icon_v2_darwin.go --pkg icons assets/icons/icon-v2.png
+	fyne bundle --name IconV2Error -o internal/ui/icons/icon_v2_error_darwin.go --pkg icons assets/icons/icon-v2-error.icns
+	fyne bundle --name IconV2NotRunning -o internal/ui/icons/icon_v2_notrunning_darwin.go --pkg icons assets/icons/icon-v2-notrunning.icns
+	fyne bundle --name IconV2Running -o internal/ui/icons/icon_v2_running_darwin.go --pkg icons assets/icons/icon-v2-running.icns
+# windows
+	fyne bundle --name IconV2 -o internal/ui/icons/icon_v2_windows.go --pkg icons assets/icons/icon-v2.ico
+	fyne bundle --name IconV2Error -o internal/ui/icons/icon_v2_error_windows.go --pkg icons assets/icons/icon-v2-error.ico
+	fyne bundle --name IconV2NotRunning -o internal/ui/icons/icon_v2_notrunning_windows.go --pkg icons assets/icons/icon-v2-notrunning.ico
+	fyne bundle --name IconV2Running -o internal/ui/icons/icon_v2_running_windows.go --pkg icons assets/icons/icon-v2-running.ico
+# linux
+	fyne bundle --name IconV2 -o internal/ui/icons/icon_v2_linux.go --pkg icons assets/icons/icon-v2.png
+	fyne bundle --name IconV2Error -o internal/ui/icons/icon_v2_error_linux.go --pkg icons assets/icons/icon-v2-error.png
+	fyne bundle --name IconV2NotRunning -o internal/ui/icons/icon_v2_notrunning_linux.go --pkg icons assets/icons/icon-v2-notrunning.png
+	fyne bundle --name IconV2Running -o internal/ui/icons/icon_v2_running_linux.go --pkg icons assets/icons/icon-v2-running.png
