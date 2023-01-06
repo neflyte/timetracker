@@ -1,16 +1,17 @@
 # timetracker Makefile
 
-.PHONY: build clean clean-coverage lint test dist dist-darwin dist-windows outdated ensure-fyne-cli generate-icons-darwin generate-icons-windows generate-bundled-icons
+.PHONY: build clean clean-coverage lint test dist-darwin dist-windows outdated ensure-fyne-cli generate-icons-darwin generate-icons-windows generate-bundled-icons
 
 ifeq ($(OS),Windows_NT)
-APPVERSION=$(shell cmd /C type VERSION)
+SHELL=CMD.EXE
+.SHELLFLAGS=/C
+APPVERSION=$(shell type VERSION)
+SHORTAPPVERSION=$(shell FOR /F "delims=v tokens=1" %%I IN (VERSION) DO @ECHO %%I)
+BUILD_FILENAME=timetracker.exe
 else
 APPVERSION=$(shell cat VERSION)
-endif
-ifneq ($(OS),Windows_NT)
 SHORTAPPVERSION=$(shell sed -E -e "s/v([0-9.]*).*/\1/" VERSION)
-else
-SHORTAPPVERSION="$(APPVERSION)"
+BUILD_FILENAME=timetracker
 endif
 OSES=darwin linux
 GO_LDFLAGS=-ldflags "-X 'github.com/neflyte/timetracker/cmd/timetracker/cmd.AppVersion=$(APPVERSION)'"
@@ -19,11 +20,10 @@ BINPREFIX=timetracker-$(APPVERSION)_
 build:
 ifeq ($(OS),Windows_NT)
 	CMD /C IF NOT EXIST dist MD dist
-	go build $(GO_LDFLAGS) -o dist/timetracker.exe ./cmd/timetracker
 else
 	if [ ! -d dist ]; then mkdir dist; fi
-	go build $(GO_LDFLAGS) -o dist/timetracker ./cmd/timetracker
 endif
+	go build $(GO_LDFLAGS) -o dist/$(BUILD_FILENAME) ./cmd/timetracker
 
 clean-coverage:
 ifeq ($(OS),Windows_NT)
@@ -51,25 +51,16 @@ endif
 	go test -covermode=count -coverprofile=coverage/cover.out ./...
 	go tool cover -html=coverage/cover.out -o coverage/coverage.html
 
-dist: lint
-	@if [ ! -d dist ]; then mkdir dist; fi
-	@for os in $(OSES); do \
-		echo "Building for $$os" && \
-		GOARCH=amd64 GOOS=$$os go build $(GO_LDFLAGS) -o dist/$(BINPREFIX)$$os-amd64 ./cmd/timetracker && \
-		cd dist && \
-		tar cfJ $(BINPREFIX)$$os-amd64.tar.xz $(BINPREFIX)$$os-amd64 && \
-		sha512sum $(BINPREFIX)$$os-amd64.tar.xz > $(BINPREFIX)$$os-amd64.tar.xz.sha512 && \
-		cd ..; \
-	done
-
-dist-darwin: ensure-fyne-cli lint
-	GOOS=darwin GOARCH=amd64 go build $(GO_LDFLAGS) -o dist/$(BINPREFIX)darwin-amd64 ./cmd/timetracker
-	fyne package -name Timetracker -os darwin -appID cc.ethereal.timetracker -appVersion "$(SHORTAPPVERSION)" -icon assets/icons/icon-v2.png -executable dist/$(BINPREFIX)darwin-amd64
+dist-darwin: ensure-fyne-cli lint build
+	fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os darwin -executable dist/$(BUILD_FILENAME)
 	mv Timetracker.app dist/
 
-dist-windows: lint
-	go build $(GO_LDFLAGS) -o dist/$(BINPREFIX)windows-amd64.exe ./cmd/timetracker
-	7z a -txz dist/$(BINPREFIX)windows-amd64.exe.xz dist/$(BINPREFIX)windows-amd64.exe
+dist-windows: build
+	CMD /C COPY dist\\$(BUILD_FILENAME) cmd\\timetracker
+	CMD /C "cd cmd\timetracker && fyne package -name Timetracker-pkg -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable $(BUILD_FILENAME)"
+	CMD /C COPY cmd\\timetracker\\Timetracker-pkg.exe dist\\$(BINPREFIX)windows-amd64.exe
+	CMD /C DEL cmd\\timetracker\\Timetracker-pkg.exe
+	7z a -txz dist\\$(BINPREFIX)windows-amd64.exe.xz dist\\$(BINPREFIX)windows-amd64.exe
 
 outdated:
 ifneq ($(OS),Windows_NT)
