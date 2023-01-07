@@ -44,15 +44,42 @@ func init() {
 
 // Execute is the main entry point for the CLI
 func Execute() {
-	log := logger.GetLogger("Execute")
-	// On macOS and Windows, if no CLI parameters were specified then default to starting the GUI
-	if (runtime.GOOS == "darwin" || runtime.GOOS == "windows") && len(os.Args) < 2 {
-		rootCmd.SetArgs([]string{"gui"})
+	// If there were no CLI parameters supplied...
+	if len(os.Args) < 2 {
+		switch runtime.GOOS {
+		case "darwin":
+			// On macOS, default to starting the GUI
+			rootCmd.SetArgs([]string{"gui"})
+		case "windows":
+			// On windows, start the GUI directly without cobra
+			initLogger()
+			initDatabase()
+			err := preDoGUI(nil, nil)
+			if err != nil {
+				_ = os.WriteFile("execute_error.txt", []byte(err.Error()), 0600) //nolint:errcheck
+				cleanUp(nil, nil)
+				os.Exit(1)
+			}
+			err = doGUI(nil, nil)
+			if err != nil {
+				_ = os.WriteFile("execute_error.txt", []byte(err.Error()), 0600) //nolint:errcheck
+				cleanUp(nil, nil)
+				os.Exit(1)
+			}
+			err = postDoGUI(nil, nil)
+			if err != nil {
+				_ = os.WriteFile("execute_error.txt", []byte(err.Error()), 0600) //nolint:errcheck
+				cleanUp(nil, nil)
+				os.Exit(1)
+			}
+			cleanUp(nil, nil)
+			return
+		}
 	}
 	err := rootCmd.Execute()
 	if err != nil {
-		log.Err(err).
-			Msg("error executing root command")
+		_ = os.WriteFile("rootcmd_error.txt", []byte(err.Error()), 0600) //nolint:errcheck
+		fmt.Printf("*  error executing root command: %s\n", err)
 		os.Exit(1)
 	}
 }
