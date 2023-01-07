@@ -56,10 +56,12 @@ dist-darwin: ensure-fyne-cli lint build
 	mv Timetracker.app dist/
 
 dist-windows: build
-	CMD /C COPY dist\\$(BUILD_FILENAME) cmd\\timetracker
-	CMD /C "cd cmd\timetracker && fyne package -name Timetracker-pkg -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable $(BUILD_FILENAME)"
-	CMD /C COPY cmd\\timetracker\\Timetracker-pkg.exe dist\\$(BINPREFIX)windows-amd64.exe
-	CMD /C DEL cmd\\timetracker\\Timetracker-pkg.exe
+	CMD /C COPY dist\\$(BUILD_FILENAME) dist\\$(BINPREFIX)windows-amd64-cli.exe
+	7z a -txz dist\\$(BINPREFIX)windows-amd64-cli.exe.xz dist\\$(BINPREFIX)windows-amd64-cli.exe
+	CMD /C COPY dist\\$(BUILD_FILENAME) cmd\\timetracker\\timetracker-build.exe
+	CMD /C "cd cmd\timetracker && fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable timetracker-build.exe"
+	CMD /C COPY cmd\\timetracker\\Timetracker.exe dist\\$(BINPREFIX)windows-amd64.exe
+	CMD /C DEL cmd\\timetracker\\Timetracker.exe
 	7z a -txz dist\\$(BINPREFIX)windows-amd64.exe.xz dist\\$(BINPREFIX)windows-amd64.exe
 
 outdated:
