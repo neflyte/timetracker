@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated fyne.io/fyne/v2 from v2.2.4 to v2.3.0
 - All app icons are updated; new icons created from (mostly) scratch
 - Windows builds support GUI and CLI operation with a single binary
+- Package macOS build in a disk image (DMG)
 
 ### Removed
 - Task selector pick list
