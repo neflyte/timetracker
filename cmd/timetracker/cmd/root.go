@@ -16,6 +16,7 @@ import (
 const (
 	defaultDatabaseFileName = "timetracker.db"
 	configDirectoryMode     = 0755
+	minimumArgumentCount    = 2 // minimumArgumentCount is the minimum number of arguments needed to assume the GUI is not being requested
 )
 
 var (
@@ -44,52 +45,56 @@ func init() {
 // Execute is the main entry point for the CLI
 func Execute() {
 	// If there were no CLI parameters supplied...
-	if len(os.Args) < 2 {
-		switch runtime.GOOS {
-		case "darwin":
-			// On macOS, default to starting the GUI
-			rootCmd.SetArgs([]string{"gui"})
-		case "windows":
-			// On windows, start the GUI directly without cobra
-			initLogger()
-			initDatabase()
-			err := preDoGUI(nil, nil)
-			if err != nil {
-				_ = os.WriteFile("execute_error.txt", []byte(err.Error()), 0600) //nolint:errcheck
-				cleanUp(nil, nil)
-				os.Exit(1)
-			}
-			err = doGUI(nil, nil)
-			if err != nil {
-				_ = os.WriteFile("execute_error.txt", []byte(err.Error()), 0600) //nolint:errcheck
-				cleanUp(nil, nil)
-				os.Exit(1)
-			}
-			err = postDoGUI(nil, nil)
-			if err != nil {
-				_ = os.WriteFile("execute_error.txt", []byte(err.Error()), 0600) //nolint:errcheck
-				cleanUp(nil, nil)
-				os.Exit(1)
-			}
-			cleanUp(nil, nil)
-			return
-		}
+	if len(os.Args) < minimumArgumentCount {
+		forceRunGUI()
 	}
 	if runtime.GOOS == "windows" && os.Args[1] != "gui" {
 		isAttached, err := cli.AttachToParentConsole()
 		if err != nil {
-			_ = os.WriteFile("attachconsole_failed.txt", []byte(err.Error()), 0600) //nolint:errcheck
+			logger.EmergencyLogToFile("attachconsole_failed.txt", err.Error())
 			return
 		}
 		if !isAttached {
-			_ = os.WriteFile("attachconsole_notattached.txt", []byte("not attached"), 0600) //nolint:errcheck
+			logger.EmergencyLogToFile("attachconsole_notattached.txt", "not attached")
 		}
 	}
 	err := rootCmd.Execute()
 	if err != nil {
-		_ = os.WriteFile("rootcmd_error.txt", []byte(err.Error()), 0600) //nolint:errcheck
-		fmt.Printf("*  error executing root command: %s\n", err)
+		logger.EmergencyLogToFile("rootcmd_error.txt", err.Error())
 		os.Exit(1)
+	}
+}
+
+// forceRunGUI forces the GUI to be started on select platforms
+func forceRunGUI() {
+	switch runtime.GOOS {
+	case "darwin":
+		// On macOS, default to starting the GUI
+		rootCmd.SetArgs([]string{"gui"})
+	case "windows":
+		// On windows, start the GUI directly without cobra
+		initLogger()
+		initDatabase()
+		err := preDoGUI(nil, nil)
+		if err != nil {
+			logger.EmergencyLogToFile("execute_error.txt", err.Error())
+			cleanUp(nil, nil)
+			os.Exit(1)
+		}
+		err = doGUI(nil, nil)
+		if err != nil {
+			logger.EmergencyLogToFile("execute_error.txt", err.Error())
+			cleanUp(nil, nil)
+			os.Exit(1)
+		}
+		err = postDoGUI(nil, nil)
+		if err != nil {
+			logger.EmergencyLogToFile("execute_error.txt", err.Error())
+			cleanUp(nil, nil)
+			os.Exit(1)
+		}
+		cleanUp(nil, nil)
+		return
 	}
 }
 
