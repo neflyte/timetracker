@@ -8,13 +8,15 @@ SHELL=CMD.EXE
 APPVERSION=$(shell type VERSION)
 SHORTAPPVERSION=$(shell FOR /F "delims=v tokens=1" %%I IN (VERSION) DO @ECHO %%I)
 BUILD_FILENAME=timetracker.exe
+GO_LDFLAGS_EXTRA=-H windowsgui
 else
 APPVERSION=$(shell cat VERSION)
 SHORTAPPVERSION=$(shell sed -E -e "s/v([0-9.]*).*/\1/" VERSION)
 BUILD_FILENAME=timetracker
+GO_LDFLAGS_EXTRA=
 endif
 OSES=darwin linux
-GO_LDFLAGS=-ldflags "-X 'github.com/neflyte/timetracker/cmd/timetracker/cmd.AppVersion=$(APPVERSION)'"
+GO_LDFLAGS=-ldflags "-X 'github.com/neflyte/timetracker/cmd/timetracker/cmd.AppVersion=$(APPVERSION)' $(GO_LDFLAGS_EXTRA)"
 BINPREFIX=timetracker-$(APPVERSION)_
 
 build:
@@ -56,8 +58,6 @@ dist-darwin: ensure-fyne-cli lint build
 	mv Timetracker.app dist/
 
 dist-windows: build
-	CMD /C COPY dist\\$(BUILD_FILENAME) dist\\$(BINPREFIX)windows-amd64-cli.exe
-	7z a -txz dist\\$(BINPREFIX)windows-amd64-cli.exe.xz dist\\$(BINPREFIX)windows-amd64-cli.exe
 	CMD /C COPY dist\\$(BUILD_FILENAME) cmd\\timetracker\\timetracker-build.exe
 	CMD /C "cd cmd\timetracker && fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable timetracker-build.exe"
 	CMD /C COPY cmd\\timetracker\\Timetracker.exe dist\\$(BINPREFIX)windows-amd64.exe
