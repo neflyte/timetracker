@@ -9,6 +9,7 @@ import (
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/neflyte/timetracker/internal/ui/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -18,10 +19,8 @@ const (
 )
 
 var (
-	// AppVersion is the application version number; it must always be exported
-	AppVersion = "dev"
-
-	rootCmd = &cobra.Command{
+	AppVersion = "dev" // AppVersion is the application version number; it must always be exported
+	rootCmd    = &cobra.Command{
 		Version:           AppVersion,
 		Use:               "timetracker",
 		Short:             "A simple time tracker",
@@ -74,6 +73,16 @@ func Execute() {
 			}
 			cleanUp(nil, nil)
 			return
+		}
+	}
+	if runtime.GOOS == "windows" && os.Args[1] != "gui" {
+		isAttached, err := cli.AttachToParentConsole()
+		if err != nil {
+			_ = os.WriteFile("attachconsole_failed.txt", []byte(err.Error()), 0600) //nolint:errcheck
+			return
+		}
+		if !isAttached {
+			_ = os.WriteFile("attachconsole_notattached.txt", []byte("not attached"), 0600) //nolint:errcheck
 		}
 	}
 	err := rootCmd.Execute()

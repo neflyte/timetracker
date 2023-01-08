@@ -26,7 +26,7 @@ require (
 	github.com/spf13/viper v1.14.0
 	github.com/stretchr/testify v1.8.1
 	github.com/teivah/onecontext v1.3.0 // indirect
-	golang.org/x/sys v0.2.0 // indirect
+	golang.org/x/sys v0.4.0
 	gorm.io/driver/sqlite v1.4.3
 	gorm.io/gorm v1.24.2
 )
