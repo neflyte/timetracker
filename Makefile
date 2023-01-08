@@ -15,7 +15,6 @@ SHORTAPPVERSION=$(shell sed -E -e "s/v([0-9.]*).*/\1/" VERSION)
 BUILD_FILENAME=timetracker
 GO_LDFLAGS_EXTRA=
 endif
-OSES=darwin linux
 GO_LDFLAGS=-ldflags "-X 'github.com/neflyte/timetracker/cmd/timetracker/cmd.AppVersion=$(APPVERSION)' $(GO_LDFLAGS_EXTRA)"
 BINPREFIX=timetracker-$(APPVERSION)_
 
@@ -23,7 +22,7 @@ build:
 ifeq ($(OS),Windows_NT)
 	CMD /C IF NOT EXIST dist MD dist
 else
-	if [ ! -d dist ]; then mkdir dist; fi
+	if [[ ! -d dist ]]; then mkdir dist; fi
 endif
 	go build $(GO_LDFLAGS) -o dist/$(BUILD_FILENAME) ./cmd/timetracker
 
@@ -31,14 +30,14 @@ clean-coverage:
 ifeq ($(OS),Windows_NT)
 	CMD /C IF EXIST coverage RD /S /Q coverage
 else
-	if [ -d coverage ]; then rm -Rf coverage; fi
+	if [[ -d coverage ]]; then rm -Rf coverage; fi
 endif
 
 clean: clean-coverage
 ifeq ($(OS),Windows_NT)
 	CMD /C IF EXIST dist RD /S /Q dist
 else
-	if [ -d dist ]; then rm -Rf dist; fi
+	if [[ -d dist ]]; then rm -Rf dist; fi
 endif
 
 lint:
@@ -48,7 +47,7 @@ test: clean-coverage
 ifeq ($(OS),Windows_NT)
 	CMD /C IF NOT EXIST coverage MD coverage
 else
-	if [ ! -d coverage ]; then mkdir coverage; fi
+	if [[ ! -d coverage ]]; then mkdir coverage; fi
 endif
 	go test -covermode=count -coverprofile=coverage/cover.out ./...
 	go tool cover -html=coverage/cover.out -o coverage/coverage.html
@@ -58,8 +57,10 @@ dist-linux: lint build
 	7z a -txz dist/$(BINPREFIX)linux-amd64.xz dist/$(BINPREFIX)linux-amd64
 
 dist-darwin: ensure-fyne-cli lint build
-	fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os darwin -executable dist/$(BUILD_FILENAME)
-	mv Timetracker.app dist/
+	if [[ ! -d dist/darwin ]]; then mkdir -p dist/darwin; fi
+	fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os darwin -executable dist/$(BUILD_FILENAME) -icon assets/icons/icon-v2.png
+	mv Timetracker.app dist/darwin
+	hdiutil create -srcfolder dist/darwin -volname "$(BINPREFIX)darwin-amd64" -imagekey zlib-level=9 dist/$(BINPREFIX)darwin-amd64.dmg
 
 dist-windows: lint build
 	CMD /C COPY dist\\$(BUILD_FILENAME) cmd\\timetracker\\timetracker-build.exe
@@ -75,7 +76,6 @@ endif
 	go list -json -u -m all | go-mod-outdated -direct -update
 
 ensure-fyne-cli:
-	@echo "Checking for fyne CLI tool"
 	hash fyne 2>/dev/null || { cd && go install fyne.io/fyne/v2/cmd/fyne@latest; cd -; }
 
 generate-icons-darwin:
