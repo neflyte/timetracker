@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	logFileName      = "timetracker.log"
-	logDirectoryMode = 0755
-	logFileMode      = 0644
+	logFileName           = "timetracker.log"
+	logDirectoryMode      = 0755
+	logFileMode           = 0644
+	emergencyErrorLogMode = 0600
 )
 
 var (
@@ -51,7 +52,7 @@ func InitLogger(logLevel string, console bool) {
 	logPath = path.Join(configHome, "timetracker")
 	err = os.MkdirAll(logPath, logDirectoryMode)
 	if err != nil {
-		logToFile(
+		EmergencyLogToFile(
 			"logger_error.txt",
 			fmt.Sprintf("error creating log directory %s: %s\n", logPath, err.Error()),
 		)
@@ -91,7 +92,7 @@ func CleanupLogger() {
 		if logFileHandle != nil {
 			err := logFileHandle.Close()
 			if err != nil {
-				logToFile(
+				EmergencyLogToFile(
 					"logger_cleanup_error.txt",
 					fmt.Sprintf("error cleaning up logger: %s\n", err.Error()),
 				)
@@ -143,14 +144,16 @@ func getConfigHome() string {
 	// Look for XDG_CONFIG_HOME
 	configHome, err := os.UserConfigDir()
 	if err != nil {
-		log.Err(err).Msg("error getting user config directory")
+		log.Err(err).
+			Msg("error getting user config directory")
 		configHome = ""
 	}
 	// Look for HOME
 	if configHome == "" {
 		configHome, err = os.UserHomeDir()
 		if err != nil {
-			log.Err(err).Msg("error getting user home directory")
+			log.Err(err).
+				Msg("error getting user home directory")
 			configHome = ""
 		}
 	}
@@ -161,6 +164,8 @@ func getConfigHome() string {
 	return configHome
 }
 
-func logToFile(filename string, message string) {
-	_ = os.WriteFile(filename, []byte(message), 0600) //nolint:errcheck
+// EmergencyLogToFile logs the specified message to the specified file. To be used when
+// the logger facility is not available.
+func EmergencyLogToFile(filename string, message string) {
+	_ = os.WriteFile(filename, []byte(message), emergencyErrorLogMode) //nolint:errcheck
 }

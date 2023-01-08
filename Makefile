@@ -1,6 +1,6 @@
 # timetracker Makefile
 
-.PHONY: build clean clean-coverage lint test dist-darwin dist-windows outdated ensure-fyne-cli generate-icons-darwin generate-icons-windows generate-bundled-icons
+.PHONY: build clean clean-coverage lint test dist-linux dist-darwin dist-windows outdated ensure-fyne-cli generate-icons-darwin generate-icons-windows generate-bundled-icons
 
 ifeq ($(OS),Windows_NT)
 SHELL=CMD.EXE
@@ -53,11 +53,15 @@ endif
 	go test -covermode=count -coverprofile=coverage/cover.out ./...
 	go tool cover -html=coverage/cover.out -o coverage/coverage.html
 
+dist-linux: lint build
+	cp dist/$(BUILD_FILENAME) dist/$(BINPREFIX)linux-amd64
+	7z a -txz dist/$(BINPREFIX)linux-amd64.xz dist/$(BINPREFIX)linux-amd64
+
 dist-darwin: ensure-fyne-cli lint build
 	fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os darwin -executable dist/$(BUILD_FILENAME)
 	mv Timetracker.app dist/
 
-dist-windows: build
+dist-windows: lint build
 	CMD /C COPY dist\\$(BUILD_FILENAME) cmd\\timetracker\\timetracker-build.exe
 	CMD /C "cd cmd\timetracker && fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable timetracker-build.exe"
 	CMD /C COPY cmd\\timetracker\\Timetracker.exe dist\\$(BINPREFIX)windows-amd64.exe
