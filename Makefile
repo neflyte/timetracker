@@ -22,7 +22,7 @@ build:
 ifeq ($(OS),Windows_NT)
 	CMD /C IF NOT EXIST dist MD dist
 else
-	if [[ ! -d dist ]]; then mkdir dist; fi
+	if [ ! -d dist ]; then mkdir dist; fi
 endif
 	go build $(GO_LDFLAGS) -o dist/$(BUILD_FILENAME) ./cmd/timetracker
 
@@ -30,14 +30,14 @@ clean-coverage:
 ifeq ($(OS),Windows_NT)
 	CMD /C IF EXIST coverage RD /S /Q coverage
 else
-	if [[ -d coverage ]]; then rm -Rf coverage; fi
+	if [ -d coverage ]; then rm -Rf coverage; fi
 endif
 
 clean: clean-coverage
 ifeq ($(OS),Windows_NT)
 	CMD /C IF EXIST dist RD /S /Q dist
 else
-	if [[ -d dist ]]; then rm -Rf dist; fi
+	if [ -d dist ]; then rm -Rf dist; fi
 endif
 
 lint:
@@ -47,7 +47,7 @@ test: clean-coverage
 ifeq ($(OS),Windows_NT)
 	CMD /C IF NOT EXIST coverage MD coverage
 else
-	if [[ ! -d coverage ]]; then mkdir coverage; fi
+	if [ ! -d coverage ]; then mkdir coverage; fi
 endif
 	go test -covermode=count -coverprofile=coverage/cover.out ./...
 	go tool cover -html=coverage/cover.out -o coverage/coverage.html
