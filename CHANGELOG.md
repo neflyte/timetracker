@@ -13,10 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Simplified main window UI
-- Updated fyne.io/fyne/v2 from v2.2.4 to v2.3.0
 - All app icons are updated; new icons created from (mostly) scratch
 - Windows builds support GUI and CLI operation with a single binary
 - Package macOS build in a disk image (DMG)
+- Updated fyne.io/fyne/v2 from v2.2.4 to v2.3.0
+- Updated gorm.io/gorm from v1.24.2 to v1.24.3
+- Updated gorm.io/drive/sqlite from v1.4.3 to v1.4.4
 
 ### Removed
 - Task selector pick list
