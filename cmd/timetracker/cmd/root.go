@@ -48,7 +48,7 @@ func Execute() {
 	if len(os.Args) < minimumArgumentCount {
 		forceRunGUI()
 	}
-	if runtime.GOOS == "windows" && os.Args[1] != "gui" {
+	if runtime.GOOS == "windows" && os.Args[1] != "gui" && os.Args[1] != "tray" {
 		isAttached, err := cli.AttachToParentConsole()
 		if err != nil {
 			logger.EmergencyLogToFile("attachconsole_failed.txt", err.Error())
