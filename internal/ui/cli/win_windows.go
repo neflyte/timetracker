@@ -6,10 +6,10 @@ https://github.com/safing/portmaster/blob/develop/cmds/portmaster-start/console_
 */
 
 import (
-	"log"
 	"os"
 	"syscall"
 
+	"github.com/neflyte/timetracker/internal/logger"
 	"golang.org/x/sys/windows"
 )
 
@@ -68,23 +68,31 @@ var (
 //    WSL bash         works              works
 //
 // We don't seem to make anything worse, at least.
-func AttachToParentConsole() (attached bool, err error) {
+// nolint:cyclop
+func AttachToParentConsole() (bool, error) {
+	log := logger.GetFuncLogger(packageLogger, "AttachToParentConsole")
 	// get std handles before we attempt to attach to parent console
-	stdin, _ := syscall.GetStdHandle(syscall.STD_INPUT_HANDLE)   //nolint:errcheck
-	stdout, _ := syscall.GetStdHandle(syscall.STD_OUTPUT_HANDLE) //nolint:errcheck
-	stderr, _ := syscall.GetStdHandle(syscall.STD_ERROR_HANDLE)  //nolint:errcheck
+	stdin, _ := syscall.GetStdHandle(syscall.STD_INPUT_HANDLE)   // nolint:errcheck
+	stdout, _ := syscall.GetStdHandle(syscall.STD_OUTPUT_HANDLE) // nolint:errcheck
+	stderr, _ := syscall.GetStdHandle(syscall.STD_ERROR_HANDLE)  // nolint:errcheck
 
 	// attempt to attach to parent console
-	err = procAttachConsole.Find()
+	err := procAttachConsole.Find()
 	if err != nil {
+		log.Err(err).
+			Msg("unable to find AttachConsole proc")
 		return false, err
 	}
-	r1, _, errno := procAttachConsole.Call(windowsAttachParentProcess)
+	r1, r2, errno := procAttachConsole.Call(windowsAttachParentProcess)
 	if r1 == 0 {
 		// possible errors:
 		// ERROR_ACCESS_DENIED: already attached to console
 		// ERROR_INVALID_HANDLE: process does not have console
 		// ERROR_INVALID_PARAMETER: process does not exist
+		log.Err(errno).
+			Uint("r1", uint(r1)).
+			Uint("r2", uint(r2)).
+			Msg("error attaching to parent console")
 		return false, errno
 	}
 
@@ -93,47 +101,64 @@ func AttachToParentConsole() (attached bool, err error) {
 	con := invalid
 
 	if stdin == invalid {
-		stdin, _ = syscall.GetStdHandle(syscall.STD_INPUT_HANDLE)
+		stdin, _ = syscall.GetStdHandle(syscall.STD_INPUT_HANDLE) // nolint:errcheck
 	}
 	if stdout == invalid {
-		stdout, _ = syscall.GetStdHandle(syscall.STD_OUTPUT_HANDLE)
+		stdout, _ = syscall.GetStdHandle(syscall.STD_OUTPUT_HANDLE) // nolint:errcheck
 		con = stdout
 	}
 	if stderr == invalid {
-		stderr, _ = syscall.GetStdHandle(syscall.STD_ERROR_HANDLE)
+		stderr, _ = syscall.GetStdHandle(syscall.STD_ERROR_HANDLE) // nolint:errcheck
 		con = stderr
 	}
 
 	// correct output mode
+	err = nil
 	if con != invalid {
-		// Make sure the console is configured to convert
-		// \n to \r\n, like Go programs expect.
-		h := windows.Handle(con)
-		var st uint32
-		err := windows.GetConsoleMode(h, &st)
-		if err != nil {
-			log.Printf("failed to get console mode: %s\n", err)
-		} else {
-			err = windows.SetConsoleMode(h, st&^windows.DISABLE_NEWLINE_AUTO_RETURN)
-			if err != nil {
-				log.Printf("failed to set console mode: %s\n", err)
-			}
-		}
+		err = correctOutputMode(con)
+	}
+	if err != nil {
+		log.Err(err).
+			Msg("error correcting output mode")
+		return false, err
 	}
 
 	// fix std handles to correct values (ie. redirects)
 	if stdin != invalid {
 		os.Stdin = os.NewFile(uintptr(stdin), "stdin")
-		log.Println("fixed os.Stdin after attaching to parent console")
+		log.Debug().
+			Msg("fixed os.Stdin after attaching to parent console")
 	}
 	if stdout != invalid {
 		os.Stdout = os.NewFile(uintptr(stdout), "stdout")
-		log.Println("fixed os.Stdout after attaching to parent console")
+		log.Debug().
+			Msg("fixed os.Stdout after attaching to parent console")
 	}
 	if stderr != invalid {
 		os.Stderr = os.NewFile(uintptr(stderr), "stderr")
-		log.Println("fixed os.Stderr after attaching to parent console")
+		log.Debug().
+			Msg("fixed os.Stderr after attaching to parent console")
 	}
-
 	return true, nil
+}
+
+func correctOutputMode(con syscall.Handle) error {
+	log := logger.GetFuncLogger(packageLogger, "correctOutputMode")
+	// Make sure the console is configured to convert
+	// \n to \r\n, like Go programs expect.
+	h := windows.Handle(con)
+	var st uint32
+	err := windows.GetConsoleMode(h, &st)
+	if err != nil {
+		log.Err(err).
+			Msg("failed to get console mode")
+		return err
+	}
+	err = windows.SetConsoleMode(h, st&^windows.DISABLE_NEWLINE_AUTO_RETURN)
+	if err != nil {
+		log.Err(err).
+			Msg("failed to set console mode")
+		return err
+	}
+	return nil
 }

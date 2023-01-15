@@ -2,10 +2,15 @@ package cli
 
 import (
 	"fmt"
+	"github.com/neflyte/timetracker/internal/logger"
 	"strings"
 
 	"github.com/fatih/color"
 	"github.com/rs/zerolog"
+)
+
+var (
+	packageLogger = logger.GetPackageLogger("cli")
 )
 
 // printError prints an error message with an optional formatted message to the console
