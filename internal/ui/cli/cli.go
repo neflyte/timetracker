@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	packageLogger = logger.GetPackageLogger("cli")
+	packageLogger = logger.GetPackageLogger("cli") // nolint:unused
 )
 
 // printError prints an error message with an optional formatted message to the console
