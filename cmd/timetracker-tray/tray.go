@@ -1,35 +1,56 @@
-package cmd
+package main
 
 import (
 	"errors"
-	"github.com/neflyte/timetracker/internal/ui/tray"
 	"os"
 	"path"
 
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
+	"github.com/neflyte/timetracker/internal/ui/tray"
 	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/nightlyone/lockfile"
-	"github.com/spf13/cobra"
-)
-
-const (
-	trayPidfile = "timetracker-tray.pid"
 )
 
 var (
-	trayCmd = &cobra.Command{
-		Use:      "tray",
-		Short:    "Start the Timetracker system tray app",
-		PreRunE:  preDoTray,
-		RunE:     doTray,
-		PostRunE: postDoTray,
-	}
 	trayCmdLockFile     lockfile.Lockfile
 	trayCmdLockfilePath string
 )
 
-func preDoTray(_ *cobra.Command, _ []string) error {
+func ensureUserHomeDirectory() (string, error) {
+	log := logger.GetLogger("ensureUserHomeDirectory")
+	userConfigDir, err := os.UserConfigDir()
+	if err != nil {
+		userConfigDir = "."
+	} else {
+		userConfigDir = path.Join(userConfigDir, "timetracker")
+	}
+	if userConfigDir != "." {
+		err = os.MkdirAll(userConfigDir, configDirectoryMode)
+		if err != nil {
+			log.Err(err).
+				Str("userConfigDir", userConfigDir).
+				Msg("error creating directories for pidfile")
+			return "", err
+		}
+	}
+	return userConfigDir, nil
+}
+
+func removeStalePidfile(pidfile string) {
+	log := logger.GetLogger("removeStalePidfile")
+	log.Debug().
+		Str("pidfile", pidfile).
+		Msg("attempting to remove stale pidfile")
+	err := os.Remove(pidfile)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Err(err).
+			Str("pidfile", pidfile).
+			Msg("error removing existing pidfile")
+	}
+}
+
+func preDoTray() error {
 	log := logger.GetLogger("preDoTray")
 	userConfigDir, err := ensureUserHomeDirectory()
 	if err != nil {
@@ -75,7 +96,7 @@ func preDoTray(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func postDoTray(_ *cobra.Command, _ []string) error {
+func postDoTray() error {
 	log := logger.GetLogger("postDoTray")
 	log.Debug().
 		Msg("called")
@@ -101,20 +122,9 @@ func postDoTray(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func doTray(_ *cobra.Command, _ []string) error {
-	// log := logger.GetLogger("doTray")
+func doTray() {
 	// Write the AppVersion to the appstate Map so gui components can access it without a direct binding
 	appstate.Map().Store(appstate.KeyAppVersion, AppVersion)
 	// Start the tray
-	// tray.Run(func() {
-	//	log.Debug().
-	//		Msg("calling postDoTray from tray.Run func")
-	//	err := postDoTray(nil, nil)
-	//	if err != nil {
-	//		log.Err(err).
-	//			Msg("error running postDoTray")
-	//	}
-	// })
 	tray.Run(nil)
-	return nil
 }

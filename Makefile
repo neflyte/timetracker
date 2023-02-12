@@ -1,7 +1,7 @@
 # timetracker Makefile
 
 .PHONY: build clean clean-coverage lint test dist-linux dist-darwin dist-windows outdated ensure-fyne-cli
-.PHONY: generate-icons-darwin generate-icons-windows generate-bundled-icons ensure-dist-directory build-cli build-gui
+.PHONY: generate-icons-darwin generate-icons-windows generate-bundled-icons ensure-dist-directory build-cli build-gui build-tray
 
 ifeq ($(OS),Windows_NT)
 SHELL=CMD.EXE
@@ -10,22 +10,28 @@ APPVERSION=$(shell type VERSION)
 SHORTAPPVERSION=$(shell FOR /F "delims=v tokens=1" %%I IN (VERSION) DO @ECHO %%I)
 BUILD_FILENAME=timetracker.exe
 GUI_BUILD_FILENAME=timetracker-gui.exe
+TRAY_BUILD_FILENAME=timetracker-tray.exe
 GO_LDFLAGS_EXTRA=
 GUI_GO_LDFLAGS_EXTRA=-H windowsgui
+TRAY_GO_LDFLAGS_EXTRA=-H windowsgui
 else
 APPVERSION=$(shell cat VERSION)
 SHORTAPPVERSION=$(shell sed -E -e "s/v([0-9.]*).*/\1/" VERSION)
 BUILD_FILENAME=timetracker
 GUI_BUILD_FILENAME=timetracker-gui
+TRAY_BUILD_FILENAME=timetracker-tray
 GO_LDFLAGS_EXTRA=
 GUI_GO_LDFLAGS_EXTRA=
+TRAY_GO_LDFLAGS_EXTRA=
 endif
 GO_LDFLAGS=-ldflags "-s -X 'github.com/neflyte/timetracker/cmd/timetracker/cmd.AppVersion=$(APPVERSION)' $(GO_LDFLAGS_EXTRA)"
 GUI_GO_LDFLAGS=-ldflags "-s -X 'github.com/neflyte/timetracker/cmd/timetracker-gui/main.AppVersion=$(APPVERSION)' $(GUI_GO_LDFLAGS_EXTRA)"
+TRAY_GO_LDFLAGS=-ldflags "-s -X 'github.com/neflyte/timetracker/cmd/timetracker-tray/main.AppVersion=$(APPVERSION)' $(TRAY_GO_LDFLAGS_EXTRA)"
 BINPREFIX=timetracker-$(APPVERSION)_
 GUI_BINPREFIX=timetracker-gui-$(APPVERSION)_
+TRAY_BINPREFIX=timetracker-tray-$(APPVERSION)_
 
-build: ensure-dist-directory build-cli build-gui
+build: ensure-dist-directory build-cli build-gui build-tray
 
 ensure-dist-directory:
 ifeq ($(OS),Windows_NT)
@@ -39,6 +45,9 @@ build-cli:
 
 build-gui:
 	go build $(GUI_GO_LDFLAGS) -o dist/$(GUI_BUILD_FILENAME) ./cmd/timetracker-gui
+
+build-tray:
+	go build $(TRAY_GO_LDFLAGS) -o dist/$(TRAY_BUILD_FILENAME) ./cmd/timetracker-tray
 
 clean-coverage:
 ifeq ($(OS),Windows_NT)
@@ -69,7 +78,8 @@ endif
 dist-linux: lint build
 	cp dist/$(BUILD_FILENAME) dist/$(BINPREFIX)linux-amd64
 	cp dist/$(GUI_BUILD_FILENAME) dist/$(GUI_BINPREFIX)linux-amd64
-	cd dist && tar cvJf $(BINPREFIX)linux-amd64.tar.xz $(BINPREFIX)linux-amd64 $(GUI_BINPREFIX)linux-amd64
+	cp dist/$(TRAY_BUILD_FILENAME) dist/$(TRAY_BINPREFIX)linux-amd64
+	cd dist && tar cvJf $(BINPREFIX)linux-amd64.tar.xz $(BINPREFIX)linux-amd64 $(GUI_BINPREFIX)linux-amd64 $(TRAY_BINPREFIX)linux-amd64
 
 dist-darwin: ensure-fyne-cli lint build
 	if [[ ! -d dist/darwin ]]; then mkdir -p dist/darwin; fi
