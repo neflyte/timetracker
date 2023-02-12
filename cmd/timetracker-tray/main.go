@@ -1,6 +1,7 @@
-package cmd
+package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path"
@@ -8,44 +9,25 @@ import (
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
-	"github.com/spf13/cobra"
 )
 
 const (
 	defaultDatabaseFileName = "timetracker.db"
 	configDirectoryMode     = 0755
+	trayPidfile             = "timetracker-tray.pid"
 )
 
 var (
-	AppVersion = "dev" // AppVersion is the application version number; it must always be exported
-	rootCmd    = &cobra.Command{
-		Version:           AppVersion,
-		Use:               "timetracker",
-		Short:             "A simple time tracker",
-		Long:              "A simple time tracker for various tasks with basic reporting",
-		PersistentPostRun: cleanUp,
-	}
+	AppVersion     = "dev" // AppVersion is the application version number; it must always be exported
 	configFileName string
 	logLevel       string
-	consoleLogging bool
+	showVersion    bool
 )
 
 func init() {
-	cobra.OnInitialize(initLogger, initDatabase)
-	rootCmd.PersistentFlags().StringVarP(&configFileName, "config", "c", "", "Specify the full path and filename of the database to use")
-	rootCmd.PersistentFlags().StringVarP(&logLevel, "logLevel", "l", "info", "Specify the logging level")
-	rootCmd.PersistentFlags().BoolVar(&consoleLogging, "console", false, "Log messages to the console as well as the log file")
-	rootCmd.AddCommand(taskCmd, timesheetCmd, statusCmd)
-	rootCmd.SetVersionTemplate(fmt.Sprintf("timetracker %s\n", AppVersion))
-}
-
-// Execute is the main entry point for the CLI
-func Execute() {
-	err := rootCmd.Execute()
-	if err != nil {
-		logger.EmergencyLogToFile("rootcmd_error.txt", err.Error())
-		os.Exit(1)
-	}
+	flag.StringVar(&configFileName, "config", "", "Specify the full path and filename of the database to use")
+	flag.StringVar(&logLevel, "logLevel", "INFO", "Specify the logging level")
+	flag.BoolVar(&showVersion, "version", false, "Display the program version")
 }
 
 func initDatabase() {
@@ -84,7 +66,7 @@ func initDatabase() {
 	database.Set(db)
 	err = db.AutoMigrate(new(models.TaskData), new(models.TimesheetData))
 	if err != nil {
-		cleanUp(nil, nil)
+		cleanUp()
 		log.Fatal().
 			Err(err).
 			Msg("error auto-migrating database schema")
@@ -94,11 +76,37 @@ func initDatabase() {
 }
 
 func initLogger() {
-	logger.InitLogger(logLevel, consoleLogging)
+	logger.InitLogger(logLevel, false)
 }
 
-func cleanUp(_ *cobra.Command, _ []string) {
+func cleanUp() {
 	database.Close(database.Get())
 	database.Set(nil)
 	logger.CleanupLogger()
+}
+
+func main() {
+	flag.Parse()
+	if showVersion {
+		fmt.Printf("timetracker-tray %s\n", AppVersion)
+		return
+	}
+	initLogger()
+	initDatabase()
+	defer cleanUp()
+	log := logger.GetLogger("main")
+	err := preDoTray()
+	if err != nil {
+		log.Err(err).
+			Msg("error setting up tray entry")
+		return
+	}
+	defer func() {
+		err = postDoTray()
+		if err != nil {
+			log.Err(err).
+				Msg("error tearing down tray entry")
+		}
+	}()
+	doTray()
 }
