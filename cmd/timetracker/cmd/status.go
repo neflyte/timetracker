@@ -24,12 +24,14 @@ var (
 	trailingNewline = false
 	verbose         = false
 	synopsis        = false
+	noColour        = false
 )
 
 func init() {
 	statusCmd.Flags().BoolVarP(&trailingNewline, "newline", "n", false, "flag to add a trailing newline to the output")
 	statusCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "include extra details in the output")
 	statusCmd.Flags().BoolVarP(&synopsis, "synopsis", "s", false, "show the running task synopsis")
+	statusCmd.Flags().BoolVarP(&noColour, "no-colour", "o", false, "do not include colour output")
 }
 
 func status(_ *cobra.Command, _ []string) error {
@@ -38,31 +40,49 @@ func status(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		log.Err(err).
 			Msg("error getting running timesheet")
-		fmt.Print(color.RedString(constants.UnicodeHeavyX))
+		statusString := constants.UnicodeHeavyX
+		if !noColour {
+			statusString = color.RedString(statusString)
+		}
+		fmt.Print(statusString)
 		if verbose {
-			fmt.Print("Error:", color.WhiteString(err.Error()))
+			errString := err.Error()
+			if !noColour {
+				errString = color.WhiteString(errString)
+			}
+			fmt.Print("Error: ", errString)
 		}
 		return err
 	}
 	sb := strings.Builder{}
 	if len(timesheets) == 0 {
 		// No running task
-		sb.WriteString(color.GreenString(constants.UnicodeHeavyCheckmark))
+		statusString := constants.UnicodeHeavyCheckmark
+		if !noColour {
+			statusString = color.GreenString(statusString)
+		}
+		sb.WriteString(statusString)
 	} else {
 		// Running task...
 		timesheet := timesheets[0]
-		sb.WriteString(color.YellowString(constants.UnicodeClock))
+		statusString := constants.UnicodeClock
+		if !noColour {
+			statusString = color.YellowString(statusString)
+		}
+		sb.WriteString(statusString)
 		if synopsis || verbose {
-			sb.WriteString(" " + color.HiWhiteString(timesheet.Task.Synopsis))
+			synString := timesheet.Task.Synopsis
+			if !noColour {
+				synString = color.HiWhiteString(synString)
+			}
+			sb.WriteString(" " + synString)
 		}
 		if verbose {
-			sb.WriteString(" " +
-				color.HiBlueString(
-					time.Since(timesheet.StartTime).
-						Truncate(time.Second).
-						String(),
-				),
-			)
+			timeSince := time.Since(timesheet.StartTime).Truncate(time.Second).String()
+			if !noColour {
+				timeSince = color.HiBlueString(timeSince)
+			}
+			sb.WriteString(" " + timeSince)
 		}
 	}
 	if trailingNewline {
