@@ -34,7 +34,8 @@ func init() {
 	statusCmd.Flags().BoolVarP(&noColour, "no-colour", "o", false, "do not include colour output")
 }
 
-func status(_ *cobra.Command, _ []string) error {
+// FIXME: Reduce cyclomatic complexity of this function
+func status(_ *cobra.Command, _ []string) error { //nolint:cyclop
 	log := logger.GetLogger("status")
 	timesheets, err := models.NewTimesheet().SearchOpen()
 	if err != nil {
