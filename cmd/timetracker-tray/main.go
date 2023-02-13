@@ -22,12 +22,14 @@ var (
 	configFileName string
 	logLevel       string
 	showVersion    bool
+	console        bool
 )
 
 func init() {
 	flag.StringVar(&configFileName, "config", "", "Specify the full path and filename of the database to use")
-	flag.StringVar(&logLevel, "logLevel", "INFO", "Specify the logging level")
+	flag.StringVar(&logLevel, "logLevel", "info", "Specify the logging level")
 	flag.BoolVar(&showVersion, "version", false, "Display the program version")
+	flag.BoolVar(&console, "console", false, "Log to the console")
 }
 
 func initDatabase() {
@@ -76,7 +78,7 @@ func initDatabase() {
 }
 
 func initLogger() {
-	logger.InitLogger(logLevel, false)
+	logger.InitLogger(logLevel, console)
 }
 
 func cleanUp() {
