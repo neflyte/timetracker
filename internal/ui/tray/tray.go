@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path"
 	"runtime"
 	"syscall"
 	"time"
@@ -285,9 +286,14 @@ func launchGUI(options ...string) {
 			Msg("error getting path and name of this program")
 		return
 	}
+	timetrackerDir := path.Dir(timetrackerExecutable)
+	guiExecutable := path.Join(timetrackerDir, "timetracker-gui")
+	if runtime.GOOS == "windows" {
+		guiExecutable += ".exe"
+	}
 	guiOptions := []string{"gui"}
 	guiOptions = append(guiOptions, options...)
-	guiCmd := exec.Command(timetrackerExecutable, guiOptions...)
+	guiCmd := exec.Command(guiExecutable, guiOptions...)
 	err = guiCmd.Start()
 	if err != nil {
 		log.Err(err).
