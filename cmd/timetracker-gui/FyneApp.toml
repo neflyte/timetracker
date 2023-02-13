@@ -3,4 +3,4 @@ Website = "https://github.com/neflyte/timetracker"
 [Details]
   Icon = "../../assets/icons/icon-v2.png"
   ID = "cc.ethereal.timetracker"
-  Build = 12
+  Build = 14

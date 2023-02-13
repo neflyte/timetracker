@@ -87,21 +87,35 @@ dist-darwin: ensure-fyne-cli lint build
 	mv Timetracker.app dist/darwin
 	hdiutil create -srcfolder dist/darwin -volname "$(BINPREFIX)darwin-amd64" -imagekey zlib-level=9 dist/$(BINPREFIX)darwin-amd64.dmg
 
-dist-windows: lint build
-	CMD /C COPY dist\\$(BUILD_FILENAME) cmd\\timetracker\\timetracker-build.exe
-	CMD /C "cd cmd\timetracker && fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable timetracker-build.exe"
-	CMD /C COPY cmd\\timetracker\\Timetracker.exe dist\\$(BINPREFIX)windows-amd64.exe
-	CMD /C DEL cmd\\timetracker\\Timetracker.exe
-	7z a -txz dist\\$(BINPREFIX)windows-amd64.exe.xz dist\\$(BINPREFIX)windows-amd64.exe
+dist-windows: ensure-fyne-cli lint build
+	CMD /C COPY /Y cmd\\timetracker-gui\\FyneApp.toml cmd\\timetracker-tray\\FyneApp.toml
+	CMD /C COPY dist\\$(GUI_BUILD_FILENAME) cmd\\timetracker-gui\\timetracker-build.exe
+	CMD /C "cd cmd\timetracker-gui && fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable timetracker-build.exe"
+	CMD /C COPY cmd\\timetracker-gui\\Timetracker.exe dist\\$(GUI_BINPREFIX)windows-amd64.exe
+	CMD /C DEL cmd\\timetracker-gui\\Timetracker.exe
+	CMD /C COPY dist\\$(TRAY_BUILD_FILENAME) cmd\\timetracker-tray\\timetracker-build.exe
+	CMD /C "cd cmd\timetracker-tray && fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable timetracker-build.exe"
+	CMD /C COPY cmd\\timetracker-tray\\Timetracker.exe dist\\$(TRAY_BINPREFIX)windows-amd64.exe
+	CMD /C DEL cmd\\timetracker-tray\\Timetracker.exe
+	CMD /C DEL cmd\\timetracker-tray\\FyneApp.toml
+	CMD /C COPY dist\\$(BUILD_FILENAME) dist\\$(BINPREFIX)windows-amd64.exe
+	CMD /C "cd dist && tar cvf $(BINPREFIX)windows-amd64.tar $(BINPREFIX)windows-amd64.exe $(GUI_BINPREFIX)windows-amd64.exe $(TRAY_BINPREFIX)windows-amd64.exe"
+	CMD /C "cd dist && xz $(BINPREFIX)windows-amd64.tar"
 
 outdated:
 ifneq ($(OS),Windows_NT)
 	hash go-mod-outdated 2>/dev/null || { cd && go install github.com/psampaz/go-mod-outdated@v0.8.0; cd -; }
+else
+	CMD /C "pushd %HOMEDRIVE%%HOMEPATH% && go install github.com/psampaz/go-mod-outdated@v0.8.0 && popd"
 endif
 	go list -json -u -m all | go-mod-outdated -direct -update
 
 ensure-fyne-cli:
+ifeq ($(OS),Windows_NT)
+	CMD /C "pushd %HOMEDRIVE%%HOMEPATH% && go install fyne.io/fyne/v2/cmd/fyne@latest && popd"
+else
 	hash fyne 2>/dev/null || { cd && go install fyne.io/fyne/v2/cmd/fyne@latest; cd -; }
+endif
 
 generate-icons-darwin:
 	bash scripts/generate_icns.sh assets/images/icon-v2.svg assets/icons
