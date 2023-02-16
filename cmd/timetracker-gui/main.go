@@ -30,7 +30,7 @@ var (
 
 func init() {
 	flag.StringVar(&configFileName, "config", "", "Specify the full path and filename of the database to use")
-	flag.StringVar(&logLevel, "logLevel", "INFO", "Specify the logging level")
+	flag.StringVar(&logLevel, "logLevel", "info", "Specify the logging level")
 	flag.BoolVar(&showVersion, "version", false, "Display the program version")
 	// GUI flags
 	flag.BoolVar(&guiCmdOptionStopRunningTask, "stop-running-task", false, "Stops the running task, if any")
