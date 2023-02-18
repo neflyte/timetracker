@@ -21,4 +21,13 @@ const (
 	TimesheetStatusRunning
 	// TimesheetStatusError represents a timesheet error
 	TimesheetStatusError
+
+	// DefaultDatabaseFileName is the default file name of the timetracker database
+	DefaultDatabaseFileName = "timetracker.db"
+
+	// ConfigDirectoryMode is the octal mode of the timetracker config directory if it needs to be created
+	ConfigDirectoryMode = 0755
+
+	// DefaultLogLevel is the default logger level
+	DefaultLogLevel = "info"
 )

@@ -2,10 +2,10 @@ package cli
 
 import (
 	"fmt"
-	"github.com/neflyte/timetracker/internal/logger"
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/rs/zerolog"
 )
 

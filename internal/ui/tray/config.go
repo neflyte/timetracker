@@ -6,13 +6,13 @@ import (
 	"os"
 	"path"
 
+	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/spf13/viper"
 )
 
 const (
-	keyStopTaskConfirm  = "stop-task-confirm"
-	configDirectoryMode = 0755
+	keyStopTaskConfirm = "stop-task-confirm"
 )
 
 func init() {
@@ -23,13 +23,13 @@ func init() {
 	// 1. User's config directory
 	userConfDir, err := os.UserConfigDir()
 	if err != nil {
-		fmt.Printf("*  error reading user config directory: %s\n", err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "error reading user config directory: %s\n", err.Error())
 	} else {
 		userTimetrackerConfDir := path.Join(userConfDir, "timetracker")
 		// Make sure the directory exists before we add it
-		mkdirErr := os.MkdirAll(userTimetrackerConfDir, configDirectoryMode)
+		mkdirErr := os.MkdirAll(userTimetrackerConfDir, constants.ConfigDirectoryMode)
 		if mkdirErr != nil {
-			fmt.Printf("*  error creating configuration directory '%s': %s\n", userTimetrackerConfDir, mkdirErr.Error())
+			_, _ = fmt.Fprintf(os.Stderr, "error creating configuration directory '%s': %s\n", userTimetrackerConfDir, mkdirErr.Error())
 		} else {
 			viper.AddConfigPath(userTimetrackerConfDir)
 		}
@@ -44,7 +44,7 @@ func init() {
 		var viperAlreadyExistsError viper.ConfigFileAlreadyExistsError
 		errOk := errors.As(err, &viperAlreadyExistsError)
 		if !errOk {
-			fmt.Printf("*  error creating config file: %s\n", err.Error())
+			_, _ = fmt.Fprintf(os.Stderr, "error creating config file: %s\n", err.Error())
 		}
 	}
 }

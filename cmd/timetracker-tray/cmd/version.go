@@ -1,5 +1,6 @@
 package cmd
 
 var (
-	AppVersion = "dev" // AppVersion is the application cmd number; it must always be exported
+	// AppVersion is the application version number; it must always be exported
+	AppVersion = "dev"
 )

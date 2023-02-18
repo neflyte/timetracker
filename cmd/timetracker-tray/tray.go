@@ -5,8 +5,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/neflyte/timetracker/cmd/timetracker-tray/cmd"
-	"github.com/neflyte/timetracker/internal/appstate"
+	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/tray"
 	"github.com/neflyte/timetracker/internal/utils"
@@ -27,7 +26,7 @@ func ensureUserHomeDirectory() (string, error) {
 		userConfigDir = path.Join(userConfigDir, "timetracker")
 	}
 	if userConfigDir != "." {
-		err = os.MkdirAll(userConfigDir, configDirectoryMode)
+		err = os.MkdirAll(userConfigDir, constants.ConfigDirectoryMode)
 		if err != nil {
 			log.Err(err).
 				Str("userConfigDir", userConfigDir).
@@ -124,8 +123,6 @@ func postDoTray() error {
 }
 
 func doTray() {
-	// Write the AppVersion to the appstate Map so gui components can access it without a direct binding
-	appstate.Map().Store(appstate.KeyAppVersion, cmd.AppVersion)
 	// Start the tray
 	tray.Run(nil)
 }

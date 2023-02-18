@@ -3,7 +3,6 @@ package windows
 import (
 	"errors"
 	"fmt"
-	"github.com/neflyte/timetracker/internal/ui/icons"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -13,12 +12,12 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/neflyte/timetracker/internal/appstate"
 	tterrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/gui/dialogs"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
+	"github.com/neflyte/timetracker/internal/ui/icons"
 	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/rs/zerolog"
 )
@@ -44,6 +43,7 @@ type TimetrackerWindow interface {
 type timetrackerWindowData struct {
 	fyne.Window
 	app                         *fyne.App
+	appVersion                  string
 	log                         zerolog.Logger
 	container                   *fyne.Container
 	statusBox                   *fyne.Container
@@ -72,12 +72,14 @@ type timetrackerWindowData struct {
 	elapsedTimeTicker           *time.Ticker
 	elapsedTimeRunning          bool
 	elapsedTimeQuitChan         chan bool
+	runningTimesheet            *models.TimesheetData
 }
 
 // NewTimetrackerWindow creates and initializes a new timetracker window
-func NewTimetrackerWindow(app fyne.App) TimetrackerWindow {
+func NewTimetrackerWindow(app fyne.App, appVersion string) TimetrackerWindow {
 	ttw := &timetrackerWindowData{
 		app:                 &app,
+		appVersion:          appVersion,
 		Window:              app.NewWindow("Timetracker"),
 		log:                 logger.GetStructLogger("timetrackerWindowData"),
 		bindElapsedTime:     binding.NewString(),
@@ -164,11 +166,11 @@ func (t *timetrackerWindowData) Init() error {
 	t.subStatusBox.Hide()
 	t.Window.SetCloseIntercept(t.Close)
 	// Set up our observables
-	appstate.Observables()[appstate.KeyRunningTimesheet].ForEach(
+	/*appstate.Observables()[appstate.KeyRunningTimesheet].ForEach(
 		t.runningTimesheetChanged,
 		utils.ObservableErrorHandler(appstate.KeyRunningTimesheet, t.log),
 		utils.ObservableCloseHandler(appstate.KeyRunningTimesheet, t.log),
-	)
+	)*/
 	// Load the window's data
 	t.primeWindowData()
 	// Also set up the manage window and hide it
@@ -191,7 +193,8 @@ func (t *timetrackerWindowData) primeWindowData() {
 			Msg("error setting selected task binding to none")
 	}
 	// Load the running task
-	runningTS := appstate.GetRunningTimesheet()
+	// runningTS := appstate.GetRunningTimesheet()
+	runningTS := t.runningTimesheet
 	if runningTS != nil {
 		// Task is running
 		t.btnStopTask.Enable()
@@ -344,7 +347,9 @@ func (t *timetrackerWindowData) doStartTask() {
 	(*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
 	t.btnStopTask.Enable()
 	t.btnStartTask.Disable()
-	appstate.SetRunningTimesheet(timesheet.Data())
+	// appstate.SetRunningTimesheet(timesheet.Data())
+	t.runningTimesheet = timesheet.Data()
+	t.runningTimesheetChanged(t.runningTimesheet)
 	log.Trace().
 		Msg("done")
 }
@@ -365,7 +370,9 @@ func (t *timetrackerWindowData) doStopTask() {
 	notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp)) // i18n
 	(*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
 	// Update the appstate
-	appstate.SetRunningTimesheet(nil)
+	// appstate.SetRunningTimesheet(nil)
+	t.runningTimesheet = nil
+	t.runningTimesheetChanged(t.runningTimesheet)
 }
 
 func (t *timetrackerWindowData) doManageTasksV2() {
@@ -413,9 +420,19 @@ func (t *timetrackerWindowData) doReport() {
 }
 
 func (t *timetrackerWindowData) doAbout() {
-	appVersion := "??"
+	// log := logger.GetFuncLogger(t.log, "doAbout")
+	/*appVersion := "??"
 	appVersionIntf, ok := appstate.Map().Load(appstate.KeyAppVersion)
 	if ok {
+		appVersion, ok = appVersionIntf.(string)
+		if !ok {
+			log.Error().
+				Type("actual_type", reflect.TypeOf(appVersionIntf)).
+				Str("expected_type", "string").
+				Msg("unexpected data type of app version in appstate; this should not happen")
+		}
+	}*/
+	/*if ok {
 		appVersionStr, isString := appVersionIntf.(string)
 		if !isString {
 			appVersionStr = "!!"
@@ -423,10 +440,10 @@ func (t *timetrackerWindowData) doAbout() {
 		if appVersionStr != "" {
 			appVersion = appVersionStr
 		}
-	}
+	}*/
 	dialog.NewInformation(
 		"About Timetracker", // i18n
-		fmt.Sprintf("Timetracker %s\n\nhttps://github.com/neflyte/timetracker", appVersion),
+		fmt.Sprintf("Timetracker %s\n\nhttps://github.com/neflyte/timetracker", t.appVersion),
 		t.Window,
 	).Show()
 }
@@ -510,7 +527,9 @@ func (t *timetrackerWindowData) maybeStopRunningTask(stopTask bool) {
 	notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)                     // i18n
 	notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp)) // i18n
 	(*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
-	appstate.SetRunningTimesheet(nil)
+	// appstate.SetRunningTimesheet(nil)
+	t.runningTimesheet = nil
+	t.runningTimesheetChanged(t.runningTimesheet)
 	// Check if we should close the main window
 	shouldCloseMainWindow := (*t.app).Preferences().BoolWithFallback(prefKeyCloseWindowStopTask, false)
 	if shouldCloseMainWindow {
@@ -576,7 +595,9 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 		Str("task", taskData.String()).
 		Str("startTime", timesheet.Data().StartTime.String()).
 		Msg("task started")
-	appstate.SetRunningTimesheet(timesheet.Data())
+	// appstate.SetRunningTimesheet(timesheet.Data())
+	t.runningTimesheet = timesheet.Data()
+	t.runningTimesheetChanged(t.runningTimesheet)
 }
 
 // elapsedTimeLoop is a loop that draws the elapsed time since the running task was started

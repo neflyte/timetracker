@@ -1,16 +1,15 @@
 package gui
 
 import (
-	"github.com/neflyte/timetracker/internal/ui/icons"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/gui/windows"
+	"github.com/neflyte/timetracker/internal/ui/icons"
 )
 
 var (
@@ -32,7 +31,7 @@ func StartGUI(app *fyne.App) {
 }
 
 // InitGUI initializes the GUI app
-func InitGUI() *fyne.App {
+func InitGUI(appVersion string) *fyne.App {
 	log := logger.GetFuncLogger(guiLogger, "initGUI")
 	if guiInitialized {
 		log.Warn().
@@ -43,7 +42,7 @@ func InitGUI() *fyne.App {
 	fyneApp = app.NewWithID("cc.ethereal.timetracker")
 	fyneApp.SetIcon(icons.IconV2)
 	// Create the main timetracker window
-	mainWindow = windows.NewTimetrackerWindow(fyneApp)
+	mainWindow = windows.NewTimetrackerWindow(fyneApp, appVersion)
 	guiInitialized = true
 	return &fyneApp
 }
@@ -83,8 +82,8 @@ func guiFunc(appPtr *fyne.App) {
 		signalFuncQuitChan := make(chan bool, 1)
 		go signalFunc(signalFuncQuitChan, appPtr)
 		// Start ActionLoop
-		actionLoopQuitChan := make(chan bool, 1)
-		go appstate.ActionLoop(actionLoopQuitChan)
+		// actionLoopQuitChan := make(chan bool, 1)
+		// go appstate.ActionLoop(actionLoopQuitChan)
 		// Set gui started state
 		guiStarted = true
 		defer func() {
@@ -99,7 +98,7 @@ func guiFunc(appPtr *fyne.App) {
 		// stop signal catcher
 		signalFuncQuitChan <- true
 		// stop actionloop
-		actionLoopQuitChan <- true
+		// actionLoopQuitChan <- true
 	} else {
 		log.Error().
 			Msg("appPtr was nil; this is unexpected")

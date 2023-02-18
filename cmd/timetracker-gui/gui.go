@@ -6,7 +6,7 @@ import (
 	"path"
 
 	"github.com/neflyte/timetracker/cmd/timetracker-gui/cmd"
-	"github.com/neflyte/timetracker/internal/appstate"
+	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/gui"
 	"github.com/neflyte/timetracker/internal/utils"
@@ -27,7 +27,7 @@ func ensureUserHomeDirectory() (string, error) {
 		userConfigDir = path.Join(userConfigDir, "timetracker")
 	}
 	if userConfigDir != "." {
-		err = os.MkdirAll(userConfigDir, configDirectoryMode)
+		err = os.MkdirAll(userConfigDir, constants.ConfigDirectoryMode)
 		if err != nil {
 			log.Err(err).
 				Str("userConfigDir", userConfigDir).
@@ -95,8 +95,6 @@ func preDoGUI() error {
 	log.Debug().
 		Str("pidfile", guiCmdLockfilePath).
 		Msg("locked pidfile")
-	// Write the AppVersion to the appstate Map so gui components can access it without a direct binding
-	appstate.Map().Store(appstate.KeyAppVersion, cmd.AppVersion)
 	return nil
 }
 
@@ -125,7 +123,7 @@ func postDoGUI() error {
 }
 
 func doGUI() {
-	app := gui.InitGUI()
+	app := gui.InitGUI(cmd.AppVersion)
 	switch {
 	case guiCmdOptionStopRunningTask:
 		gui.ShowTimetrackerWindowAndStopRunningTask()
