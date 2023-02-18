@@ -125,16 +125,16 @@ func postDoGUI() error {
 
 func doGUI() {
 	app := gui.InitGUI()
-	if guiCmdOptionStopRunningTask {
+	switch {
+	case guiCmdOptionStopRunningTask:
 		gui.ShowTimetrackerWindowAndStopRunningTask()
-	} else if guiCmdOptionShowManageWindow {
+	case guiCmdOptionShowManageWindow:
 		gui.ShowTimetrackerWindowWithManageWindow()
-	} else if guiCmdOptionShowAboutWindow {
+	case guiCmdOptionShowAboutWindow:
 		gui.ShowTimetrackerWindowWithAbout()
-	} else if guiCmdOptionShowCreateAndStartDialog {
+	case guiCmdOptionShowCreateAndStartDialog:
 		gui.ShowTimetrackerWindowAndShowCreateAndStartDialog()
-	} else {
-		// Default to showing the main timetracker window
+	default:
 		gui.ShowTimetrackerWindow()
 	}
 	// Start the GUI
