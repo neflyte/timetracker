@@ -24,10 +24,10 @@ import (
 )
 
 const (
-	guiOptionStopRunningTask    = "--stop-running-task"
-	guiOptionCreateAndStartTask = "--create-and-start"
-	guiOptionShowManageWindow   = "--manage"
-	guiOptionShowAboutWindow    = "--about"
+	guiOptionStopRunningTask    = "-stop-running-task"
+	guiOptionCreateAndStartTask = "-create-and-start"
+	guiOptionShowManageWindow   = "-manage"
+	guiOptionShowAboutWindow    = "-about"
 
 	statusStartTaskTitle       = "Start new task"
 	statusStartTaskDescription = "Display a task selector and start a task"
