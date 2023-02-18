@@ -13,13 +13,11 @@ import (
 
 	"fyne.io/systray"
 	"github.com/gen2brain/beeep"
-	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/constants"
 	tterrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/icons"
-	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/spf13/viper"
 )
 
@@ -51,6 +49,9 @@ var (
 	actionLoopQuitChan         chan bool
 	trayLogger                 = logger.GetPackageLogger("tray")
 	cleanupFunc                func()
+	runningTimesheet           *models.TimesheetData
+	lastError                  error
+	lastState                  int
 )
 
 // Run starts the systray app
@@ -60,8 +61,8 @@ func Run(cleanupFn func()) {
 	// Start the ActionLoop
 	actionLoopQuitChan = make(chan bool, 1)
 	log.Trace().
-		Msg("go appstate.ActionLoop(...)")
-	go appstate.ActionLoop(actionLoopQuitChan)
+		Msg("go actionLoop(...)")
+	go actionLoop(actionLoopQuitChan)
 	// Start the systray
 	log.Trace().
 		Msg("systray.Run(...)")
@@ -103,19 +104,19 @@ func onReady() {
 	mAbout = systray.AddMenuItem("About Timetracker", "About the Timetracker app") // i18n
 	mQuit = systray.AddMenuItem("Quit", "Quit the Timetracker tray app")           // i18n
 	log.Trace().Msg("setting up observables")
-	appstate.Observables()[appstate.KeyRunningTimesheet].ForEach(
-		func(item interface{}) {
-			tsd, ok := item.(*models.TimesheetData)
-			if ok {
-				updateStatus(tsd)
-			}
-		},
-		utils.ObservableErrorHandler(appstate.KeyRunningTimesheet, log),
-		utils.ObservableCloseHandler(appstate.KeyRunningTimesheet, log),
-	)
+	// appstate.Observables()[appstate.KeyRunningTimesheet].ForEach(
+	// 	func(item interface{}) {
+	// 		tsd, ok := item.(*models.TimesheetData)
+	// 		if ok {
+	// 			updateStatus(tsd)
+	// 		}
+	// 	},
+	// 	utils.ObservableErrorHandler(appstate.KeyRunningTimesheet, log),
+	// 	utils.ObservableCloseHandler(appstate.KeyRunningTimesheet, log),
+	// )
 	log.Trace().
 		Msg("priming status")
-	updateStatus(appstate.GetRunningTimesheet())
+	updateStatus(runningTimesheet)
 	// Start mainLoop
 	trayQuitChan = make(chan bool, 1)
 	log.Trace().
@@ -146,15 +147,15 @@ func onExit() {
 func updateStatus(tsd *models.TimesheetData) {
 	log := logger.GetFuncLogger(trayLogger, "updateStatus")
 	// Check if last status was error and show the error icon
-	lastState := appstate.GetLastState()
+	// lastState := appstate.GetLastState()
 	if lastState == constants.TimesheetStatusError {
 		log.Trace().
 			Msg("got error for lastState")
 		// Get the error
-		lastStateError := appstate.GetLastError()
-		if lastStateError != nil {
+		// lastStateError := appstate.GetLastError()
+		if lastError != nil {
 			log.Trace().
-				Err(lastStateError).
+				Err(lastError).
 				Msg("got last error")
 		}
 		systray.SetIcon(icons.IconV2Error.StaticContent)
@@ -306,7 +307,7 @@ func launchGUI(options ...string) {
 
 func handleStatusClick() {
 	log := logger.GetFuncLogger(trayLogger, "handleStatusClick")
-	switch appstate.GetLastState() {
+	switch lastState {
 	case constants.TimesheetStatusRunning:
 		shouldConfirmStopTask := viper.GetBool(keyStopTaskConfirm)
 		if shouldConfirmStopTask {
@@ -315,7 +316,6 @@ func handleStatusClick() {
 		}
 		stopRunningTask()
 	case constants.TimesheetStatusError:
-		lastError := appstate.GetLastError()
 		if lastError == nil {
 			log.Error().
 				Msg("last error was nil but timesheet status is error; THIS IS UNEXPECTED")
@@ -397,7 +397,8 @@ func stopRunningTask() {
 	}
 	// Show notification that the task has stopped
 	if stoppedTimesheet != nil {
-		appstate.SetRunningTimesheet(nil)
+		// appstate.SetRunningTimesheet(nil)
+		runningTimesheet = nil
 		notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)                     // i18n
 		notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp)) // i18n
 		err = beeep.Notify(notificationTitle, notificationContents, "")
@@ -406,6 +407,7 @@ func stopRunningTask() {
 				Msg("error sending notification about stopped task")
 		}
 	}
+	updateStatus(runningTimesheet)
 }
 
 func startTask(taskData *models.TaskData) (err error) {
@@ -422,7 +424,9 @@ func startTask(taskData *models.TaskData) (err error) {
 			Msg("error creating new timesheet to start a task")
 		return
 	}
-	appstate.SetRunningTimesheet(timesheet.Data())
+	// appstate.SetRunningTimesheet(timesheet.Data())
+	runningTimesheet = timesheet.Data()
+	updateStatus(runningTimesheet)
 	// Show notification that task started
 	notificationTitle := fmt.Sprintf("Task %s started", taskData.Synopsis)                              // i18n
 	notificationContents := fmt.Sprintf("Started at %s", timesheet.Data().StartTime.Format(time.Stamp)) // i18n

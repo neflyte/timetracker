@@ -3,7 +3,6 @@ package windows
 import (
 	"encoding/csv"
 	"fmt"
-	"github.com/neflyte/timetracker/internal/ui/icons"
 	"reflect"
 	"time"
 
@@ -18,6 +17,7 @@ import (
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
+	"github.com/neflyte/timetracker/internal/ui/icons"
 	"github.com/rs/zerolog"
 )
 

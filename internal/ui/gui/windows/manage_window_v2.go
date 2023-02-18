@@ -2,7 +2,6 @@ package windows
 
 import (
 	"fmt"
-	"github.com/neflyte/timetracker/internal/ui/icons"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -12,6 +11,7 @@ import (
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/gui/dialogs"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
+	"github.com/neflyte/timetracker/internal/ui/icons"
 	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/reactivex/rxgo/v2"
 	"github.com/rs/zerolog"
