@@ -106,10 +106,10 @@ func (t *timetrackerWindowData) Init() error {
 	t.createNewTaskAndStartDialog = dialogs.NewCreateAndStartTaskDialog((*t.app).Preferences(), t.createAndStartTaskDialogCallback, t.Window)
 	t.btnSelectTask = widget.NewButtonWithIcon("", theme.MoreHorizontalIcon(), t.doSelectTask)
 	t.taskSelector = widgets.NewTaskSelector()
-	t.btnManageTasksV2 = widget.NewButtonWithIcon("MANAGE v2", theme.SettingsIcon(), t.doManageTasksV2) // i18n
-	t.btnReport = widget.NewButtonWithIcon("REPORT", theme.FileIcon(), t.doReport)                      // i18n
-	t.btnAbout = widget.NewButton("ABOUT", t.doAbout)                                                   // i18n
-	t.btnCreateAndStart = widget.NewButton("CREATE AND START", t.doCreateAndStartTask)                  // i18n
+	t.btnManageTasksV2 = widget.NewButtonWithIcon("MANAGE TASKS", theme.SettingsIcon(), t.doManageTasksV2) // i18n
+	t.btnReport = widget.NewButtonWithIcon("REPORT", theme.FileIcon(), t.doReport)                         // i18n
+	t.btnAbout = widget.NewButton("ABOUT", t.doAbout)                                                      // i18n
+	t.btnCreateAndStart = widget.NewButton("CREATE AND START", t.doCreateAndStartTask)                     // i18n
 	t.buttonBox = container.NewCenter(container.NewVBox(
 		container.NewHBox(
 			t.btnStartTask,
