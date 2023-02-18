@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/neflyte/timetracker/cmd/timetracker-tray/cmd"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/tray"
@@ -124,7 +125,7 @@ func postDoTray() error {
 
 func doTray() {
 	// Write the AppVersion to the appstate Map so gui components can access it without a direct binding
-	appstate.Map().Store(appstate.KeyAppVersion, AppVersion)
+	appstate.Map().Store(appstate.KeyAppVersion, cmd.AppVersion)
 	// Start the tray
 	tray.Run(nil)
 }

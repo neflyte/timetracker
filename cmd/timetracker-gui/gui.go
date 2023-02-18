@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/neflyte/timetracker/cmd/timetracker-gui/cmd"
 	"github.com/neflyte/timetracker/internal/appstate"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/gui"
@@ -95,7 +96,7 @@ func preDoGUI() error {
 		Str("pidfile", guiCmdLockfilePath).
 		Msg("locked pidfile")
 	// Write the AppVersion to the appstate Map so gui components can access it without a direct binding
-	appstate.Map().Store(appstate.KeyAppVersion, AppVersion)
+	appstate.Map().Store(appstate.KeyAppVersion, cmd.AppVersion)
 	return nil
 }
 

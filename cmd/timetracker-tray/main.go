@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/neflyte/timetracker/cmd/timetracker-tray/cmd"
 	"github.com/neflyte/timetracker/internal/database"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
@@ -18,7 +19,6 @@ const (
 )
 
 var (
-	AppVersion     = "dev" // AppVersion is the application version number; it must always be exported
 	configFileName string
 	logLevel       string
 	showVersion    bool
@@ -90,7 +90,7 @@ func cleanUp() {
 func main() {
 	flag.Parse()
 	if showVersion {
-		fmt.Printf("timetracker-tray %s\n", AppVersion)
+		fmt.Printf("timetracker-tray %s\n", cmd.AppVersion)
 		return
 	}
 	initLogger()
