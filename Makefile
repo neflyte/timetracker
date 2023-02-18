@@ -24,9 +24,10 @@ GO_LDFLAGS_EXTRA=
 GUI_GO_LDFLAGS_EXTRA=
 TRAY_GO_LDFLAGS_EXTRA=
 endif
+
 GO_LDFLAGS=-ldflags "-s -X 'github.com/neflyte/timetracker/cmd/timetracker/cmd.AppVersion=$(APPVERSION)' $(GO_LDFLAGS_EXTRA)"
-GUI_GO_LDFLAGS=-ldflags "-s -X 'github.com/neflyte/timetracker/cmd/timetracker-gui/main.AppVersion=$(APPVERSION)' $(GUI_GO_LDFLAGS_EXTRA)"
-TRAY_GO_LDFLAGS=-ldflags "-s -X 'github.com/neflyte/timetracker/cmd/timetracker-tray/main.AppVersion=$(APPVERSION)' $(TRAY_GO_LDFLAGS_EXTRA)"
+GUI_GO_LDFLAGS=-ldflags "-s -X 'github.com/neflyte/timetracker/cmd/timetracker-gui/cmd.AppVersion=$(APPVERSION)' $(GUI_GO_LDFLAGS_EXTRA)"
+TRAY_GO_LDFLAGS=-ldflags "-s -X 'github.com/neflyte/timetracker/cmd/timetracker-tray/cmd.AppVersion=$(APPVERSION)' $(TRAY_GO_LDFLAGS_EXTRA)"
 BINPREFIX=timetracker-$(APPVERSION)_
 GUI_BINPREFIX=timetracker-gui-$(APPVERSION)_
 TRAY_BINPREFIX=timetracker-tray-$(APPVERSION)_
@@ -83,8 +84,9 @@ dist-linux: lint build
 
 dist-darwin: ensure-fyne-cli lint build
 	if [[ ! -d dist/darwin ]]; then mkdir -p dist/darwin; fi
-	fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os darwin -executable dist/$(BUILD_FILENAME) -icon assets/icons/icon-v2.png
+	fyne package -name Timetracker -appID cc.ethereal.Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 1 -os darwin -executable dist/$(GUI_BUILD_FILENAME) -icon assets/icons/icon-v2.png
 	mv Timetracker.app dist/darwin
+	cp dist/$(BUILD_FILENAME) dist/$(TRAY_BUILD_FILENAME) dist/darwin/Timetracker.app/Contents/MacOS/
 	hdiutil create -srcfolder dist/darwin -volname "$(BINPREFIX)darwin-amd64" -imagekey zlib-level=9 dist/$(BINPREFIX)darwin-amd64.dmg
 
 dist-windows: ensure-fyne-cli lint build
