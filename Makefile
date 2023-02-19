@@ -3,6 +3,7 @@
 .PHONY: build clean clean-coverage lint test dist-linux dist-darwin dist-windows outdated ensure-fyne-cli
 .PHONY: generate-icons-darwin generate-icons-windows generate-bundled-icons ensure-dist-directory build-cli build-gui build-tray
 
+# Set platform-specific build variables
 ifeq ($(OS),Windows_NT)
 SHELL=CMD.EXE
 .SHELLFLAGS=/C
@@ -25,6 +26,7 @@ GUI_GO_LDFLAGS_EXTRA=
 TRAY_GO_LDFLAGS_EXTRA=
 endif
 
+# Set platform-independent build variables
 GO_LDFLAGS=-ldflags "-s -X 'github.com/neflyte/timetracker/cmd/timetracker/cmd.AppVersion=$(APPVERSION)' $(GO_LDFLAGS_EXTRA)"
 GUI_GO_LDFLAGS=-ldflags "-s -X 'github.com/neflyte/timetracker/cmd/timetracker-gui/cmd.AppVersion=$(APPVERSION)' $(GUI_GO_LDFLAGS_EXTRA)"
 TRAY_GO_LDFLAGS=-ldflags "-s -X 'github.com/neflyte/timetracker/cmd/timetracker-tray/cmd.AppVersion=$(APPVERSION)' $(TRAY_GO_LDFLAGS_EXTRA)"
@@ -105,10 +107,10 @@ dist-windows: ensure-fyne-cli lint build
 	CMD /C "cd dist && xz $(BINPREFIX)windows-amd64.tar"
 
 outdated:
-ifneq ($(OS),Windows_NT)
-	hash go-mod-outdated 2>/dev/null || { cd && go install github.com/psampaz/go-mod-outdated@v0.8.0; cd -; }
-else
+ifeq ($(OS),Windows_NT)
 	CMD /C "pushd %HOMEDRIVE%%HOMEPATH% && go install github.com/psampaz/go-mod-outdated@v0.8.0 && popd"
+else
+	hash go-mod-outdated 2>/dev/null || { cd && go install github.com/psampaz/go-mod-outdated@v0.8.0; cd -; }
 endif
 	go list -json -u -m all | go-mod-outdated -direct -update
 
