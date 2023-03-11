@@ -5,7 +5,7 @@
 
 # Set platform-specific build variables
 ifeq ($(OS),Windows_NT)
-SHELL=CMD.EXE
+SHELL=C:\\Windows\\system32\\cmd.exe
 .SHELLFLAGS=/C
 APPVERSION=$(shell type VERSION)
 SHORTAPPVERSION=$(shell FOR /F "delims=v tokens=1" %%I IN (VERSION) DO @ECHO %%I)
@@ -82,7 +82,7 @@ dist-linux: lint build
 	cp dist/$(BUILD_FILENAME) dist/$(BINPREFIX)linux-amd64
 	cp dist/$(GUI_BUILD_FILENAME) dist/$(GUI_BINPREFIX)linux-amd64
 	cp dist/$(TRAY_BUILD_FILENAME) dist/$(TRAY_BINPREFIX)linux-amd64
-	cd dist && tar cvJf $(BINPREFIX)linux-amd64.tar.xz $(BINPREFIX)linux-amd64 $(GUI_BINPREFIX)linux-amd64 $(TRAY_BINPREFIX)linux-amd64
+	cd dist && 7z a -mx9 $(BINPREFIX)linux-amd64.7z $(BINPREFIX)linux-amd64 $(GUI_BINPREFIX)linux-amd64 $(TRAY_BINPREFIX)linux-amd64
 
 dist-darwin: ensure-fyne-cli lint build
 	if [[ ! -d dist/darwin ]]; then mkdir -p dist/darwin; fi
