@@ -56,16 +56,11 @@ var (
 
 // Run starts the systray app
 func Run(cleanupFn func()) {
-	log := logger.GetFuncLogger(trayLogger, "Run")
+	// log := logger.GetFuncLogger(trayLogger, "Run")
 	cleanupFunc = cleanupFn
-	// Start the ActionLoop
-	actionLoopQuitChan = make(chan bool, 1)
-	log.Trace().
-		Msg("go actionLoop(...)")
-	go actionLoop(actionLoopQuitChan)
 	// Start the systray
-	log.Trace().
-		Msg("systray.Run(...)")
+	// log.Trace().
+	// 	Msg("systray.Run(...)")
 	systray.Run(onReady, onExit)
 }
 
@@ -103,25 +98,16 @@ func onReady() {
 	systray.AddSeparator()
 	mAbout = systray.AddMenuItem("About Timetracker", "About the Timetracker app") // i18n
 	mQuit = systray.AddMenuItem("Quit", "Quit the Timetracker tray app")           // i18n
-	log.Trace().Msg("setting up observables")
-	// appstate.Observables()[appstate.KeyRunningTimesheet].ForEach(
-	// 	func(item interface{}) {
-	// 		tsd, ok := item.(*models.TimesheetData)
-	// 		if ok {
-	// 			updateStatus(tsd)
-	// 		}
-	// 	},
-	// 	utils.ObservableErrorHandler(appstate.KeyRunningTimesheet, log),
-	// 	utils.ObservableCloseHandler(appstate.KeyRunningTimesheet, log),
-	// )
-	log.Trace().
-		Msg("priming status")
-	updateStatus(runningTimesheet)
 	// Start mainLoop
 	trayQuitChan = make(chan bool, 1)
 	log.Trace().
 		Msg("go mainLoop(...)")
 	go mainLoop(trayQuitChan)
+	// Start the ActionLoop
+	actionLoopQuitChan = make(chan bool, 1)
+	log.Trace().
+		Msg("go actionLoop(...)")
+	go actionLoop(actionLoopQuitChan)
 	log.Trace().
 		Msg("done")
 }
@@ -147,12 +133,10 @@ func onExit() {
 func updateStatus(tsd *models.TimesheetData) {
 	log := logger.GetFuncLogger(trayLogger, "updateStatus")
 	// Check if last status was error and show the error icon
-	// lastState := appstate.GetLastState()
 	if lastState == constants.TimesheetStatusError {
 		log.Trace().
 			Msg("got error for lastState")
 		// Get the error
-		// lastStateError := appstate.GetLastError()
 		if lastError != nil {
 			log.Trace().
 				Err(lastError).
