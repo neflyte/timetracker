@@ -103,8 +103,7 @@ dist-windows: ensure-fyne-cli lint build
 	CMD /C DEL cmd\\timetracker-tray\\Timetracker.exe
 	CMD /C DEL cmd\\timetracker-tray\\FyneApp.toml
 	CMD /C COPY dist\\$(BUILD_FILENAME) dist\\$(BINPREFIX)windows-amd64.exe
-	CMD /C "cd dist && tar cvf $(BINPREFIX)windows-amd64.tar $(BINPREFIX)windows-amd64.exe $(GUI_BINPREFIX)windows-amd64.exe $(TRAY_BINPREFIX)windows-amd64.exe"
-	CMD /C "cd dist && xz $(BINPREFIX)windows-amd64.tar"
+	CMD /C "cd dist && 7z a -mx9 $(BINPREFIX)windows-amd64.7z $(BINPREFIX)windows-amd64.exe $(GUI_BINPREFIX)windows-amd64.exe $(TRAY_BINPREFIX)windows-amd64.exe"
 
 outdated:
 ifeq ($(OS),Windows_NT)
