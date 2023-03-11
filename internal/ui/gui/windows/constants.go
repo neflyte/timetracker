@@ -4,11 +4,9 @@ import "fyne.io/fyne/v2"
 
 const (
 	// minimumWindowWidth is the minimum width of a window in pixels
-	minimumWindowWidth = 640.0
+	minimumWindowWidth = 800.0
 	// minimumWindowHeight is the minimum height of a window in pixels
-	minimumWindowHeight = 480.0
-	// prefKeyCloseWindow is the preferences key for the flag which causes the main window to close after creating a new task
-	// prefKeyCloseWindow = "close-window"
+	minimumWindowHeight = 600.0
 	// prefKeyCloseWindowStopTask is the preferences key for the flag which causes the main window to close after creating a new task
 	prefKeyCloseWindowStopTask = "close-window:stop-task"
 	// dialogSizeOffset is the number of pixels to subtract from the parent window's size when setting a dialog's minimum size

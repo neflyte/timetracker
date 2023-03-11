@@ -115,7 +115,7 @@ func (w *reportWindowData) Init() error {
 	)
 	w.Window.SetContent(w.container)
 	w.Window.SetIcon(icons.IconV2)
-	w.Window.SetCloseIntercept(w.Hide)
+	w.Window.SetCloseIntercept(w.Window.Hide)
 	w.Window.Resize(minimumWindowSize)
 	w.Window.Canvas().Focus(w.startDateEntry)
 	return nil
@@ -196,7 +196,7 @@ func (w *reportWindowData) doRunReport() {
 		if len(w.taskReport) > 0 {
 			w.exportButton.Enable()
 		}
-		w.Content().Refresh()
+		w.Window.Content().Refresh()
 	}()
 	// Clear table
 	//  - set tableRows to zero
