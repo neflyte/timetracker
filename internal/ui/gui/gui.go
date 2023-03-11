@@ -81,9 +81,6 @@ func guiFunc(appPtr *fyne.App) {
 		// Start Signal catcher
 		signalFuncQuitChan := make(chan bool, 1)
 		go signalFunc(signalFuncQuitChan, appPtr)
-		// Start ActionLoop
-		// actionLoopQuitChan := make(chan bool, 1)
-		// go appstate.ActionLoop(actionLoopQuitChan)
 		// Set gui started state
 		guiStarted = true
 		defer func() {
@@ -97,8 +94,6 @@ func guiFunc(appPtr *fyne.App) {
 			Msg("fyne exited")
 		// stop signal catcher
 		signalFuncQuitChan <- true
-		// stop actionloop
-		// actionLoopQuitChan <- true
 	} else {
 		log.Error().
 			Msg("appPtr was nil; this is unexpected")

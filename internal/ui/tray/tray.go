@@ -56,11 +56,7 @@ var (
 
 // Run starts the systray app
 func Run(cleanupFn func()) {
-	// log := logger.GetFuncLogger(trayLogger, "Run")
 	cleanupFunc = cleanupFn
-	// Start the systray
-	// log.Trace().
-	// 	Msg("systray.Run(...)")
 	systray.Run(onReady, onExit)
 }
 
@@ -260,10 +256,10 @@ func mainLoop(quitChan chan bool) { //nolint:cyclop
 }
 
 // launchGUI launches this executable again with gui-specific parameters
-func launchGUI(options ...string) {
+func launchGUI(guiOptions ...string) {
 	log := logger.GetFuncLogger(trayLogger, "launchGUI")
 	log.Debug().
-		Strs("options", options).
+		Strs("guiOptions", guiOptions).
 		Msg("function options")
 	timetrackerExecutable, err := os.Executable()
 	if err != nil {
@@ -276,8 +272,10 @@ func launchGUI(options ...string) {
 	if runtime.GOOS == "windows" {
 		guiExecutable += ".exe"
 	}
-	guiOptions := []string{"gui"}
-	guiOptions = append(guiOptions, options...)
+	log.Debug().
+		Str("guiExecutable", guiExecutable).
+		Strs("guiOptions", guiOptions).
+		Msg("command to launch gui")
 	guiCmd := exec.Command(guiExecutable, guiOptions...)
 	err = guiCmd.Start()
 	if err != nil {
@@ -381,7 +379,6 @@ func stopRunningTask() {
 	}
 	// Show notification that the task has stopped
 	if stoppedTimesheet != nil {
-		// appstate.SetRunningTimesheet(nil)
 		runningTimesheet = nil
 		notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)                     // i18n
 		notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp)) // i18n
@@ -408,7 +405,6 @@ func startTask(taskData *models.TaskData) (err error) {
 			Msg("error creating new timesheet to start a task")
 		return
 	}
-	// appstate.SetRunningTimesheet(timesheet.Data())
 	runningTimesheet = timesheet.Data()
 	updateStatus(runningTimesheet)
 	// Show notification that task started
