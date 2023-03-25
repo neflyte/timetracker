@@ -9,12 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Split single-file binary into 3 binaries - CLI, GUI, and Tray - for more efficient usage on macOS and Windows platforms
-- Updated fyne.io/fyne/v2 from v2.3.0 to v2.3.1
-- Updated github.com/fatih/color from v1.13.0 to v1.14.1
+- Updated fyne.io/fyne/v2 from v2.3.0 to v2.3.3
+- Updated github.com/fatih/color from v1.13.0 to v1.15.0
 - Updated github.com/gofrs/uuid from v4.3.1 to v4.4.0
 - Updated github.com/rs/zerolog from v1.28.0 to v1.29.0
 - Updated github.com/spf13/viper from v1.14.0 to v1.15.0
-- Updated gorm.io/gorm from v1.24.3 to v1.24.5
+- Updated gorm.io/gorm from v1.24.3 to v1.24.6
+- Updated github.com/gen2brain/beeep from v0.0.0-20220909211152-5a9ec94374f6 to v0.0.0-20230307103607-6e717729cb4f
+- Updated github.com/stretchr/testify from v1.8.1 to v1.8.2
+- Updated golang.org/x/sys from v0.5.0 to v0.6.0
 
 ### Removed
 
