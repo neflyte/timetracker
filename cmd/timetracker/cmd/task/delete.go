@@ -26,9 +26,10 @@ func deleteTask(_ *cobra.Command, args []string) error {
 	log := logger.GetLogger("deleteTask")
 	task := models.NewTask()
 	task.Data().ID, task.Data().Synopsis = task.Resolve(args[0])
+	// FIXME: check if the task is actually valid
+	// FIXME: check if the task is running; abort with message that task is running unless `force` flag is used
 	err := task.Delete()
 	if err != nil {
-		// fmt.Sprintf("%s; task=%#v", errors.DeleteTaskError, taskData)
 		cli.PrintAndLogError(log, err, "%s; task=%#v", errors.DeleteTaskError, task.Data())
 		return err
 	}

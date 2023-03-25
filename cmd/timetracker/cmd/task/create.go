@@ -2,12 +2,9 @@ package task
 
 import (
 	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/fatih/color"
-	"github.com/neflyte/timetracker/internal/constants"
-	"github.com/neflyte/timetracker/internal/errors"
+	tterrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/cli"
@@ -55,43 +52,19 @@ func createTask(_ *cobra.Command, args []string) error {
 	}
 	err := task.Create()
 	if err != nil {
-		cli.PrintAndLogError(log, err, errors.CreateTaskError)
+		cli.PrintAndLogError(log, err, tterrors.CreateTaskError)
 		return err
 	}
-	fmt.Println(color.WhiteString("Task ID %d", task.Data().ID), color.GreenString("created"))
+	fmt.Println(color.WhiteString("Task ID %d", task.Data().ID), color.GreenString("created")) // i18n
 	if taskStartAfterCreate {
-		// TODO: Move this code to a common spot
-		taskdisplay := strconv.Itoa(int(task.Data().ID))
-		var stoppedTimesheet *models.TimesheetData
-		stoppedTimesheet, err = task.StopRunningTask()
+		err = cli.StopRunningTimesheet()
 		if err != nil {
-			cli.PrintAndLogError(log, err, errors.StopRunningTaskError)
 			return err
 		}
-		if stoppedTimesheet != nil {
-			log.Info().Msgf("task id %d (timesheet id %d) stopped\n", stoppedTimesheet.Task.ID, stoppedTimesheet.ID)
-			fmt.Println(
-				color.WhiteString("Task ID %d", stoppedTimesheet.Task.ID),
-				color.YellowString("stopped"),
-				color.WhiteString("at %s", stoppedTimesheet.StopTime.Time.Format(constants.TimestampLayout)),
-				color.BlueString(stoppedTimesheet.StopTime.Time.Sub(stoppedTimesheet.StartTime).Truncate(time.Second).String()),
-			)
-		}
-		timesheetData := new(models.TimesheetData)
-		timesheetData.Task = *task.Data()
-		timesheetData.StartTime = time.Now()
-		err = models.Timesheet(timesheetData).Create()
+		err = cli.StartRunningTimesheet(task)
 		if err != nil {
-			cli.PrintAndLogError(log, err, "%s for task %s", errors.CreateTimesheetError, taskdisplay)
 			return err
 		}
-		fmt.Println(
-			color.WhiteString("Task ID %d ", task.Data().ID),
-			color.CyanString(task.Data().Synopsis),
-			color.MagentaString("(%s) ", task.Data().Description),
-			color.GreenString("started"),
-			color.WhiteString("at %s", timesheetData.StartTime.Format(constants.TimestampLayout)),
-		)
 	}
 	return nil
 }
