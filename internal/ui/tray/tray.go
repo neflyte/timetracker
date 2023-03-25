@@ -128,6 +128,8 @@ func onExit() {
 
 func updateStatus(tsd *models.TimesheetData) {
 	log := logger.GetFuncLogger(trayLogger, "updateStatus")
+	// Update the last 5 started tasks regardless of what happens in this function
+	defer updateLast5StartedTasks()
 	// Check if last status was error and show the error icon
 	if lastState == constants.TimesheetStatusError {
 		log.Trace().
@@ -141,64 +143,67 @@ func updateStatus(tsd *models.TimesheetData) {
 		systray.SetIcon(icons.IconV2Error.StaticContent)
 		mStatus.SetTitle("Error (click for details)")                   // i18n
 		mStatus.SetTooltip("An error occurred; click for more details") // i18n
-	} else {
-		// Check the supplied timesheet
-		if tsd == nil {
-			// No running timesheet
-			log.Trace().
-				Msg("got nil running timesheet item")
-			systray.SetIcon(icons.IconV2NotRunning.StaticContent)
-			mStatus.SetTitle(statusStartTaskTitle)
-			mStatus.SetTooltip(statusStartTaskDescription)
-		} else {
-			log.Trace().
-				Str("object", tsd.String()).
-				Msg("got running timesheet")
-			systray.SetIcon(icons.IconV2Running.StaticContent)
-			statusText := fmt.Sprintf(
-				"Stop task %s (%s)", // i18n
-				tsd.Task.Synopsis,
-				time.Since(tsd.StartTime).Truncate(time.Second).String(),
-			)
-			mStatus.SetTitle(statusText)
-			mStatus.SetTooltip(statusStopTaskDescription)
-		}
+		return
 	}
-	// Last 5 started tasks
+	// Check the supplied timesheet
+	if tsd == nil {
+		// No running timesheet
+		log.Trace().
+			Msg("got nil running timesheet item")
+		systray.SetIcon(icons.IconV2NotRunning.StaticContent)
+		mStatus.SetTitle(statusStartTaskTitle)
+		mStatus.SetTooltip(statusStartTaskDescription)
+	} else {
+		log.Trace().
+			Str("object", tsd.String()).
+			Msg("got running timesheet")
+		systray.SetIcon(icons.IconV2Running.StaticContent)
+		statusText := fmt.Sprintf(
+			"Stop task %s (%s)", // i18n
+			tsd.Task.Synopsis,
+			time.Since(tsd.StartTime).Truncate(time.Second).String(),
+		)
+		mStatus.SetTitle(statusText)
+		mStatus.SetTooltip(statusStopTaskDescription)
+	}
+}
+
+func updateLast5StartedTasks() {
+	log := logger.GetFuncLogger(trayLogger, "updateLast5StartedTasks")
 	lastStartedTasks, err := models.NewTimesheet().LastStartedTasks(recentlyStartedTasks)
 	if err != nil {
 		log.Err(err).
 			Msg("error loading recently-started tasks")
-	} else {
+		return
+	}
+	log.Debug().
+		Int("length", len(lastStartedTasks)).
+		Msg("loaded last-started tasks")
+	// Hide entries we don't need
+	if len(lastStartedTasks) < recentlyStartedTasks {
 		log.Debug().
-			Int("length", len(lastStartedTasks)).
-			Msg("loaded last-started tasks")
-		// Hide entries we don't need
-		if len(lastStartedTasks) < recentlyStartedTasks {
-			log.Debug().
-				Msgf("len(lastStartedTasks) < recentlyStartedTasks; %d < %d", len(lastStartedTasks), recentlyStartedTasks)
-			for x := recentlyStartedTasks - 1; x > len(lastStartedItems)-1; x-- {
-				log.Debug().
-					Int("index", x).
-					Str("item", lastStartedItems[x].String()).
-					Msg("hiding item")
-				lastStartedItems[x].SetTitle("--")
-				lastStartedItems[x].SetTooltip("")
-				lastStartedItems[x].Hide()
-				lastStartedItemSynopses[x] = ""
-			}
-		}
-		// Fill in the entries we have
-		for x := 0; x < len(lastStartedTasks); x++ {
+			Msgf("len(lastStartedTasks) < recentlyStartedTasks; %d < %d", len(lastStartedTasks), recentlyStartedTasks)
+		for x := recentlyStartedTasks - 1; x > len(lastStartedItems)-1; x-- {
 			log.Debug().
 				Int("index", x).
-				Str("synopsis", lastStartedTasks[x].Synopsis).
-				Msg("showing item")
-			lastStartedItems[x].Show()
-			lastStartedItems[x].SetTitle(lastStartedTasks[x].Synopsis)
-			lastStartedItems[x].SetTooltip(fmt.Sprintf("Start task %s", lastStartedTasks[x].Synopsis)) // i18n
-			lastStartedItemSynopses[x] = lastStartedTasks[x].Synopsis
+				Str("item", lastStartedItems[x].String()).
+				Msg("hiding item")
+			lastStartedItems[x].SetTitle("--")
+			lastStartedItems[x].SetTooltip("")
+			lastStartedItems[x].Hide()
+			lastStartedItemSynopses[x] = ""
 		}
+	}
+	// Fill in the entries we have
+	for x := range lastStartedTasks {
+		log.Debug().
+			Int("index", x).
+			Str("synopsis", lastStartedTasks[x].Synopsis).
+			Msg("showing item")
+		lastStartedItems[x].Show()
+		lastStartedItems[x].SetTitle(lastStartedTasks[x].Synopsis)
+		lastStartedItems[x].SetTooltip(fmt.Sprintf("Start task %s", lastStartedTasks[x].Synopsis)) // i18n
+		lastStartedItemSynopses[x] = lastStartedTasks[x].Synopsis
 	}
 }
 
