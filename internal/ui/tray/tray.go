@@ -87,8 +87,8 @@ func onReady() {
 	// List the top 5 last-started tasks as easy-start options
 	systray.AddSeparator()
 	mLastStarted = systray.AddMenuItem("Recent tasks", "Select a recently started task to start it again") // i18n
-	for x := 0; x < recentlyStartedTasks; x++ {
-		lastStartedItems[x] = mLastStarted.AddSubMenuItem("--", "")
+	for x := range lastStartedItems {
+		lastStartedItems[x] = mLastStarted.AddSubMenuItem("-", "")
 		lastStartedItemSynopses[x] = ""
 	}
 	systray.AddSeparator()
@@ -101,9 +101,13 @@ func onReady() {
 	go mainLoop(trayQuitChan)
 	// Start the ActionLoop
 	actionLoopQuitChan = make(chan bool, 1)
+	actionLoopStartChan := make(chan bool, 1)
+	defer func() {
+		actionLoopStartChan <- true
+	}()
 	log.Trace().
 		Msg("go actionLoop(...)")
-	go actionLoop(actionLoopQuitChan)
+	go actionLoop(actionLoopQuitChan, actionLoopStartChan)
 	log.Trace().
 		Msg("done")
 }
@@ -188,9 +192,9 @@ func updateLast5StartedTasks() {
 				Int("index", x).
 				Str("item", lastStartedItems[x].String()).
 				Msg("hiding item")
-			lastStartedItems[x].SetTitle("--")
+			lastStartedItems[x].Disable()
+			lastStartedItems[x].SetTitle("-")
 			lastStartedItems[x].SetTooltip("")
-			lastStartedItems[x].Hide()
 			lastStartedItemSynopses[x] = ""
 		}
 	}
@@ -200,9 +204,9 @@ func updateLast5StartedTasks() {
 			Int("index", x).
 			Str("synopsis", lastStartedTasks[x].Synopsis).
 			Msg("showing item")
-		lastStartedItems[x].Show()
 		lastStartedItems[x].SetTitle(lastStartedTasks[x].Synopsis)
 		lastStartedItems[x].SetTooltip(fmt.Sprintf("Start task %s", lastStartedTasks[x].Synopsis)) // i18n
+		lastStartedItems[x].Enable()
 		lastStartedItemSynopses[x] = lastStartedTasks[x].Synopsis
 	}
 }
