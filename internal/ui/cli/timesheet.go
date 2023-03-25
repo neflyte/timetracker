@@ -36,6 +36,9 @@ func StopRunningTimesheet() error {
 
 func StartRunningTimesheet(task models.Task) error {
 	log := logger.GetLogger("StartRunningTimesheet")
+	if task == nil {
+		return tterrors.ErrInvalidTaskData{}
+	}
 	taskdisplay := strconv.Itoa(int(task.Data().ID))
 	timesheetData := new(models.TimesheetData)
 	timesheetData.Task = *task.Data()

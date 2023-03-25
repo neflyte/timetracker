@@ -35,6 +35,8 @@ const (
 	EmptySynopsisTaskError = "cannot create a task with an empty synopsis"
 	// UpdateEmptySynopsisTaskError represents an error that occurs when an attempt is made to update an existing task to have an empty synopsis
 	UpdateEmptySynopsisTaskError = "cannot update a task to have an empty synopsis"
+	// InvalidTaskDataError represents an error that occurs when a task is found to have invalid data
+	InvalidTaskDataError = "the task is invalid"
 )
 
 // ErrInvalidTaskState represents an error that occurs when a task is in an invalid state
@@ -51,4 +53,10 @@ type ErrNoRunningTask struct{}
 
 func (e ErrNoRunningTask) Error() string {
 	return NoRunningTasksError
+}
+
+type ErrInvalidTaskData struct{}
+
+func (e ErrInvalidTaskData) Error() string {
+	return InvalidTaskDataError
 }
