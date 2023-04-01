@@ -5,9 +5,9 @@
 
 # Set platform-specific build variables
 ifeq ($(OS),Windows_NT)
-SHELL=C:\\Windows\\system32\\cmd.exe
+SHELL=C:\Windows\system32\cmd.exe
 .SHELLFLAGS=/C
-APPVERSION=$(shell type VERSION)
+APPVERSION=$(shell TYPE VERSION)
 SHORTAPPVERSION=$(shell FOR /F "delims=v tokens=1" %%I IN (VERSION) DO @ECHO %%I)
 BUILD_FILENAME=timetracker.exe
 GUI_BUILD_FILENAME=timetracker-gui.exe
@@ -25,6 +25,7 @@ GO_LDFLAGS_EXTRA=
 GUI_GO_LDFLAGS_EXTRA=
 TRAY_GO_LDFLAGS_EXTRA=
 endif
+$(info APPVERSION=$(APPVERSION), SHORTAPPVERSION=$(SHORTAPPVERSION))
 
 # Set platform-independent build variables
 GO_LDFLAGS=-ldflags "-s -X 'github.com/neflyte/timetracker/cmd/timetracker/cmd.AppVersion=$(APPVERSION)' $(GO_LDFLAGS_EXTRA)"
@@ -38,7 +39,7 @@ build: ensure-dist-directory build-cli build-gui build-tray
 
 ensure-dist-directory:
 ifeq ($(OS),Windows_NT)
-	CMD /C IF NOT EXIST dist MD dist
+	IF NOT EXIST dist MD dist
 else
 	if [ ! -d dist ]; then mkdir dist; fi
 endif
@@ -54,24 +55,24 @@ build-tray:
 
 clean-coverage:
 ifeq ($(OS),Windows_NT)
-	CMD /C IF EXIST coverage RD /S /Q coverage
+	IF EXIST coverage RD /S /Q coverage
 else
 	if [ -d coverage ]; then rm -Rf coverage; fi
 endif
 
 clean: clean-coverage
 ifeq ($(OS),Windows_NT)
-	CMD /C IF EXIST dist RD /S /Q dist
+	IF EXIST dist RD /S /Q dist
 else
 	if [ -d dist ]; then rm -Rf dist; fi
 endif
 
 lint:
-	golangci-lint run --timeout=5m
+	golangci-lint run --timeout=10m --verbose
 
 test: clean-coverage
 ifeq ($(OS),Windows_NT)
-	CMD /C IF NOT EXIST coverage MD coverage
+	IF NOT EXIST coverage MD coverage
 else
 	if [ ! -d coverage ]; then mkdir coverage; fi
 endif
@@ -92,22 +93,22 @@ dist-darwin: ensure-fyne-cli lint build
 	hdiutil create -srcfolder dist/darwin -volname "$(BINPREFIX)darwin-amd64" -imagekey zlib-level=9 dist/$(BINPREFIX)darwin-amd64.dmg
 
 dist-windows: ensure-fyne-cli lint build
-	CMD /C COPY /Y cmd\\timetracker-gui\\FyneApp.toml cmd\\timetracker-tray\\FyneApp.toml
-	CMD /C COPY dist\\$(GUI_BUILD_FILENAME) cmd\\timetracker-gui\\timetracker-build.exe
-	CMD /C "cd cmd\timetracker-gui && fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable timetracker-build.exe"
-	CMD /C COPY cmd\\timetracker-gui\\Timetracker.exe dist\\$(GUI_BINPREFIX)windows-amd64.exe
-	CMD /C DEL cmd\\timetracker-gui\\Timetracker.exe
-	CMD /C COPY dist\\$(TRAY_BUILD_FILENAME) cmd\\timetracker-tray\\timetracker-build.exe
-	CMD /C "cd cmd\timetracker-tray && fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable timetracker-build.exe"
-	CMD /C COPY cmd\\timetracker-tray\\Timetracker.exe dist\\$(TRAY_BINPREFIX)windows-amd64.exe
-	CMD /C DEL cmd\\timetracker-tray\\Timetracker.exe
-	CMD /C DEL cmd\\timetracker-tray\\FyneApp.toml
-	CMD /C COPY dist\\$(BUILD_FILENAME) dist\\$(BINPREFIX)windows-amd64.exe
-	CMD /C "cd dist && 7z a -mx9 $(BINPREFIX)windows-amd64.7z $(BINPREFIX)windows-amd64.exe $(GUI_BINPREFIX)windows-amd64.exe $(TRAY_BINPREFIX)windows-amd64.exe"
+	COPY /Y cmd\timetracker-gui\FyneApp.toml cmd\timetracker-tray\FyneApp.toml
+	COPY dist\$(GUI_BUILD_FILENAME) cmd\timetracker-gui\timetracker-build.exe
+	CD cmd\timetracker-gui && fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable timetracker-build.exe
+	COPY cmd\timetracker-gui\Timetracker.exe dist\$(GUI_BINPREFIX)windows-amd64.exe
+	DEL cmd\timetracker-gui\Timetracker.exe
+	COPY dist\$(TRAY_BUILD_FILENAME) cmd\timetracker-tray\timetracker-build.exe
+	CD cmd\timetracker-tray && fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable timetracker-build.exe
+	COPY cmd\timetracker-tray\Timetracker.exe dist\$(TRAY_BINPREFIX)windows-amd64.exe
+	DEL cmd\timetracker-tray\Timetracker.exe
+	DEL cmd\timetracker-tray\FyneApp.toml
+	COPY dist\$(BUILD_FILENAME) dist\$(BINPREFIX)windows-amd64.exe
+	CD dist && 7z a -mx9 $(BINPREFIX)windows-amd64.7z $(BINPREFIX)windows-amd64.exe $(GUI_BINPREFIX)windows-amd64.exe $(TRAY_BINPREFIX)windows-amd64.exe
 
 outdated:
 ifeq ($(OS),Windows_NT)
-	CMD /C "pushd %HOMEDRIVE%%HOMEPATH% && go install github.com/psampaz/go-mod-outdated@v0.8.0 && popd"
+	PUSHD %HOMEDRIVE%%HOMEPATH% && go install github.com/psampaz/go-mod-outdated@v0.8.0 && POPD
 else
 	hash go-mod-outdated 2>/dev/null || { cd && go install github.com/psampaz/go-mod-outdated@v0.8.0; cd -; }
 endif
@@ -115,7 +116,7 @@ endif
 
 ensure-fyne-cli:
 ifeq ($(OS),Windows_NT)
-	CMD /C "pushd %HOMEDRIVE%%HOMEPATH% && go install fyne.io/fyne/v2/cmd/fyne@latest && popd"
+	PUSHD %HOMEDRIVE%%HOMEPATH% && go install fyne.io/fyne/v2/cmd/fyne@latest && POPD
 else
 	hash fyne 2>/dev/null || { cd && go install fyne.io/fyne/v2/cmd/fyne@latest; cd -; }
 endif
