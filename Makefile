@@ -3,6 +3,14 @@
 .PHONY: build clean clean-coverage lint test dist-linux dist-darwin dist-windows outdated ensure-fyne-cli ensure-goversioninfo
 .PHONY: generate-icons-darwin generate-icons-windows generate-bundled-icons ensure-dist-directory build-cli build-gui build-tray
 
+# Check Make version (we need at least GNU Make 3.82). Fortunately,
+# 'undefine' directive has been introduced exactly in GNU Make 3.82.
+ifeq ($(filter undefine,$(.FEATURES)),)
+$(error Unsupported Make version. \
+    The build system does not work properly with GNU Make $(MAKE_VERSION), \
+    please use GNU Make 3.82 or above.)
+endif
+
 # Set platform-specific build variables
 ifeq ($(OS),Windows_NT)
 SHELL=C:\Windows\system32\cmd.exe
