@@ -1,6 +1,6 @@
 # timetracker Makefile
 
-.PHONY: build clean clean-coverage lint test dist-linux dist-darwin dist-windows outdated ensure-fyne-cli
+.PHONY: build clean clean-coverage lint test dist-linux dist-darwin dist-windows outdated ensure-fyne-cli ensure-goversioninfo
 .PHONY: generate-icons-darwin generate-icons-windows generate-bundled-icons ensure-dist-directory build-cli build-gui build-tray
 
 # Set platform-specific build variables
@@ -48,9 +48,15 @@ build-cli:
 	go build $(GO_LDFLAGS) -o dist/$(BUILD_FILENAME) ./cmd/timetracker
 
 build-gui:
+ifeq ($(OS),Windows_NT)
+	goversioninfo -64 -icon="assets\icons\icon-v2.ico" -manifest="cmd\timetracker-gui\timetracker-gui.exe.manifest" -company="ethereal.cc" -product-name="Timetracker" -o="cmd\timetracker-gui\resource.syso" version.json
+endif
 	go build $(GUI_GO_LDFLAGS) -o dist/$(GUI_BUILD_FILENAME) ./cmd/timetracker-gui
 
 build-tray:
+ifeq ($(OS),Windows_NT)
+	goversioninfo -64 -icon="assets\icons\icon-v2.ico" -manifest="cmd\timetracker-tray\timetracker-tray.exe.manifest" -company="ethereal.cc" -product-name="Timetracker" -o="cmd\timetracker-tray\resource.syso" version.json
+endif
 	go build $(TRAY_GO_LDFLAGS) -o dist/$(TRAY_BUILD_FILENAME) ./cmd/timetracker-tray
 
 clean-coverage:
@@ -63,8 +69,12 @@ endif
 clean: clean-coverage
 ifeq ($(OS),Windows_NT)
 	IF EXIST dist RD /S /Q dist
+	IF EXIST cmd\timetracker-gui\resource.syso DEL cmd\timetracker-gui\resource.syso
+	IF EXIST cmd\timetracker-tray\resource.syso DEL cmd\timetracker-tray\resource.syso
 else
 	if [ -d dist ]; then rm -Rf dist; fi
+	if [ -f cmd/timetracker-gui/resource.syso ]; then rm -f cmd/timetracker-gui/resource.syso; fi
+	if [ -f cmd/timetracker-tray/resource.syso ]; then rm -f cmd/timetracker-tray/resource.syso; fi
 endif
 
 lint:
@@ -92,17 +102,9 @@ dist-darwin: ensure-fyne-cli lint build
 	cp dist/$(BUILD_FILENAME) dist/$(TRAY_BUILD_FILENAME) dist/darwin/Timetracker.app/Contents/MacOS/
 	hdiutil create -srcfolder dist/darwin -volname "$(BINPREFIX)darwin-amd64" -imagekey zlib-level=9 dist/$(BINPREFIX)darwin-amd64.dmg
 
-dist-windows: ensure-fyne-cli lint build
-	COPY /Y cmd\timetracker-gui\FyneApp.toml cmd\timetracker-tray\FyneApp.toml
-	COPY dist\$(GUI_BUILD_FILENAME) cmd\timetracker-gui\timetracker-build.exe
-	CD cmd\timetracker-gui && fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable timetracker-build.exe
-	COPY cmd\timetracker-gui\Timetracker.exe dist\$(GUI_BINPREFIX)windows-amd64.exe
-	DEL cmd\timetracker-gui\Timetracker.exe
-	COPY dist\$(TRAY_BUILD_FILENAME) cmd\timetracker-tray\timetracker-build.exe
-	CD cmd\timetracker-tray && fyne package -name Timetracker -appVersion $(SHORTAPPVERSION) -appBuild 0 -os windows -executable timetracker-build.exe
-	COPY cmd\timetracker-tray\Timetracker.exe dist\$(TRAY_BINPREFIX)windows-amd64.exe
-	DEL cmd\timetracker-tray\Timetracker.exe
-	DEL cmd\timetracker-tray\FyneApp.toml
+dist-windows: ensure-goversioninfo lint build
+	COPY dist\$(GUI_BUILD_FILENAME) dist\$(GUI_BINPREFIX)windows-amd64.exe
+	COPY dist\$(TRAY_BUILD_FILENAME) dist\$(TRAY_BINPREFIX)windows-amd64.exe
 	COPY dist\$(BUILD_FILENAME) dist\$(BINPREFIX)windows-amd64.exe
 	CD dist && 7z a -mx9 $(BINPREFIX)windows-amd64.7z $(BINPREFIX)windows-amd64.exe $(GUI_BINPREFIX)windows-amd64.exe $(TRAY_BINPREFIX)windows-amd64.exe
 
@@ -121,6 +123,13 @@ else
 	hash fyne 2>/dev/null || { cd && go install fyne.io/fyne/v2/cmd/fyne@latest; cd -; }
 endif
 
+ensure-goversioninfo:
+ifeq ($(OS),Windows_NT)
+	PUSHD %HOMEDRIVE%%HOMEPATH% && go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest && POPD
+else
+	hash goversioninfo 2>/dev/null || { cd && go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest; cd -; }
+endif
+
 generate-icons-darwin:
 	bash scripts/generate_icns.sh assets/images/icon-v2.svg assets/icons
 	bash scripts/generate_icns.sh assets/images/icon-v2-error.svg assets/icons
@@ -133,7 +142,7 @@ generate-icons-windows:
 	convert assets/images/icon-v2-notrunning.svg -resize 256x256 assets/icons/icon-v2-notrunning.ico
 	convert assets/images/icon-v2-running.svg -resize 256x256 assets/icons/icon-v2-running.ico
 
-generate-bundled-icons:
+generate-bundled-icons: ensure-fyne-cli
 # macOS
 	fyne bundle --name IconV2 -o internal/ui/icons/icon_v2_darwin.go --pkg icons assets/icons/icon-v2.png
 	fyne bundle --name IconV2Error -o internal/ui/icons/icon_v2_error_darwin.go --pkg icons assets/icons/icon-v2-error.icns
