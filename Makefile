@@ -35,7 +35,7 @@ BINPREFIX=timetracker-$(APPVERSION)_
 GUI_BINPREFIX=timetracker-gui-$(APPVERSION)_
 TRAY_BINPREFIX=timetracker-tray-$(APPVERSION)_
 
-build: ensure-dist-directory build-cli build-gui build-tray
+build: ensure-dist-directory build-cli build-tray build-gui
 
 ensure-dist-directory:
 ifeq ($(OS),Windows_NT)
@@ -47,17 +47,17 @@ endif
 build-cli:
 	go build $(GO_LDFLAGS) -o dist/$(BUILD_FILENAME) ./cmd/timetracker
 
-build-gui:
-ifeq ($(OS),Windows_NT)
-	goversioninfo -64 -icon="assets\icons\icon-v2.ico" -manifest="cmd\timetracker-gui\timetracker-gui.exe.manifest" -company="ethereal.cc" -product-name="Timetracker" -o="cmd\timetracker-gui\resource.syso" version.json
-endif
-	go build $(GUI_GO_LDFLAGS) -o dist/$(GUI_BUILD_FILENAME) ./cmd/timetracker-gui
-
 build-tray:
 ifeq ($(OS),Windows_NT)
 	goversioninfo -64 -icon="assets\icons\icon-v2.ico" -manifest="cmd\timetracker-tray\timetracker-tray.exe.manifest" -company="ethereal.cc" -product-name="Timetracker" -o="cmd\timetracker-tray\resource.syso" version.json
 endif
 	go build $(TRAY_GO_LDFLAGS) -o dist/$(TRAY_BUILD_FILENAME) ./cmd/timetracker-tray
+
+build-gui:
+ifeq ($(OS),Windows_NT)
+	goversioninfo -64 -icon="assets\icons\icon-v2.ico" -manifest="cmd\timetracker-gui\timetracker-gui.exe.manifest" -company="ethereal.cc" -product-name="Timetracker" -o="cmd\timetracker-gui\resource.syso" version.json
+endif
+	go build $(GUI_GO_LDFLAGS) -o dist/$(GUI_BUILD_FILENAME) ./cmd/timetracker-gui
 
 clean-coverage:
 ifeq ($(OS),Windows_NT)
@@ -91,8 +91,8 @@ endif
 
 dist-linux: lint build
 	cp dist/$(BUILD_FILENAME) dist/$(BINPREFIX)linux-amd64
-	cp dist/$(GUI_BUILD_FILENAME) dist/$(GUI_BINPREFIX)linux-amd64
 	cp dist/$(TRAY_BUILD_FILENAME) dist/$(TRAY_BINPREFIX)linux-amd64
+	cp dist/$(GUI_BUILD_FILENAME) dist/$(GUI_BINPREFIX)linux-amd64
 	cd dist && 7z a -mx9 $(BINPREFIX)linux-amd64.7z $(BINPREFIX)linux-amd64 $(GUI_BINPREFIX)linux-amd64 $(TRAY_BINPREFIX)linux-amd64
 
 dist-darwin: ensure-fyne-cli lint build
@@ -103,9 +103,9 @@ dist-darwin: ensure-fyne-cli lint build
 	hdiutil create -srcfolder dist/darwin -volname "$(BINPREFIX)darwin-amd64" -imagekey zlib-level=9 dist/$(BINPREFIX)darwin-amd64.dmg
 
 dist-windows: ensure-goversioninfo lint build
-	COPY dist\$(GUI_BUILD_FILENAME) dist\$(GUI_BINPREFIX)windows-amd64.exe
-	COPY dist\$(TRAY_BUILD_FILENAME) dist\$(TRAY_BINPREFIX)windows-amd64.exe
 	COPY dist\$(BUILD_FILENAME) dist\$(BINPREFIX)windows-amd64.exe
+	COPY dist\$(TRAY_BUILD_FILENAME) dist\$(TRAY_BINPREFIX)windows-amd64.exe
+	COPY dist\$(GUI_BUILD_FILENAME) dist\$(GUI_BINPREFIX)windows-amd64.exe
 	CD dist && 7z a -mx9 $(BINPREFIX)windows-amd64.7z $(BINPREFIX)windows-amd64.exe $(GUI_BINPREFIX)windows-amd64.exe $(TRAY_BINPREFIX)windows-amd64.exe
 
 outdated:
