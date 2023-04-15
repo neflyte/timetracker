@@ -183,6 +183,12 @@ func updateLast5StartedTasks() {
 	log.Debug().
 		Int("length", len(lastStartedTasks)).
 		Msg("loaded last-started tasks")
+	for idx := range lastStartedTasks {
+		log.Debug().
+			Int("index", idx).
+			Str("task", lastStartedTasks[idx].String()).
+			Msg("lastStartedTask")
+	}
 	// Hide entries we don't need
 	if len(lastStartedTasks) < recentlyStartedTasks {
 		log.Debug().
