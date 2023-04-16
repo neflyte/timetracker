@@ -16,8 +16,6 @@ import (
 const (
 	// prefKeyCloseWindow is the preferences key for the flag which causes the main window to close after creating a new task
 	prefKeyCloseWindow = "close-window" // FIXME: there is a dupe of this in windows/constants.go
-	// dialogSizeOffset is the number of pixels to subtract from the parent window's size when setting a dialog's minimum size
-	dialogSizeOffset = 50
 )
 
 // CreateAndStartTaskDialog is the main interface for the Create and Start New Task dialog
@@ -96,8 +94,6 @@ func (c *createAndStartTaskDialogData) Init() error {
 		c.doCallback,
 		c.parentWindow,
 	)
-	// Expand the dialog to a reasonable size
-	ResizeDialogToWindowWithPadding(c.Dialog, c.parentWindow, dialogSizeOffset)
 	return nil
 }
 
