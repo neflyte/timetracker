@@ -325,7 +325,7 @@ func (tsd *TimesheetData) TaskReport(startDate, endDate time.Time, withDeleted b
 FROM timesheet ts JOIN task t ON ts.task_id = t.id
 WHERE ts.start_time >= ? AND ts.stop_time <= ? AND ts.stop_time IS NOT NULL
 GROUP BY ts.task_id, DATE(ts.start_time)
-ORDER BY DATE(ts.start_time) ASC`,
+ORDER BY DATE(ts.start_time)`,
 		startDateAtDayStart,
 		endDateAtDayEnd).
 		Rows()
