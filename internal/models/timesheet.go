@@ -17,8 +17,7 @@ import (
 
 const (
 	lastStartedTasksDefaultLimit = 5
-	lastStartedTasksInnerSQL     = "SELECT DISTINCT(task_id) AS task_id, start_time FROM timesheet ORDER BY start_time DESC LIMIT %d"
-	lastStartedTasksSQL          = "SELECT t.* FROM task t JOIN (%s) ts on ts.task_id = t.id ORDER BY ts.start_time DESC"
+	lastStartedTasksSQL          = "SELECT task.* FROM (SELECT task_id, MAX(start_time) AS start_time FROM timesheet GROUP BY task_id ORDER BY start_time DESC) tsd JOIN task ON task.id = tsd.task_id"
 )
 
 // TimesheetData is the main timesheet data structure
@@ -27,9 +26,9 @@ type TimesheetData struct {
 	// Task is the task object linked to this Timesheet
 	Task TaskData
 	// TaskID is the database ID of the linked task object
-	TaskID uint
+	TaskID uint `gorm:"index:idx_timesheet_laststarted"`
 	// StartTime is the time that the task was started at
-	StartTime time.Time `gorm:"not null"`
+	StartTime time.Time `gorm:"not null;index:idx_timesheet_laststarted,sort:desc"`
 	// StopTime is the time that the task was stopped at; if it is NULL, that means the task is still running
 	StopTime sql.NullTime
 
@@ -223,8 +222,7 @@ func (tsd *TimesheetData) LastStartedTasks(limit uint) (startedTasks []TaskData,
 	if limit > 0 {
 		taskLimit = limit
 	}
-	innerSQL := fmt.Sprintf(lastStartedTasksInnerSQL, int(taskLimit))
-	query := fmt.Sprintf(lastStartedTasksSQL, innerSQL)
+	query := fmt.Sprintf("%s LIMIT %d", lastStartedTasksSQL, int(taskLimit))
 	err = database.Get().
 		Raw(query).
 		Scan(&startedTasks).
