@@ -15,16 +15,16 @@ var _ fyne.Widget = (*TaskEditorV2)(nil)
 // TaskEditorV2 is the struct implementing the TaskEditorV2 widget.
 // Use NewTaskEditorV2() to create a new instance of the widget.
 type TaskEditorV2 struct {
-	widget.BaseWidget
-	log                    zerolog.Logger
-	container              *fyne.Container
 	taskSynopsisBinding    binding.String
 	taskDescriptionBinding binding.String
+	container              *fyne.Container
 	synopsisLabel          *widget.Label
 	synopsisEntry          *widget.Entry
 	descriptionLabel       *widget.Label
 	descriptionEntry       *widget.Entry
-	taskID                 uint
+	log                    zerolog.Logger
+	widget.BaseWidget
+	taskID uint
 }
 
 // NewTaskEditorV2 returns a pointer to a newly initialized instance of the TaskEditorV2 widget

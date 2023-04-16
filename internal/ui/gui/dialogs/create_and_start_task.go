@@ -33,20 +33,20 @@ type CreateAndStartTaskDialog interface {
 
 // createAndStartTaskDialogData is the main data structure for the Create and Start New Task dialog
 type createAndStartTaskDialogData struct {
+	descriptionBinding binding.String
+	closeWindowBinding binding.Bool
+	parentWindow       fyne.Window
+	synopsisBinding    binding.String
 	dialog.Dialog
-	synopsisLabel           *widget.Label
-	synopsisEntry           *widget.Entry
-	synopsisBinding         binding.String
-	descriptionLabel        *widget.Label
 	descriptionEntry        *widget.Entry
-	descriptionBinding      binding.String
-	closeWindowCheckbox     *widget.Check
-	closeWindowBinding      binding.Bool
-	showCloseWindowCheckbox bool
+	synopsisLabel           *widget.Label
+	descriptionLabel        *widget.Label
 	widgetContainer         *fyne.Container
-	parentWindow            fyne.Window
-	log                     zerolog.Logger
+	closeWindowCheckbox     *widget.Check
+	synopsisEntry           *widget.Entry
 	callbackFunc            func(bool)
+	log                     zerolog.Logger
+	showCloseWindowCheckbox bool
 }
 
 // NewCreateAndStartTaskDialog creates a new instance of the Create and Start a New Task dialog

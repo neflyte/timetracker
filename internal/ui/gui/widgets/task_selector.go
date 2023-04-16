@@ -35,18 +35,18 @@ var _ fyne.Widget = (*TaskSelector)(nil)
 
 // TaskSelector is the implementation of the task selector widget
 type TaskSelector struct {
-	widget.BaseWidget
-	log                   zerolog.Logger
+	filterBinding         binding.String
+	filterBindingListener binding.DataListener
+	tasksListBinding      binding.UntypedList
 	container             *fyne.Container
 	filterHBox            *fyne.Container
 	filterEntry           *widget.Entry
-	filterBinding         binding.String
-	filterBindingListener binding.DataListener
 	sortButton            *widget.Button
 	tasksList             *widget.List
-	tasksListBinding      binding.UntypedList
-	selectedTask          widget.ListItemID
 	commandChan           chan rxgo.Item
+	log                   zerolog.Logger
+	widget.BaseWidget
+	selectedTask widget.ListItemID
 }
 
 // NewTaskSelector returns a pointer to a new, initialized instance of TaskSelector

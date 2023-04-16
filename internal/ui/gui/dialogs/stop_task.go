@@ -26,13 +26,13 @@ type StopTaskDialog interface {
 // stopTaskDialogData is the main data structure for the Stop Task dialog
 type stopTaskDialogData struct {
 	dialog.Dialog
+	closeWindowBinding  binding.Bool
 	messageLabel        *widget.Label
 	closeWindowCheckbox *widget.Check
-	closeWindowBinding  binding.Bool
 	widgetContainer     *fyne.Container
 	parentWindow        *fyne.Window
-	log                 zerolog.Logger
 	callbackFunc        func(bool)
+	log                 zerolog.Logger
 }
 
 // NewStopTaskDialog creates a new instance of the Stop Task dialog

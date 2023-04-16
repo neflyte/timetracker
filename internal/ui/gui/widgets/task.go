@@ -16,15 +16,15 @@ var _ fyne.Widget = (*Task)(nil)
 
 // Task is the implementation of the Task widget. This is essentially TasklistItem v2.
 type Task struct {
-	widget.BaseWidget
-	log                zerolog.Logger
 	task               models.Task
-	taskID             uint
+	synopsisBinding    binding.String
+	descriptionBinding binding.String
 	container          *fyne.Container
 	synopsis           *canvas.Text
 	description        *canvas.Text
-	synopsisBinding    binding.String
-	descriptionBinding binding.String
+	log                zerolog.Logger
+	widget.BaseWidget
+	taskID uint
 }
 
 // NewTask returns a pointer to a newly initialized Task

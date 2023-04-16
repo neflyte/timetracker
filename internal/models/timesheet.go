@@ -22,18 +22,17 @@ const (
 
 // TimesheetData is the main timesheet data structure
 type TimesheetData struct {
-	gorm.Model
-	// Task is the task object linked to this Timesheet
-	Task TaskData
-	// TaskID is the database ID of the linked task object
-	TaskID uint `gorm:"index:idx_timesheet_laststarted"`
 	// StartTime is the time that the task was started at
 	StartTime time.Time `gorm:"not null;index:idx_timesheet_laststarted,sort:desc"`
+	gorm.Model
 	// StopTime is the time that the task was stopped at; if it is NULL, that means the task is still running
 	StopTime sql.NullTime
-
+	// Task is the task object linked to this Timesheet
+	Task TaskData
 	// log is the struct logger
 	log zerolog.Logger `gorm:"-"`
+	// TaskID is the database ID of the linked task object
+	TaskID uint `gorm:"index:idx_timesheet_laststarted"`
 }
 
 // NewTimesheet returns an new, initialized Timesheet interface
@@ -232,10 +231,10 @@ func (tsd *TimesheetData) LastStartedTasks(limit uint) (startedTasks []TaskData,
 
 // TaskReportData is a struct that contains a single entry of a Task Report
 type TaskReportData struct {
-	TaskID          uint
+	StartDate       sql.NullTime
 	TaskSynopsis    string
 	TaskDescription string
-	StartDate       sql.NullTime
+	TaskID          uint
 	DurationSeconds int
 }
 

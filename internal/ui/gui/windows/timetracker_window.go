@@ -25,8 +25,6 @@ import (
 const (
 	// taskNameTrimLength is the maximum length of the task name string before trimming
 	taskNameTrimLength = 32
-	// windowHeightBuffer is the number of pixels to increase a window height by to try to fit its contents correctly
-	windowHeightBuffer = 50
 )
 
 // TimetrackerWindow is the main timetracker GUI window interface
@@ -41,38 +39,38 @@ type TimetrackerWindow interface {
 
 // timetrackerWindowData is the struct underlying the TimetrackerWindow interface
 type timetrackerWindowData struct {
-	fyne.Window
-	app                         *fyne.App
-	appVersion                  string
-	log                         zerolog.Logger
-	container                   *fyne.Container
-	statusBox                   *fyne.Container
-	subStatusBox                *fyne.Container
-	buttonBox                   *fyne.Container
-	btnSelectTask               *widget.Button
-	btnCreateAndStart           *widget.Button
-	btnStartTask                *widget.Button
-	btnStopTask                 *widget.Button
-	btnManageTasksV2            *widget.Button
-	btnReport                   *widget.Button
-	btnAbout                    *widget.Button
-	createNewTaskAndStartDialog dialogs.CreateAndStartTaskDialog
-	mngWindowV2                 manageWindowV2
-	rptWindow                   reportWindow
-	taskSelector                *widgets.TaskSelector
-	lblStatus                   *widget.Label
-	lblStartTime                *widget.Label
-	lblElapsedTime              *widget.Label
-	bindRunningTask             binding.String
-	bindStartTime               binding.String
 	bindElapsedTime             binding.String
-	textSelectedTask            *canvas.Text
-	selectedTaskBinding         binding.String
+	rptWindow                   reportWindow
+	createNewTaskAndStartDialog dialogs.CreateAndStartTaskDialog
 	selectedTask                models.Task
-	elapsedTimeTicker           *time.Ticker
-	elapsedTimeRunning          bool
-	elapsedTimeQuitChan         chan bool
-	runningTimesheet            *models.TimesheetData
+	selectedTaskBinding         binding.String
+	fyne.Window
+	mngWindowV2         manageWindowV2
+	bindStartTime       binding.String
+	bindRunningTask     binding.String
+	btnSelectTask       *widget.Button
+	textSelectedTask    *canvas.Text
+	btnStopTask         *widget.Button
+	btnManageTasksV2    *widget.Button
+	btnReport           *widget.Button
+	runningTimesheet    *models.TimesheetData
+	btnAbout            *widget.Button
+	subStatusBox        *fyne.Container
+	btnCreateAndStart   *widget.Button
+	taskSelector        *widgets.TaskSelector
+	lblStatus           *widget.Label
+	lblStartTime        *widget.Label
+	lblElapsedTime      *widget.Label
+	app                 *fyne.App
+	buttonBox           *fyne.Container
+	statusBox           *fyne.Container
+	btnStartTask        *widget.Button
+	container           *fyne.Container
+	elapsedTimeQuitChan chan bool
+	elapsedTimeTicker   *time.Ticker
+	appVersion          string
+	log                 zerolog.Logger
+	elapsedTimeRunning  bool
 }
 
 // NewTimetrackerWindow creates and initializes a new timetracker window
@@ -141,7 +139,7 @@ func (t *timetrackerWindowData) Init() error {
 		t.lblStatus,
 		t.subStatusBox,
 	)
-	t.container = container.NewPadded(
+	t.container = container.NewCenter(
 		container.NewVBox(
 			t.statusBox,
 			widget.NewSeparator(),
@@ -158,10 +156,10 @@ func (t *timetrackerWindowData) Init() error {
 	t.Window.SetIcon(icons.IconV2)
 	// get the size of the content with everything visible
 	siz := t.Window.Content().Size()
-	// HACK: add a bit of a height buffer, so we can try to fit everything in the window nicely
-	siz.Height += float32(windowHeightBuffer)
-	// resize the window to fit the content
-	t.Window.Resize(siz)
+	// Resize the window to the minimum size
+	t.Window.Resize(minimumWindowSize)
+	// Resize the container to the original size before we resized the window
+	t.container.Resize(siz)
 	// hide stuff now that we resized
 	t.subStatusBox.Hide()
 	t.Window.SetCloseIntercept(t.Close)

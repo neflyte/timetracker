@@ -2,6 +2,7 @@
 
 .PHONY: build clean clean-coverage lint test dist-linux dist-darwin dist-windows outdated ensure-fyne-cli ensure-goversioninfo
 .PHONY: generate-icons-darwin generate-icons-windows generate-bundled-icons ensure-dist-directory build-cli build-gui build-tray
+.PHONY: ensure-fieldalignment check-fieldalignment autofix-fieldalignment
 
 # Check Make version (we need at least GNU Make 3.82). Fortunately,
 # 'undefine' directive has been introduced exactly in GNU Make 3.82.
@@ -86,6 +87,7 @@ else
 endif
 
 lint:
+	@golangci-lint --version
 	golangci-lint run --timeout=10m --verbose
 
 test: clean-coverage
@@ -118,25 +120,38 @@ dist-windows: ensure-goversioninfo lint build
 
 outdated:
 ifeq ($(OS),Windows_NT)
-	PUSHD %HOMEDRIVE%%HOMEPATH% && go install github.com/psampaz/go-mod-outdated@v0.8.0 && POPD
+	PUSHD %HOMEDRIVE%%HOMEPATH% && go install github.com/psampaz/go-mod-outdated@v0.8.0
 else
-	hash go-mod-outdated 2>/dev/null || { cd && go install github.com/psampaz/go-mod-outdated@v0.8.0; cd -; }
+	hash go-mod-outdated 2>/dev/null || { cd && go install github.com/psampaz/go-mod-outdated@v0.8.0; }
 endif
 	go list -json -u -m all | go-mod-outdated -direct -update
 
 ensure-fyne-cli:
 ifeq ($(OS),Windows_NT)
-	PUSHD %HOMEDRIVE%%HOMEPATH% && go install fyne.io/fyne/v2/cmd/fyne@latest && POPD
+	PUSHD %HOMEDRIVE%%HOMEPATH% && go install fyne.io/fyne/v2/cmd/fyne@latest
 else
-	hash fyne 2>/dev/null || { cd && go install fyne.io/fyne/v2/cmd/fyne@latest; cd -; }
+	hash fyne 2>/dev/null || { cd && go install fyne.io/fyne/v2/cmd/fyne@latest; }
 endif
 
 ensure-goversioninfo:
 ifeq ($(OS),Windows_NT)
-	PUSHD %HOMEDRIVE%%HOMEPATH% && go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest && POPD
+	PUSHD %HOMEDRIVE%%HOMEPATH% && go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
 else
-	hash goversioninfo 2>/dev/null || { cd && go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest; cd -; }
+	hash goversioninfo 2>/dev/null || { cd && go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest; }
 endif
+
+ensure-fieldalignment:
+ifeq ($(OS),Windows_NT)
+	PUSHD %HOMEDRIVE%%HOMEPATH% && go install golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment@latest
+else
+	hash fieldalignment 2>/dev/null || { cd && go install golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment@latest; }
+endif
+
+check-fieldalignment: ensure-fieldalignment
+	fieldalignment ./...
+
+autofix-fieldalignment: ensure-fieldalignment
+	fieldalignment -fix ./...
 
 generate-icons-darwin:
 	bash scripts/generate_icns.sh assets/images/icon-v2.svg assets/icons
