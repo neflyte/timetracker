@@ -37,25 +37,27 @@ var (
 
 type reportWindow interface {
 	windowBase
+	Hide()
+	Show()
 }
 
 type reportWindowData struct {
-	fyne.Window
-	log              zerolog.Logger
-	container        *fyne.Container
-	headerContainer  *fyne.Container
-	startDateLabel   *widget.Label
-	endDateLabel     *widget.Label
-	startDateEntry   *widgets.MinWidthEntry
 	startDateBinding binding.String
-	endDateEntry     *widgets.MinWidthEntry
 	endDateBinding   binding.String
-	runReportButton  *widget.Button
-	exportButton     *widget.Button
-	resultTable      *widget.Table
-	tableColumns     int
-	tableRows        int
-	taskReport       models.TaskReport
+	fyne.Window
+	endDateEntry    *widgets.MinWidthEntry
+	startDateLabel  *widget.Label
+	endDateLabel    *widget.Label
+	startDateEntry  *widgets.MinWidthEntry
+	headerContainer *fyne.Container
+	container       *fyne.Container
+	runReportButton *widget.Button
+	exportButton    *widget.Button
+	resultTable     *widget.Table
+	taskReport      models.TaskReport
+	log             zerolog.Logger
+	tableColumns    int
+	tableRows       int
 }
 
 func newReportWindow(app fyne.App) reportWindow {
@@ -125,6 +127,10 @@ func (w *reportWindowData) Init() error {
 func (w *reportWindowData) Show() {
 	w.Window.Canvas().Focus(w.startDateEntry)
 	w.Window.Show()
+}
+
+func (w *reportWindowData) Hide() {
+	w.Window.Hide()
 }
 
 func (w *reportWindowData) resultTableLength() (int, int) {

@@ -35,7 +35,6 @@ var _ fyne.Window = (*manageWindowV2Impl)(nil)
 
 type manageWindowV2Impl struct {
 	fyne.Window
-	log          zerolog.Logger
 	container    *fyne.Container
 	buttonHBox   *fyne.Container
 	createButton *widget.Button
@@ -44,6 +43,7 @@ type manageWindowV2Impl struct {
 	taskSelector *widgets.TaskSelector
 	taskEditor   *widgets.TaskEditorV2
 	eventChan    chan rxgo.Item
+	log          zerolog.Logger
 }
 
 func newManageWindowV2(app fyne.App) manageWindowV2 {

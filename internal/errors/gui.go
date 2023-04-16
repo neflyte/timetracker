@@ -3,8 +3,8 @@ package errors
 import "fmt"
 
 type InvalidTaskReportStartDate struct {
-	StartDate string
 	Wrapped   error
+	StartDate string
 }
 
 func (e InvalidTaskReportStartDate) Error() string {
@@ -20,8 +20,8 @@ func (e InvalidTaskReportStartDate) Unwrap() error {
 }
 
 type InvalidTaskReportEndDate struct {
-	EndDate string
 	Wrapped error
+	EndDate string
 }
 
 func (e InvalidTaskReportEndDate) Error() string {
