@@ -106,6 +106,11 @@ func (t *timetrackerWindowData) Init() error {
 	t.createNewTaskAndStartDialog = dialogs.NewCreateAndStartTaskDialog((*t.app).Preferences(), t.createAndStartTaskDialogCallback, t.Window)
 	t.btnSelectTask = widget.NewButtonWithIcon("", theme.MoreHorizontalIcon(), t.doSelectTask)
 	t.taskSelector = widgets.NewTaskSelector()
+	t.taskSelector.Observable().ForEach(
+		t.handleTaskSelectorEvent,
+		utils.ObservableErrorHandler("taskSelector", t.log),
+		utils.ObservableCloseHandler("taskSelector", t.log),
+	)
 	t.btnManageTasksV2 = widget.NewButtonWithIcon("MANAGE TASKS", theme.SettingsIcon(), t.doManageTasksV2) // i18n
 	t.btnReport = widget.NewButtonWithIcon("REPORT", theme.FileIcon(), t.doReport)                         // i18n
 	t.btnAbout = widget.NewButton("ABOUT", t.doAbout)                                                      // i18n
@@ -402,6 +407,17 @@ func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
 			Msg("error setting selected task binding")
 	}
 	t.selectedTask = selectedTask
+}
+
+func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
+	log := logger.GetFuncLogger(t.log, "handleTaskSelectorEvent")
+	if event, ok := item.(widgets.TaskSelectorSelectedEvent); ok {
+		if event.SelectedTask != nil {
+			log.Debug().
+				Str("selected", event.SelectedTask.String()).
+				Msg("got selected task")
+		}
+	}
 }
 
 func (t *timetrackerWindowData) doReport() {
