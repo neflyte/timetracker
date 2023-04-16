@@ -17,6 +17,8 @@ import (
 
 const (
 	lastStartedTasksDefaultLimit = 5
+	lastStartedTasksInnerSQL     = "SELECT DISTINCT(task_id) AS task_id, start_time FROM timesheet ORDER BY start_time DESC LIMIT %d"
+	lastStartedTasksSQL          = "SELECT t.* FROM task t JOIN (%s) ts on ts.task_id = t.id ORDER BY ts.start_time DESC"
 )
 
 // TimesheetData is the main timesheet data structure
@@ -221,47 +223,13 @@ func (tsd *TimesheetData) LastStartedTasks(limit uint) (startedTasks []TaskData,
 	if limit > 0 {
 		taskLimit = limit
 	}
-	taskIDs := make([]uint, 0)
-	subquery := database.Get().
-		Model(tsd).
-		Select("task_id", "start_time").
-		Order("start_time DESC")
+	innerSQL := fmt.Sprintf(lastStartedTasksInnerSQL, int(taskLimit))
+	query := fmt.Sprintf(lastStartedTasksSQL, innerSQL)
 	err = database.Get().
-		Table("(?) as data", subquery).
-		Select("task_id").
-		Group("task_id").
-		Order("start_time DESC").
-		Limit(int(taskLimit)).
-		Find(&taskIDs).
+		Raw(query).
+		Scan(&startedTasks).
 		Error
-	if err != nil {
-		return
-	}
-	unorderedStartedTasks := make([]TaskData, 0)
-	err = database.Get().
-		Model(new(TaskData)).
-		Find(&unorderedStartedTasks, taskIDs).
-		Error
-	if err != nil {
-		return
-	}
-	for _, taskID := range taskIDs {
-		task := findTaskByID(unorderedStartedTasks, taskID)
-		if task != nil {
-			startedTasks = append(startedTasks, *task)
-		}
-	}
 	return
-}
-
-// findTaskByID attempts to fina a task with the specified ID in the specified slice of tasks
-func findTaskByID(tasks []TaskData, id uint) *TaskData {
-	for _, task := range tasks {
-		if task.ID == id {
-			return &task
-		}
-	}
-	return nil
 }
 
 // TaskReportData is a struct that contains a single entry of a Task Report
