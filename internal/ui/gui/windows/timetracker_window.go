@@ -411,11 +411,17 @@ func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
 
 func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
 	log := logger.GetFuncLogger(t.log, "handleTaskSelectorEvent")
-	if event, ok := item.(widgets.TaskSelectorSelectedEvent); ok {
+	switch event := item.(type) {
+	case widgets.TaskSelectorSelectedEvent:
 		if event.SelectedTask != nil {
 			log.Debug().
 				Str("selected", event.SelectedTask.String()).
 				Msg("got selected task")
+		}
+	case widgets.TaskSelectorErrorEvent:
+		if event.Err != nil {
+			log.Err(event.Err).
+				Msg("error from task selector")
 		}
 	}
 }

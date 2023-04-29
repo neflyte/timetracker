@@ -174,9 +174,10 @@ func (td *TaskData) LoadAll(withDeleted bool) ([]TaskData, error) {
 // Search searches for a task by synopsis or description using SQL LIKE
 func (td *TaskData) Search(text string) ([]TaskData, error) {
 	tasks := make([]TaskData, 0)
+	textQuery := fmt.Sprintf("%%%s%%", text)
 	err := database.Get().
 		Model(new(TaskData)).
-		Where("synopsis LIKE ? OR description LIKE ?", text, text).
+		Where("synopsis LIKE ? OR description LIKE ?", textQuery, textQuery).
 		Find(&tasks).
 		Error
 	return tasks, err
