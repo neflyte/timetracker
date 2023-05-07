@@ -17,10 +17,10 @@ func NewToast() Toast {
 
 func (t *ToastImpl) Notify(title string, description string) error {
 	log := logger.GetFuncLogger(t.logger, "Notify")
-	err := t.ensureScript()
+	err := t.ensureIcon()
 	if err != nil {
 		log.Err(err).
-			Msg("unable to write temp files")
+			Msg("unable to write temp file")
 		return err
 	}
 	defer t.Cleanup()
@@ -33,8 +33,8 @@ func (t *ToastImpl) Notify(title string, description string) error {
 	return nil
 }
 
-func (t *ToastImpl) ensureScript() error {
-	log := logger.GetFuncLogger(t.logger, "ensureScript")
+func (t *ToastImpl) ensureIcon() error {
+	log := logger.GetFuncLogger(t.logger, "ensureIcon")
 	tempDir, err := os.MkdirTemp("", "timetracker-toast")
 	if err != nil {
 		log.Err(err).
