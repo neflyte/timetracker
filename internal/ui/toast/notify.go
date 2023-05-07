@@ -3,19 +3,19 @@
 
 package toast
 
-type ToastImpl struct {
+type Impl struct {
 	logger   zerolog.Logger
 	tempDir  string
 	iconPath string
 }
 
 func NewToast() Toast {
-	return &ToastImpl{
-		logger: packageLogger.With().Str("struct", "ToastImpl").Logger(),
+	return &Impl{
+		logger: packageLogger.With().Str("struct", "Impl").Logger(),
 	}
 }
 
-func (t *ToastImpl) Notify(title string, description string) error {
+func (t *Impl) Notify(title string, description string) error {
 	log := logger.GetFuncLogger(t.logger, "Notify")
 	err := t.ensureIcon()
 	if err != nil {
@@ -33,7 +33,7 @@ func (t *ToastImpl) Notify(title string, description string) error {
 	return nil
 }
 
-func (t *ToastImpl) ensureIcon() error {
+func (t *Impl) ensureIcon() error {
 	log := logger.GetFuncLogger(t.logger, "ensureIcon")
 	tempDir, err := os.MkdirTemp("", "timetracker-toast")
 	if err != nil {
@@ -58,7 +58,7 @@ func (t *ToastImpl) ensureIcon() error {
 	return nil
 }
 
-func (t *ToastImpl) Cleanup() {
+func (t *Impl) Cleanup() {
 	log := logger.GetFuncLogger(t.logger, "Cleanup")
 	if t.iconPath != "" {
 		err := os.Remove(t.iconPath)
