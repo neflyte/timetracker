@@ -16,7 +16,7 @@ import (
 //go:embed toast.ps1
 var toastPs1 []byte
 
-type Impl struct {
+type impl struct {
 	tempDir    string
 	scriptPath string
 	iconPath   string
@@ -24,12 +24,12 @@ type Impl struct {
 }
 
 func NewToast() Toast {
-	return &Impl{
-		logger: packageLogger.With().Str("struct", "Impl").Logger(),
+	return &impl{
+		logger: packageLogger.With().Str("struct", "impl").Logger(),
 	}
 }
 
-func (t *Impl) Notify(title string, description string) error {
+func (t *impl) Notify(title string, description string) error {
 	log := logger.GetFuncLogger(t.logger, "Notify")
 	err := t.ensureScript()
 	if err != nil {
@@ -65,7 +65,7 @@ func (t *Impl) Notify(title string, description string) error {
 	return nil
 }
 
-func (t *Impl) ensureScript() error {
+func (t *impl) ensureScript() error {
 	log := logger.GetFuncLogger(t.logger, "ensureScript")
 	tempDir, err := os.MkdirTemp("", "timetracker-toast")
 	if err != nil {
@@ -100,7 +100,7 @@ func (t *Impl) ensureScript() error {
 	return nil
 }
 
-func (t *Impl) Cleanup() {
+func (t *impl) Cleanup() {
 	log := logger.GetFuncLogger(t.logger, "Cleanup")
 	if t.iconPath != "" {
 		err := os.Remove(t.iconPath)
