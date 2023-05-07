@@ -3,19 +3,29 @@
 
 package toast
 
-type Impl struct {
-	logger   zerolog.Logger
+import (
+	"os"
+	"path"
+
+	"github.com/gen2brain/beeep"
+	"github.com/neflyte/timetracker/internal/logger"
+	"github.com/neflyte/timetracker/internal/ui/icons"
+	"github.com/rs/zerolog"
+)
+
+type impl struct {
 	tempDir  string
 	iconPath string
+	logger   zerolog.Logger
 }
 
 func NewToast() Toast {
-	return &Impl{
-		logger: packageLogger.With().Str("struct", "Impl").Logger(),
+	return &impl{
+		logger: packageLogger.With().Str("struct", "impl").Logger(),
 	}
 }
 
-func (t *Impl) Notify(title string, description string) error {
+func (t *impl) Notify(title string, description string) error {
 	log := logger.GetFuncLogger(t.logger, "Notify")
 	err := t.ensureIcon()
 	if err != nil {
@@ -33,7 +43,7 @@ func (t *Impl) Notify(title string, description string) error {
 	return nil
 }
 
-func (t *Impl) ensureIcon() error {
+func (t *impl) ensureIcon() error {
 	log := logger.GetFuncLogger(t.logger, "ensureIcon")
 	tempDir, err := os.MkdirTemp("", "timetracker-toast")
 	if err != nil {
@@ -58,7 +68,7 @@ func (t *Impl) ensureIcon() error {
 	return nil
 }
 
-func (t *Impl) Cleanup() {
+func (t *impl) Cleanup() {
 	log := logger.GetFuncLogger(t.logger, "Cleanup")
 	if t.iconPath != "" {
 		err := os.Remove(t.iconPath)
