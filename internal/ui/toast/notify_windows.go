@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/icons"
@@ -43,13 +44,22 @@ func (t *Impl) Notify(title string, description string) error {
 		"-Description", description,
 		"-Icon", t.iconPath,
 	}
-	toastCmd := exec.Command("powershell", toastArgs...)
+	var out, stderr strings.Builder
+	toastCmd := exec.Command("powershell.exe", toastArgs...)
+	toastCmd.Stdout = &out
+	toastCmd.Stderr = &stderr
 	err = toastCmd.Run()
 	if err != nil {
 		log.Err(err).
+			Str("script", t.scriptPath).
+			Str("stderr", stderr.String()).
+			Str("stdout", out.String()).
 			Msg("unable to run powershell script")
 		return err
 	}
+	log.Debug().
+		Str("stdout", out.String()).
+		Msg("successfully ran powershell script")
 	return nil
 }
 
