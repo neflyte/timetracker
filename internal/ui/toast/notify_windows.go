@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"syscall"
 
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/ui/icons"
@@ -48,6 +49,7 @@ func (t *Impl) Notify(title string, description string) error {
 	toastCmd := exec.Command("powershell.exe", toastArgs...)
 	toastCmd.Stdout = &out
 	toastCmd.Stderr = &stderr
+	toastCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	err = toastCmd.Run()
 	if err != nil {
 		log.Err(err).
