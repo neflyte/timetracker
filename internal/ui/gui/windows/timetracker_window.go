@@ -18,6 +18,7 @@ import (
 	"github.com/neflyte/timetracker/internal/ui/gui/dialogs"
 	"github.com/neflyte/timetracker/internal/ui/gui/widgets"
 	"github.com/neflyte/timetracker/internal/ui/icons"
+	tttoast "github.com/neflyte/timetracker/internal/ui/toast"
 	"github.com/neflyte/timetracker/internal/utils"
 	"github.com/rs/zerolog"
 )
@@ -46,6 +47,7 @@ type timetrackerWindowData struct {
 	selectedTaskBinding         binding.String
 	fyne.Window
 	mngWindowV2         manageWindowV2
+	toast               tttoast.Toast
 	bindStartTime       binding.String
 	bindRunningTask     binding.String
 	btnSelectTask       *widget.Button
@@ -86,6 +88,7 @@ func NewTimetrackerWindow(app fyne.App, appVersion string) TimetrackerWindow {
 		selectedTaskBinding: binding.NewString(),
 		elapsedTimeRunning:  false,
 		elapsedTimeQuitChan: make(chan bool, 1),
+		toast:               tttoast.NewToast(),
 	}
 	err := ttw.Init()
 	if err != nil {
@@ -340,10 +343,16 @@ func (t *timetrackerWindowData) doStartTask() {
 	// Show notification that task started
 	notificationTitle := fmt.Sprintf("Task %s started", t.selectedTask.Data().Synopsis)                 // i18n
 	notificationContents := fmt.Sprintf("Started at %s", timesheet.Data().StartTime.Format(time.Stamp)) // i18n
-	(*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
+	// (*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
+	err = t.toast.Notify(notificationTitle, notificationContents)
+	if err != nil {
+		log.Err(err).
+			Str("title", notificationTitle).
+			Str("contents", notificationContents).
+			Msg("unable to send notification")
+	}
 	t.btnStopTask.Enable()
 	t.btnStartTask.Disable()
-	// appstate.SetRunningTimesheet(timesheet.Data())
 	t.runningTimesheet = timesheet.Data()
 	t.runningTimesheetChanged(t.runningTimesheet)
 	log.Trace().
@@ -364,7 +373,14 @@ func (t *timetrackerWindowData) doStopTask() {
 	// Show notification that task has stopped
 	notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)                     // i18n
 	notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp)) // i18n
-	(*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
+	// (*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
+	err = t.toast.Notify(notificationTitle, notificationContents)
+	if err != nil {
+		log.Err(err).
+			Str("title", notificationTitle).
+			Str("contents", notificationContents).
+			Msg("unable to send notification")
+	}
 	t.runningTimesheet = nil
 	t.runningTimesheetChanged(t.runningTimesheet)
 }
@@ -516,7 +532,14 @@ func (t *timetrackerWindowData) maybeStopRunningTask(stopTask bool) {
 	// Show notification that the task has stopped
 	notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)                     // i18n
 	notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp)) // i18n
-	(*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
+	// (*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
+	err = t.toast.Notify(notificationTitle, notificationContents)
+	if err != nil {
+		log.Err(err).
+			Str("title", notificationTitle).
+			Str("contents", notificationContents).
+			Msg("unable to send notification")
+	}
 	t.runningTimesheet = nil
 	t.runningTimesheetChanged(t.runningTimesheet)
 	// Check if we should close the main window
@@ -564,7 +587,14 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 		// Show notification that task has stopped
 		notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)                     // i18n
 		notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp)) // i18n
-		(*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
+		// (*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
+		err = t.toast.Notify(notificationTitle, notificationContents)
+		if err != nil {
+			log.Err(err).
+				Str("title", notificationTitle).
+				Str("contents", notificationContents).
+				Msg("unable to send notification")
+		}
 	}
 	// Start the new task
 	timesheet := models.NewTimesheet()
@@ -579,7 +609,14 @@ func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart 
 	// Show notification that task has started
 	notificationTitle := fmt.Sprintf("Task %s started", taskData.Synopsis)                              // i18n
 	notificationContents := fmt.Sprintf("Started at %s", timesheet.Data().StartTime.Format(time.Stamp)) // i18n
-	(*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
+	// (*t.app).SendNotification(fyne.NewNotification(notificationTitle, notificationContents))
+	err = t.toast.Notify(notificationTitle, notificationContents)
+	if err != nil {
+		log.Err(err).
+			Str("title", notificationTitle).
+			Str("contents", notificationContents).
+			Msg("unable to send notification")
+	}
 	log.Debug().
 		Str("task", taskData.String()).
 		Str("startTime", timesheet.Data().StartTime.String()).
