@@ -12,12 +12,12 @@ import (
 	"time"
 
 	"fyne.io/systray"
-	"github.com/gen2brain/beeep"
 	"github.com/neflyte/timetracker/internal/constants"
 	tterrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/neflyte/timetracker/internal/ui/icons"
+	tttoast "github.com/neflyte/timetracker/internal/ui/toast"
 	"github.com/spf13/viper"
 )
 
@@ -52,6 +52,7 @@ var (
 	runningTimesheet           *models.TimesheetData
 	lastError                  error
 	lastState                  int
+	toast                      tttoast.Toast
 )
 
 // Run starts the systray app
@@ -71,6 +72,7 @@ func onReady() {
 			Msg("error reading app config")
 		return
 	}
+	toast = tttoast.NewToast()
 	setTrayTitle("Timetracker")
 	systray.SetTooltip("Timetracker")
 	systray.SetIcon(icons.IconV2NotRunning.StaticContent)
@@ -318,7 +320,7 @@ func handleStatusClick() {
 				Msg("last error was nil but timesheet status is error; THIS IS UNEXPECTED")
 			return
 		}
-		err := beeep.Alert("Timetracker status error", lastError.Error(), "")
+		err := toast.Notify("Timetracker status error", lastError.Error())
 		if err != nil {
 			log.Err(err).
 				Msg("error sending notification about status error")
@@ -380,10 +382,9 @@ func stopRunningTask() {
 		if !errors.Is(err, tterrors.ErrNoRunningTask{}) {
 			log.Err(err).
 				Msg("error stopping the running task")
-			err = beeep.Alert(
+			err = toast.Notify(
 				"Error Stopping Task", // i18n
 				fmt.Sprintf("Error stopping the running task: %s", err.Error()), // i18n
-				"",
 			)
 			if err != nil {
 				log.Err(err).
@@ -397,7 +398,7 @@ func stopRunningTask() {
 		runningTimesheet = nil
 		notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)                     // i18n
 		notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp)) // i18n
-		err = beeep.Notify(notificationTitle, notificationContents, "")
+		err = toast.Notify(notificationTitle, notificationContents)
 		if err != nil {
 			log.Err(err).
 				Msg("error sending notification about stopped task")
@@ -425,7 +426,7 @@ func startTask(taskData *models.TaskData) (err error) {
 	// Show notification that task started
 	notificationTitle := fmt.Sprintf("Task %s started", taskData.Synopsis)                              // i18n
 	notificationContents := fmt.Sprintf("Started at %s", timesheet.Data().StartTime.Format(time.Stamp)) // i18n
-	err = beeep.Notify(notificationTitle, notificationContents, "")
+	err = toast.Notify(notificationTitle, notificationContents)
 	if err != nil {
 		log.Err(err).
 			Msg("error sending notification about started task")
