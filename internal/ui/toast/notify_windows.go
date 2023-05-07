@@ -37,7 +37,7 @@ func (t *Impl) Notify(title string, description string) error {
 	}
 	defer t.Cleanup()
 	toastArgs := []string{
-		"-NoLogo", "-NoProfile", "-NonInteractive", "-File", t.scriptPath,
+		"-NoLogo", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-File", t.scriptPath,
 		"-AppId", "Timetracker",
 		"-Title", title,
 		"-Description", description,
