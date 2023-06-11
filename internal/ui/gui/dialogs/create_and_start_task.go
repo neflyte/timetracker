@@ -16,6 +16,15 @@ import (
 const (
 	// prefKeyCloseWindow is the preferences key for the flag which causes the main window to close after creating a new task
 	prefKeyCloseWindow = "close-window" // FIXME: there is a dupe of this in windows/constants.go
+	// createAndStartMinWidth is the minimum width of the create_and_start_task dialog
+	createAndStartMinWidth = 400.0
+	// createAndStartMinHeight is the minimum height of the create_and_start_task dialog
+	createAndStartMinHeight = 300.0
+)
+
+var (
+	// createAndStartMinSize is the minimum size of the create_and_start_task dialog
+	createAndStartMinSize = fyne.NewSize(createAndStartMinWidth, createAndStartMinHeight)
 )
 
 // CreateAndStartTaskDialog is the main interface for the Create and Start New Task dialog
@@ -94,6 +103,7 @@ func (c *createAndStartTaskDialogData) Init() error {
 		c.doCallback,
 		c.parentWindow,
 	)
+	c.Dialog.Resize(createAndStartMinSize)
 	return nil
 }
 
