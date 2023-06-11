@@ -231,11 +231,11 @@ func (tsd *TimesheetData) LastStartedTasks(limit uint) (startedTasks []TaskData,
 
 // TaskReportData is a struct that contains a single entry of a Task Report
 type TaskReportData struct {
-	StartDate       sql.NullTime
-	TaskSynopsis    string
-	TaskDescription string
-	TaskID          uint
-	DurationSeconds int
+	StartDate       sql.NullTime `csv:"started_on" json:"started_on" xml:"StartedOn"`
+	TaskSynopsis    string       `csv:"synopsis" json:"synopsis" xml:"Synopsis"`
+	TaskDescription string       `csv:"description,omitempty" json:"description,omitempty" xml:"Description,omitempty"`
+	TaskID          uint         `csv:"task_id" json:"task_id" xml:"TaskID"`
+	DurationSeconds int          `csv:"duration" json:"duration" xml:"Duration"`
 }
 
 // TaskReport is a type alias for a slice of TaskReportData structs

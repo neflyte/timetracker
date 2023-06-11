@@ -1,10 +1,13 @@
 package cli
 
 import (
+	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/jszwec/csvutil"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/rs/zerolog"
 )
@@ -28,4 +31,31 @@ func printError(err error, format string, args ...interface{}) {
 func PrintAndLogError(log zerolog.Logger, err error, format string, args ...interface{}) {
 	printError(err, format, args...)
 	log.Err(err).Msgf(format, args...)
+}
+
+func PrintCSV(log zerolog.Logger, obj interface{}) {
+	csvOut, err := csvutil.Marshal(obj)
+	if err != nil {
+		log.Err(err).Msg("unable to marshal object to CSV")
+		return
+	}
+	fmt.Println(string(csvOut))
+}
+
+func PrintJSON(log zerolog.Logger, obj interface{}) {
+	jsonOut, err := json.Marshal(obj)
+	if err != nil {
+		log.Err(err).Msg("unable to marshal object to JSON")
+		return
+	}
+	fmt.Println(string(jsonOut))
+}
+
+func PrintXML(log zerolog.Logger, obj interface{}) {
+	xmlOut, err := xml.Marshal(obj)
+	if err != nil {
+		log.Err(err).Msg("unable to marshal object to XML")
+		return
+	}
+	fmt.Println(string(xmlOut))
 }
