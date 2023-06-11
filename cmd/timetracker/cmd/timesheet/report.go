@@ -17,7 +17,11 @@ import (
 )
 
 const (
-	exportFileMode = 0644
+	exportFileMode   = 0644
+	outputFormatText = "text"
+	outputFormatCSV  = "csv"
+	outputFormatJSON = "json"
+	outputFormatXML  = "xml"
 )
 
 var (
@@ -28,10 +32,11 @@ var (
 		Short:   "Report on tasks completed in the specified time period",
 		RunE:    reportTimesheets,
 	}
-	csvTableHeader  = []string{"task_id", "synopsis", "started_on", "duration"}
-	reportStartDate string
-	reportEndDate   string
-	exportCSVFile   string
+	csvTableHeader     = []string{"task_id", "synopsis", "started_on", "duration"}
+	reportStartDate    string
+	reportEndDate      string
+	exportCSVFile      string
+	reportOutputFormat string
 )
 
 func init() {
@@ -39,10 +44,10 @@ func init() {
 	ReportCmd.Flags().StringVar(&reportEndDate, "endDate", "", "end date (YYYY-MM-DD)")
 	ReportCmd.Flags().BoolVar(&withDeleted, "deleted", false, "include deleted timesheets")
 	ReportCmd.Flags().StringVar(&exportCSVFile, "exportCSV", "", "file to export report in CSV format")
+	ReportCmd.Flags().StringVar(&reportOutputFormat, "outputFormat", outputFormatText, "output format (text, csv, json, xml; default text)")
 }
 
-// FIXME: Figure out a way to reduce cyclomatic complexity so the lint exclusion can be removed
-func reportTimesheets(_ *cobra.Command, _ []string) (err error) { //nolint:cyclop
+func reportTimesheets(_ *cobra.Command, _ []string) (err error) {
 	log := logger.GetLogger("reportTimesheets")
 	if reportStartDate == "" || reportEndDate == "" {
 		return errors.New("both start date and end date must be specified")
@@ -64,38 +69,36 @@ func reportTimesheets(_ *cobra.Command, _ []string) (err error) { //nolint:cyclo
 		cli.PrintAndLogError(log, reportErr, "error running task report between %s and %s", reportStartDate, reportEndDate)
 		return reportErr
 	}
+	// Do CSV export to file if requested
 	if exportCSVFile != "" {
-		outFile, fileErr := os.OpenFile(exportCSVFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, exportFileMode)
-		if fileErr != nil {
-			cli.PrintAndLogError(log, fileErr, "error opening output file %s", exportCSVFile)
-			return fileErr
-		}
-		defer func() {
-			closeErr := outFile.Close()
-			if closeErr != nil {
-				cli.PrintAndLogError(log, closeErr, "error closing output file %s", exportCSVFile)
-			}
-		}()
-		csvOut := csv.NewWriter(outFile)
-		defer csvOut.Flush()
-		csvData := make([][]string, 0)
-		csvData = append(csvData, csvTableHeader)
-		for _, taskReportData := range reportData {
-			csvData = append(csvData, []string{
-				fmt.Sprintf("%d", taskReportData.TaskID),
-				taskReportData.TaskSynopsis,
-				taskReportData.StartDate.Time.Format(constants.TimestampDateLayout),
-				taskReportData.Duration().String(),
-			})
-		}
-		writeErr := csvOut.WriteAll(csvData)
-		if writeErr != nil {
-			cli.PrintAndLogError(log, writeErr, "error exporting data to CSV file %s", exportCSVFile)
-			return writeErr
+		err = exportToCSV(reportData, exportCSVFile)
+		if err != nil {
+			return err
 		}
 		fmt.Printf("Exported %d records to file %s\n", len(reportData), exportCSVFile)
 		return nil
 	}
+	// Print the report in the requested output format
+	printReport(reportData, reportOutputFormat)
+	return nil
+}
+
+func printReport(reportData models.TaskReport, reportFormat string) {
+	log := logger.GetLogger("printReport")
+	// Output using requested format
+	switch reportFormat {
+	case outputFormatText:
+		printReportTable(reportData)
+	case outputFormatCSV:
+		cli.PrintCSV(log, reportData)
+	case outputFormatJSON:
+		cli.PrintJSON(log, reportData)
+	case outputFormatXML:
+		cli.PrintXML(log, reportData)
+	}
+}
+
+func printReportTable(reportData models.TaskReport) {
 	table := simpletable.New()
 	table.Header = &simpletable.Header{
 		Cells: []*simpletable.Cell{
@@ -115,5 +118,37 @@ func reportTimesheets(_ *cobra.Command, _ []string) (err error) { //nolint:cyclo
 	}
 	table.SetStyle(simpletable.StyleCompactLite)
 	fmt.Println(table.String())
+}
+
+func exportToCSV(reportData models.TaskReport, exportFile string) error {
+	log := logger.GetLogger("exportToCSV")
+	outFile, fileErr := os.OpenFile(exportFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, exportFileMode)
+	if fileErr != nil {
+		cli.PrintAndLogError(log, fileErr, "error opening output file %s", exportFile)
+		return fileErr
+	}
+	defer func() {
+		closeErr := outFile.Close()
+		if closeErr != nil {
+			cli.PrintAndLogError(log, closeErr, "error closing output file %s", exportFile)
+		}
+	}()
+	csvOut := csv.NewWriter(outFile)
+	defer csvOut.Flush()
+	csvData := make([][]string, 0)
+	csvData = append(csvData, csvTableHeader)
+	for _, taskReportData := range reportData {
+		csvData = append(csvData, []string{
+			fmt.Sprintf("%d", taskReportData.TaskID),
+			taskReportData.TaskSynopsis,
+			taskReportData.StartDate.Time.Format(constants.TimestampDateLayout),
+			taskReportData.Duration().String(),
+		})
+	}
+	writeErr := csvOut.WriteAll(csvData)
+	if writeErr != nil {
+		cli.PrintAndLogError(log, writeErr, "error exporting data to CSV file %s", exportFile)
+		return writeErr
+	}
 	return nil
 }
