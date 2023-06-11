@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Split single-file binary into 3 binaries - CLI, GUI, and Tray - for more efficient usage on macOS and Windows platforms
 - Default main window size changed from 640x480 to 800x600
-- Updated fyne.io/fyne/v2 from v2.3.0 to v2.3.3
+- Updated fyne.io/fyne/v2 from v2.3.0 to v2.3.5
 - Updated github.com/fatih/color from v1.13.0 to v1.15.0
 - Updated github.com/gofrs/uuid from v4.3.1 to v4.4.0
 - Updated github.com/rs/zerolog from v1.28.0 to v1.29.0
