@@ -92,9 +92,19 @@ func printReport(reportData models.TaskReport, reportFormat string) {
 	case outputFormatCSV:
 		cli.PrintCSV(log, reportData)
 	case outputFormatJSON:
-		cli.PrintJSON(log, reportData)
+		jsonData := struct {
+			TaskReport []models.TaskReportData `json:"TaskReport"`
+		}{
+			TaskReport: reportData,
+		}
+		cli.PrintJSON(log, jsonData)
 	case outputFormatXML:
-		cli.PrintXML(log, reportData)
+		xmlData := struct {
+			TaskReport []models.TaskReportData `xml:"TaskReport"`
+		}{
+			TaskReport: reportData,
+		}
+		cli.PrintXML(log, xmlData)
 	}
 }
 
