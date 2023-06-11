@@ -81,13 +81,16 @@ func NewCreateAndStartTaskDialog(prefs fyne.Preferences, cb func(bool), parent f
 // Init initializes the dialog widgets
 func (c *createAndStartTaskDialogData) Init() error {
 	c.synopsisEntry = widget.NewEntryWithData(c.synopsisBinding)
-	c.synopsisEntry.SetPlaceHolder("enter the task synopsis here") // i18n
+	c.synopsisEntry.SetPlaceHolder("e.g. 'My Task', 'TASK-1234'") // i18n
 	c.synopsisEntry.Validator = nil
 	c.descriptionEntry = widget.NewEntryWithData(c.descriptionBinding)
-	c.descriptionEntry.SetPlaceHolder("enter the task description here") // i18n
 	c.descriptionEntry.MultiLine = true
 	c.descriptionEntry.Wrapping = fyne.TextWrapWord
 	c.descriptionEntry.Validator = nil
+	c.descriptionEntry.OnSubmitted = func(submitted string) {
+		c.Dialog.Hide()
+		c.doCallback(true)
+	}
 	c.closeWindowCheckbox = widget.NewCheckWithData("Close window after starting task", c.closeWindowBinding) // i18n
 	c.widgetContainer = container.NewVBox(
 		container.NewBorder(nil, nil, c.synopsisLabel, nil, c.synopsisEntry),
