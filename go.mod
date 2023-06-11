@@ -3,8 +3,8 @@ module github.com/neflyte/timetracker
 go 1.16
 
 require (
-	fyne.io/fyne/v2 v2.3.3
-	fyne.io/systray v1.10.1-0.20230312215936-7f71b037e260
+	fyne.io/fyne/v2 v2.3.5
+	fyne.io/systray v1.10.1-0.20230602210930-b6a2d6ca2a7b
 	github.com/alexeyco/simpletable v1.0.0
 	github.com/bluele/factory-go v0.0.1
 	github.com/cenkalti/backoff/v4 v4.1.0 // indirect
