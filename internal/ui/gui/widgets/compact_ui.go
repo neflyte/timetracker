@@ -12,6 +12,7 @@ import (
 
 var _ fyne.Widget = (*CompactUi)(nil)
 
+// CompactUi is a compact user interface for the main Timetracker window
 type CompactUi struct {
 	taskNameBinding    binding.String
 	elapsedTimeBinding binding.String
@@ -26,6 +27,7 @@ type CompactUi struct {
 	widget.BaseWidget
 }
 
+// NewCompactUi creates a new instance of the compact user interface
 func NewCompactUi() *CompactUi {
 	compactui := &CompactUi{
 		log:                logger.GetStructLogger("CompactUi"),
