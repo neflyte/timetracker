@@ -6,7 +6,9 @@ import (
 
 	"github.com/alexeyco/simpletable"
 	"github.com/fatih/color"
+	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
+	"github.com/neflyte/timetracker/internal/ui/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -19,11 +21,13 @@ var (
 		Short: "Shows the last x started tasks",
 		RunE:  doLastStarted,
 	}
-	taskLimit uint
+	taskLimit    uint
+	outputFormat string
 )
 
 func init() {
 	LastStartedCmd.Flags().UintVar(&taskLimit, "limit", defaultTaskLimit, "the number of tasks to return; must be greater than zero")
+	LastStartedCmd.Flags().StringVar(&outputFormat, "outputFormat", outputFormatText, "output format (text, csv, json, xml; default text)")
 }
 
 func doLastStarted(_ *cobra.Command, _ []string) (err error) {
@@ -31,6 +35,36 @@ func doLastStarted(_ *cobra.Command, _ []string) (err error) {
 	if err != nil {
 		return
 	}
+	printLastStarted(lastStartedTasks, outputFormat)
+	return nil
+}
+
+func printLastStarted(tasks []models.TaskData, format string) {
+	log := logger.GetLogger("printLastStarted")
+	// Output using requested format
+	switch format {
+	case outputFormatText:
+		printLastStartedTable(tasks)
+	case outputFormatCSV:
+		cli.PrintCSV(log, tasks)
+	case outputFormatJSON:
+		jsonData := struct {
+			Tasks []models.TaskData `json:"Tasks"`
+		}{
+			Tasks: tasks,
+		}
+		cli.PrintJSON(log, jsonData)
+	case outputFormatXML:
+		xmlData := struct {
+			Tasks []models.TaskData `xml:"Tasks"`
+		}{
+			Tasks: tasks,
+		}
+		cli.PrintXML(log, xmlData)
+	}
+}
+
+func printLastStartedTable(tasks []models.TaskData) {
 	table := simpletable.New()
 	table.Header = &simpletable.Header{
 		Cells: []*simpletable.Cell{
@@ -39,7 +73,7 @@ func doLastStarted(_ *cobra.Command, _ []string) (err error) {
 			{Text: "Description"},
 		},
 	}
-	for _, task := range lastStartedTasks {
+	for _, task := range tasks {
 		rec := []*simpletable.Cell{
 			{Text: strconv.Itoa(int(task.ID))},
 			{Text: task.Synopsis},
@@ -48,10 +82,8 @@ func doLastStarted(_ *cobra.Command, _ []string) (err error) {
 		table.Body.Cells = append(table.Body.Cells, rec)
 	}
 	if len(table.Body.Cells) == 0 {
-		fmt.Println(color.WhiteString("There are no timesheets"))
-		return nil
+		fmt.Println(color.WhiteString("There are no tasks"))
 	}
 	table.SetStyle(simpletable.StyleCompactLite)
 	fmt.Println(table.String())
-	return nil
 }
