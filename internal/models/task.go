@@ -17,11 +17,11 @@ import (
 
 // TaskData is the main Task data structure
 type TaskData struct {
-	gorm.Model
+	gorm.Model `json:"-" xml:"-" csv:"-"`
 	// Synopsis is a short title or identifier of the task
-	Synopsis string `gorm:"uniqueindex"`
+	Synopsis string `gorm:"uniqueindex" json:"Synopsis" xml:"Synopsis" csv:"Synopsis"`
 	// Description is a longer description of the task
-	Description string
+	Description string `json:"Description" xml:"Description" csv:"Description"`
 
 	// log is the struct logger
 	log zerolog.Logger `gorm:"-"`
