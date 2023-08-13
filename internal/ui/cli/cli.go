@@ -33,6 +33,7 @@ func PrintAndLogError(log zerolog.Logger, err error, format string, args ...inte
 	log.Err(err).Msgf(format, args...)
 }
 
+// PrintCSV marshals the specified object to CSV and prints it
 func PrintCSV(log zerolog.Logger, obj interface{}) {
 	csvOut, err := csvutil.Marshal(obj)
 	if err != nil {
@@ -42,6 +43,7 @@ func PrintCSV(log zerolog.Logger, obj interface{}) {
 	fmt.Println(string(csvOut))
 }
 
+// PrintJSON marshals the specified object to JSON and prints it
 func PrintJSON(log zerolog.Logger, obj interface{}) {
 	jsonOut, err := json.Marshal(obj)
 	if err != nil {
@@ -51,6 +53,7 @@ func PrintJSON(log zerolog.Logger, obj interface{}) {
 	fmt.Println(string(jsonOut))
 }
 
+// PrintXML marshals the specified object to XML and prints it
 func PrintXML(log zerolog.Logger, obj interface{}) {
 	xmlOut, err := xml.Marshal(obj)
 	if err != nil {
