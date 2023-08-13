@@ -23,16 +23,16 @@ const (
 // TimesheetData is the main timesheet data structure
 type TimesheetData struct {
 	// StartTime is the time that the task was started at
-	StartTime time.Time `gorm:"not null;index:idx_timesheet_laststarted,sort:desc"`
-	gorm.Model
+	StartTime  time.Time `gorm:"not null;index:idx_timesheet_laststarted,sort:desc" json:"StartTime" xml:"StartTime" csv:"start_time"`
+	gorm.Model `json:"-" xml:"-" csv:"-"`
 	// StopTime is the time that the task was stopped at; if it is NULL, that means the task is still running
-	StopTime sql.NullTime
+	StopTime sql.NullTime `json:"StopTime,omitempty" xml:"StopTime,omitempty" csv:"stop_time,omitempty"`
 	// Task is the task object linked to this Timesheet
-	Task TaskData
+	Task TaskData `json:"Task" xml:"Task" csv:"-"`
 	// log is the struct logger
 	log zerolog.Logger `gorm:"-"`
 	// TaskID is the database ID of the linked task object
-	TaskID uint `gorm:"index:idx_timesheet_laststarted"`
+	TaskID uint `gorm:"index:idx_timesheet_laststarted" json:"TaskID" xml:"TaskID" csv:"task_id"`
 }
 
 // NewTimesheet returns an new, initialized Timesheet interface
@@ -231,7 +231,7 @@ func (tsd *TimesheetData) LastStartedTasks(limit uint) (startedTasks []TaskData,
 
 // TaskReportData is a struct that contains a single entry of a Task Report
 type TaskReportData struct {
-	StartDate       sql.NullTime `csv:"started_on" json:"started_on" xml:"StartedOn"`
+	StartDate       sql.NullTime `csv:"started_on,omitempty" json:"started_on,omitempty" xml:"StartedOn,omitempty"`
 	TaskSynopsis    string       `csv:"synopsis" json:"synopsis" xml:"Synopsis"`
 	TaskDescription string       `csv:"description,omitempty" json:"description,omitempty" xml:"Description,omitempty"`
 	TaskID          uint         `csv:"task_id" json:"task_id" xml:"TaskID"`

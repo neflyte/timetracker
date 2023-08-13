@@ -19,9 +19,9 @@ import (
 type TaskData struct {
 	gorm.Model `json:"-" xml:"-" csv:"-"`
 	// Synopsis is a short title or identifier of the task
-	Synopsis string `gorm:"uniqueindex" json:"Synopsis" xml:"Synopsis" csv:"Synopsis"`
+	Synopsis string `gorm:"uniqueindex" json:"Synopsis" xml:"Synopsis" csv:"synopsis"`
 	// Description is a longer description of the task
-	Description string `json:"Description" xml:"Description" csv:"Description"`
+	Description string `json:"Description" xml:"Description" csv:"description"`
 
 	// log is the struct logger
 	log zerolog.Logger `gorm:"-"`
