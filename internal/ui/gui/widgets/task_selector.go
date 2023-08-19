@@ -1,6 +1,7 @@
 package widgets
 
 import (
+	slices "golang.org/x/exp/slices"
 	"reflect"
 
 	"fyne.io/fyne/v2"
@@ -251,10 +252,10 @@ func (t *TaskSelector) FilterTasks() {
 		Int("count", len(filteredTaskDatas)).
 		Msg("task filter results")
 	// Update list binding with results of search
+	taskList := models.TaskDatas(filteredTaskDatas).AsTaskList()
+	slices.Reverse(taskList)
 	err = t.tasksListBinding.Set(
-		models.TaskListToSliceIntf(
-			models.TaskDatas(filteredTaskDatas).AsTaskList(),
-		),
+		models.TaskListToSliceIntf(taskList),
 	)
 	if err != nil {
 		log.Err(err).

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved notification support for Windows
 
 ### Changed
+- Updated minimum Golang version to v1.18
+- Task selector defaults to reverse (latest-first) sort
 - Split single-file binary into 3 binaries - CLI, GUI, and Tray - for more efficient usage on macOS and Windows platforms
 - Default main window size changed from 640x480 to 800x600
 - Updated fyne.io/fyne/v2 from v2.3.0 to v2.3.5
@@ -20,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated github.com/gen2brain/beeep from v0.0.0-20220909211152-5a9ec94374f6 to v0.0.0-20230307103607-6e717729cb4f
 - Updated github.com/stretchr/testify from v1.8.1 to v1.8.2
 - Updated golang.org/x/sys from v0.5.0 to v0.6.0
+- Updated golang.org/x/net from v0.4.0 to v0.14.0
 
 ### Removed
 
