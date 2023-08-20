@@ -94,9 +94,9 @@ func (c *CompactUI) initUI() {
 			c.elapsedTimeLabel,
 		),
 		container.NewHBox(
-			widget.NewButtonWithIcon("Manage", theme.SettingsIcon(), c.manageButtonWasTapped),       // i18n
-			widget.NewButtonWithIcon("Report", theme.DocumentCreateIcon(), c.reportButtonWasTapped), // i18n
-			widget.NewButtonWithIcon("Quit", theme.LogoutIcon(), c.quitButtonWasTapped),             // i18n
+			widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), c.manageButtonWasTapped),       // i18n
+			widget.NewButtonWithIcon("REPORT", theme.DocumentCreateIcon(), c.reportButtonWasTapped), // i18n
+			widget.NewButtonWithIcon("QUIT", theme.LogoutIcon(), c.quitButtonWasTapped),             // i18n
 		),
 	)
 }
@@ -117,6 +117,7 @@ func (c *CompactUI) Observable() rxgo.Observable {
 	return rxgo.FromEventSource(c.commandChan)
 }
 
+// SetTaskList sets the list of tasks displayed in the task selector widget
 func (c *CompactUI) SetTaskList(taskList []string) {
 	log := logger.GetFuncLogger(c.log, "SetTaskList")
 	if taskList == nil {
@@ -144,6 +145,16 @@ func (c *CompactUI) SetRunning(running bool) {
 		return
 	}
 	log.Debug().Msg("set task running status")
+}
+
+// SelectTask attempts to select the task with the specified name. If the name is empty
+// the selected task will be cleared.
+func (c *CompactUI) SelectTask(name string) {
+	if name == "" {
+		c.taskSelect.ClearSelected()
+		return
+	}
+	c.taskSelect.SetSelected(name)
 }
 
 // SetTaskName sets the display text of the task name label
@@ -211,6 +222,8 @@ func (c *CompactUI) taskListWasUpdated() {
 	c.selectedTask = nil
 	c.selectedTaskIndex = -1
 	c.taskSelect.ClearSelected()
+	// Add the 'other' item to the list
+	taskList = append(taskList, compactUIOtherTaskLabel)
 	// Update the Select widget's list
 	c.taskSelect.Options = taskList
 	// Refresh the Select widget
