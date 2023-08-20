@@ -6,12 +6,8 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/theme"
-	"fyne.io/fyne/v2/widget"
 	tterrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
@@ -25,7 +21,7 @@ import (
 
 const (
 	// taskNameTrimLength is the maximum length of the task name string before trimming
-	taskNameTrimLength = 32
+	// taskNameTrimLength = 32
 	// recentlyStartedTasks is the number of recent tasks to display
 	recentlyStartedTasks = uint(5)
 )
@@ -44,13 +40,14 @@ type TimetrackerWindow interface {
 type timetrackerWindowData struct {
 	rptWindow                   reportWindow
 	createNewTaskAndStartDialog dialogs.CreateAndStartTaskDialog
+	taskSelector                *widgets.TaskSelector
 	selectedTask                models.Task
 	fyne.Window
 	mngWindowV2 manageWindowV2
 	toast       tttoast.Toast
 
 	// old UI below
-	bindElapsedTime     binding.String
+	/*bindElapsedTime     binding.String
 	selectedTaskBinding binding.String
 	bindStartTime       binding.String
 	bindRunningTask     binding.String
@@ -62,13 +59,12 @@ type timetrackerWindowData struct {
 	btnAbout            *widget.Button
 	subStatusBox        *fyne.Container
 	btnCreateAndStart   *widget.Button
-	taskSelector        *widgets.TaskSelector
 	lblStatus           *widget.Label
 	lblStartTime        *widget.Label
 	lblElapsedTime      *widget.Label
 	buttonBox           *fyne.Container
 	statusBox           *fyne.Container
-	btnStartTask        *widget.Button
+	btnStartTask        *widget.Button*/
 	// old UI above
 
 	// compactUI is an instance of the Compact UI widget
@@ -87,14 +83,14 @@ type timetrackerWindowData struct {
 // NewTimetrackerWindow creates and initializes a new timetracker window
 func NewTimetrackerWindow(app fyne.App, appVersion string) TimetrackerWindow {
 	ttw := &timetrackerWindowData{
-		app:                 &app,
-		appVersion:          appVersion,
-		Window:              app.NewWindow("Timetracker"),
-		log:                 logger.GetStructLogger("timetrackerWindowData"),
-		bindElapsedTime:     binding.NewString(),
+		app:        &app,
+		appVersion: appVersion,
+		Window:     app.NewWindow("Timetracker"),
+		log:        logger.GetStructLogger("timetrackerWindowData"),
+		/*bindElapsedTime:     binding.NewString(),
 		bindStartTime:       binding.NewString(),
 		bindRunningTask:     binding.NewString(),
-		selectedTaskBinding: binding.NewString(),
+		selectedTaskBinding: binding.NewString(),*/
 		elapsedTimeRunning:  false,
 		elapsedTimeQuitChan: make(chan bool, 1),
 		toast:               tttoast.NewToast(),
@@ -133,58 +129,58 @@ func (t *timetrackerWindowData) initUI() error {
 		return errors.New("t.app was nil; this is unexpected")
 	}
 	t.compactUI = widgets.NewCompactUI()
+	t.createNewTaskAndStartDialog = dialogs.NewCreateAndStartTaskDialog((*t.app).Preferences(), t.createAndStartTaskDialogCallback, t.Window)
+	t.taskSelector = widgets.NewTaskSelector()
 
 	// old UI below
-	t.btnStartTask = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), t.doStartTask) // i18n
-	t.btnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)    // i18n
-	t.createNewTaskAndStartDialog = dialogs.NewCreateAndStartTaskDialog((*t.app).Preferences(), t.createAndStartTaskDialogCallback, t.Window)
-	t.btnSelectTask = widget.NewButtonWithIcon("", theme.MoreHorizontalIcon(), t.doSelectTask)
-	t.taskSelector = widgets.NewTaskSelector()
-	t.btnManageTasksV2 = widget.NewButtonWithIcon("MANAGE TASKS", theme.SettingsIcon(), t.doManageTasksV2) // i18n
-	t.btnReport = widget.NewButtonWithIcon("REPORT", theme.FileIcon(), t.doReport)                         // i18n
-	t.btnAbout = widget.NewButton("ABOUT", t.doAbout)                                                      // i18n
-	t.btnCreateAndStart = widget.NewButton("CREATE AND START", t.doCreateAndStartTask)                     // i18n
-	t.buttonBox = container.NewCenter(container.NewVBox(
-		container.NewHBox(
-			t.btnStartTask,
-			t.btnStopTask,
-			t.btnManageTasksV2,
-			t.btnReport,
-			t.btnAbout,
-		),
-		container.NewHBox(t.btnCreateAndStart),
-	))
-	t.textSelectedTask = canvas.NewText("", theme.ForegroundColor())
-	t.lblStatus = widget.NewLabelWithData(t.bindRunningTask)
-	t.lblStartTime = widget.NewLabelWithData(t.bindStartTime)
-	t.lblElapsedTime = widget.NewLabelWithData(t.bindElapsedTime)
-	t.subStatusBox = container.NewVBox(
-		container.NewHBox(
-			widget.NewLabel("Start time:"), // i18n
-			t.lblStartTime,
-		),
-		container.NewHBox(
-			widget.NewLabel("Elapsed time:"), // i18n
-			t.lblElapsedTime,
-		),
-	)
-	t.statusBox = container.NewVBox(
-		t.lblStatus,
-		t.subStatusBox,
-	)
-	// t.container = container.NewCenter(
-	//	container.NewVBox(
-	//		t.statusBox,
-	//		widget.NewSeparator(),
-	//		container.NewBorder(
-	//			nil,
-	//			nil,
-	//			container.NewHBox(widget.NewLabel("Task:"), t.textSelectedTask), // i18n
-	//			t.btnSelectTask,
-	//		),
-	//		t.buttonBox,
-	//	),
-	// )
+	/*	t.btnStartTask = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), t.doStartTask) // i18n
+		t.btnStopTask = widget.NewButtonWithIcon("STOP", theme.MediaStopIcon(), t.doStopTask)    // i18n
+		t.btnSelectTask = widget.NewButtonWithIcon("", theme.MoreHorizontalIcon(), t.doSelectTask)
+		t.btnManageTasksV2 = widget.NewButtonWithIcon("MANAGE TASKS", theme.SettingsIcon(), t.doManageTasksV2) // i18n
+		t.btnReport = widget.NewButtonWithIcon("REPORT", theme.FileIcon(), t.doReport)                         // i18n
+		t.btnAbout = widget.NewButton("ABOUT", t.doAbout)                                                      // i18n
+		t.btnCreateAndStart = widget.NewButton("CREATE AND START", t.doCreateAndStartTask)                     // i18n
+		t.buttonBox = container.NewCenter(container.NewVBox(
+			container.NewHBox(
+				t.btnStartTask,
+				t.btnStopTask,
+				t.btnManageTasksV2,
+				t.btnReport,
+				t.btnAbout,
+			),
+			container.NewHBox(t.btnCreateAndStart),
+		))
+		t.textSelectedTask = canvas.NewText("", theme.ForegroundColor())
+		t.lblStatus = widget.NewLabelWithData(t.bindRunningTask)
+		t.lblStartTime = widget.NewLabelWithData(t.bindStartTime)
+		t.lblElapsedTime = widget.NewLabelWithData(t.bindElapsedTime)
+		t.subStatusBox = container.NewVBox(
+			container.NewHBox(
+				widget.NewLabel("Start time:"), // i18n
+				t.lblStartTime,
+			),
+			container.NewHBox(
+				widget.NewLabel("Elapsed time:"), // i18n
+				t.lblElapsedTime,
+			),
+		)
+		t.statusBox = container.NewVBox(
+			t.lblStatus,
+			t.subStatusBox,
+		)
+		t.container = container.NewCenter(
+			container.NewVBox(
+				t.statusBox,
+				widget.NewSeparator(),
+				container.NewBorder(
+					nil,
+					nil,
+					container.NewHBox(widget.NewLabel("Task:"), t.textSelectedTask), // i18n
+					t.btnSelectTask,
+				),
+				t.buttonBox,
+			),
+		)*/
 	// old UI above
 
 	t.container = container.NewCenter(t.compactUI)
@@ -198,7 +194,7 @@ func (t *timetrackerWindowData) initUI() error {
 	// Resize the container to the original size before we resized the window
 	t.container.Resize(siz)
 	// hide stuff now that we resized
-	t.subStatusBox.Hide()
+	// t.subStatusBox.Hide()
 	t.Window.SetCloseIntercept(t.Close)
 	// Also set up the manage window and hide it
 	t.mngWindowV2 = newManageWindowV2(*t.app)
@@ -210,7 +206,7 @@ func (t *timetrackerWindowData) initUI() error {
 }
 
 func (t *timetrackerWindowData) initBindings() {
-	t.selectedTaskBinding.AddListener(binding.NewDataListener(t.selectedTaskChanged))
+	// t.selectedTaskBinding.AddListener(binding.NewDataListener(t.selectedTaskChanged))
 }
 
 func (t *timetrackerWindowData) initObservables() {
@@ -219,11 +215,11 @@ func (t *timetrackerWindowData) initObservables() {
 		utils.ObservableErrorHandler("compactUI", t.log),
 		utils.ObservableCloseHandler("compactUI", t.log),
 	)
-	t.taskSelector.Observable().ForEach(
+	/*t.taskSelector.Observable().ForEach(
 		t.handleTaskSelectorEvent,
 		utils.ObservableErrorHandler("taskSelector", t.log),
 		utils.ObservableCloseHandler("taskSelector", t.log),
-	)
+	)*/
 }
 
 // initWindowData primes the window with some data
@@ -275,7 +271,7 @@ func (t *timetrackerWindowData) initWindowData() error {
 	return nil
 }
 
-func (t *timetrackerWindowData) selectedTaskChanged() {
+/*func (t *timetrackerWindowData) selectedTaskChanged() {
 	log := logger.GetFuncLogger(t.log, "selectedTaskChanged")
 	selectedTask, err := t.selectedTaskBinding.Get()
 	if err != nil {
@@ -285,7 +281,7 @@ func (t *timetrackerWindowData) selectedTaskChanged() {
 	}
 	t.textSelectedTask.Text = selectedTask
 	t.textSelectedTask.Refresh()
-}
+}*/
 
 func (t *timetrackerWindowData) setNoRunningTimesheet() {
 	// log := logger.GetFuncLogger(t.log, "setNoRunningTimesheet")
@@ -319,7 +315,7 @@ func (t *timetrackerWindowData) setNoRunningTimesheet() {
 }
 
 func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
-	log := logger.GetFuncLogger(t.log, "runningTimesheetChanged")
+	// log := logger.GetFuncLogger(t.log, "runningTimesheetChanged")
 	runningTS, ok := item.(*models.TimesheetData)
 	if ok {
 		if runningTS == nil {
@@ -332,7 +328,7 @@ func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
 		t.compactUI.SetRunning(true)
 		t.compactUI.SetTaskName(runningTS.Task.Synopsis)
 		t.selectedTask = models.NewTaskWithData(runningTS.Task)
-		runningTaskString := fmt.Sprintf(
+		/*runningTaskString := fmt.Sprintf(
 			"Running task: %s", // i18n
 			utils.TrimWithEllipsis(runningTS.Task.String(), taskNameTrimLength),
 		)
@@ -348,7 +344,7 @@ func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
 			log.Err(err).
 				Str("startTime", startTimeDisplay).
 				Msg("error setting start time")
-		}
+		}*/
 		elapsedTimeDisplay := time.Since(runningTS.StartTime).Truncate(time.Second).String()
 		/*err = t.bindElapsedTime.Set(elapsedTimeDisplay)
 		if err != nil {
@@ -359,7 +355,7 @@ func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
 		t.compactUI.SetElapsedTime(elapsedTimeDisplay)
 		// Start the elapsed time counter
 		go t.elapsedTimeLoop(runningTS.StartTime, t.elapsedTimeQuitChan)
-		t.subStatusBox.Show()
+		// t.subStatusBox.Show()
 	}
 }
 
@@ -472,12 +468,12 @@ func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
 			Msg("selected task is nil; this is unexpected")
 		return
 	}
-	err := t.selectedTaskBinding.Set(selectedTask.String())
+	/*err := t.selectedTaskBinding.Set(selectedTask.String())
 	if err != nil {
 		log.Err(err).
 			Str("newValue", selectedTask.String()).
 			Msg("error setting selected task binding")
-	}
+	}*/
 	t.selectedTask = selectedTask
 }
 
