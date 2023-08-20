@@ -36,6 +36,9 @@ type CompactUIQuitEvent struct{}
 // CompactUISelectTaskEvent represents an event which opens the task selector
 type CompactUISelectTaskEvent struct{}
 
+// CompactUICreateAndStartEvent represents an event which creates and starts a new task
+type CompactUICreateAndStartEvent struct{}
+
 var _ fyne.Widget = (*CompactUI)(nil)
 
 // CompactUI is a compact user interface for the main Timetracker window
@@ -50,6 +53,7 @@ type CompactUI struct {
 	taskSelect                 *widget.Select
 	container                  *fyne.Container
 	startStopButton            *widget.Button
+	createAndStartButton       *widget.Button
 	taskNameLabel              *widget.Label
 	elapsedTimeLabel           *widget.Label
 	commandChan                chan rxgo.Item
@@ -72,7 +76,12 @@ func NewCompactUI() *CompactUI {
 	}
 	compactui.ExtendBaseWidget(compactui)
 	compactui.initUI()
-	compactui.initBindings()
+	err := compactui.initBindings()
+	if err != nil {
+		compactui.log.
+			Err(err).
+			Msg("error initializing bindings")
+	}
 	return compactui
 }
 
@@ -82,8 +91,9 @@ func NewCompactUI() *CompactUI {
 
 func (c *CompactUI) initUI() {
 	c.taskSelect = widget.NewSelect(c.taskList, c.taskWasSelected)
-	c.taskSelect.PlaceHolder = "Select a task" // i18n
-	c.startStopButton = widget.NewButtonWithIcon("", theme.MediaPlayIcon(), c.startStopButtonWasTapped)
+	c.taskSelect.PlaceHolder = "Select a task"                                                                               // i18n
+	c.startStopButton = widget.NewButtonWithIcon("START", theme.MediaPlayIcon(), c.startStopButtonWasTapped)                 // i18n
+	c.createAndStartButton = widget.NewButtonWithIcon("CREATE AND START", theme.ContentAddIcon(), c.createAndStartWasTapped) // i18n
 	c.taskNameLabel = widget.NewLabelWithData(c.taskNameBinding)
 	c.elapsedTimeLabel = widget.NewLabelWithData(c.elapsedTimeBinding)
 	c.container = container.NewVBox(
@@ -93,6 +103,7 @@ func (c *CompactUI) initUI() {
 			c.taskNameLabel,
 			c.elapsedTimeLabel,
 		),
+		c.createAndStartButton,
 		container.NewHBox(
 			widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), c.manageButtonWasTapped),       // i18n
 			widget.NewButtonWithIcon("REPORT", theme.DocumentCreateIcon(), c.reportButtonWasTapped), // i18n
@@ -101,11 +112,20 @@ func (c *CompactUI) initUI() {
 	)
 }
 
-func (c *CompactUI) initBindings() {
+func (c *CompactUI) initBindings() error {
 	c.taskListBindingListener = binding.NewDataListener(c.taskListWasUpdated)
 	c.taskListBinding.AddListener(c.taskListBindingListener)
 	c.taskRunningBindingListener = binding.NewDataListener(c.taskRunningWasUpdated)
 	c.taskRunningBinding.AddListener(c.taskRunningBindingListener)
+	err := c.taskNameBinding.Set("idle") // i18n
+	if err != nil {
+		return err
+	}
+	err = c.taskRunningBinding.Set(false)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -170,6 +190,7 @@ func (c *CompactUI) SetTaskName(name string) {
 	log.Debug().Msg("set task name")
 }
 
+// SetElapsedTime sets the display text of the elapsed time label
 func (c *CompactUI) SetElapsedTime(elapsed string) {
 	err := c.elapsedTimeBinding.Set(elapsed)
 	if err != nil {
@@ -202,11 +223,27 @@ func (c *CompactUI) taskRunningWasUpdated() {
 	}
 	// assume a task is not running
 	buttonIcon := theme.MediaPlayIcon()
-	// if a task is actually running, use the correct button icon
+	buttonText := "START" // i18n
+	taskNameLabelStyle := fyne.TextStyle{
+		Italic: true,
+	}
+	// if a task is actually running, use the correct button icon and text style
 	if taskIsRunning {
 		buttonIcon = theme.MediaStopIcon()
+		buttonText = "STOP" // i18n
+		taskNameLabelStyle = fyne.TextStyle{
+			Bold: true,
+		}
 	}
+	// update the start/stop button and task label
 	c.startStopButton.SetIcon(buttonIcon)
+	c.startStopButton.SetText(buttonText)
+	c.taskNameLabel.TextStyle = taskNameLabelStyle
+	if !taskIsRunning {
+		c.taskNameLabel.SetText("idle") // i18n
+	} else {
+		c.taskNameLabel.Refresh()
+	}
 }
 
 func (c *CompactUI) taskListWasUpdated() {
@@ -322,4 +359,8 @@ func (c *CompactUI) otherTaskWasSelected() {
 	c.selectedTask = nil
 	c.selectedTaskIndex = -1
 	c.commandChan <- rxgo.Of(CompactUISelectTaskEvent{})
+}
+
+func (c *CompactUI) createAndStartWasTapped() {
+	c.commandChan <- rxgo.Of(CompactUICreateAndStartEvent{})
 }
