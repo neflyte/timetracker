@@ -40,12 +40,20 @@ type TimetrackerWindow interface {
 type timetrackerWindowData struct {
 	rptWindow                   reportWindow
 	createNewTaskAndStartDialog dialogs.CreateAndStartTaskDialog
-	taskSelector                *widgets.TaskSelector
-	selectedTask                models.Task
 	fyne.Window
-	mngWindowV2 manageWindowV2
-	toast       tttoast.Toast
-
+	selectedTask        models.Task
+	mngWindowV2         manageWindowV2
+	toast               tttoast.Toast
+	app                 *fyne.App
+	runningTimesheet    *models.TimesheetData
+	compactUI           *widgets.CompactUI
+	container           *fyne.Container
+	elapsedTimeQuitChan chan bool
+	elapsedTimeTicker   *time.Ticker
+	taskSelector        *widgets.TaskSelector
+	appVersion          string
+	log                 zerolog.Logger
+	elapsedTimeRunning  bool
 	// old UI below
 	/*bindElapsedTime     binding.String
 	selectedTaskBinding binding.String
@@ -66,34 +74,22 @@ type timetrackerWindowData struct {
 	statusBox           *fyne.Container
 	btnStartTask        *widget.Button*/
 	// old UI above
-
-	// compactUI is an instance of the Compact UI widget
-	compactUI *widgets.CompactUI
-
-	runningTimesheet    *models.TimesheetData
-	app                 *fyne.App
-	container           *fyne.Container
-	elapsedTimeQuitChan chan bool
-	elapsedTimeTicker   *time.Ticker
-	appVersion          string
-	log                 zerolog.Logger
-	elapsedTimeRunning  bool
 }
 
 // NewTimetrackerWindow creates and initializes a new timetracker window
 func NewTimetrackerWindow(app fyne.App, appVersion string) TimetrackerWindow {
 	ttw := &timetrackerWindowData{
-		app:        &app,
-		appVersion: appVersion,
-		Window:     app.NewWindow("Timetracker"),
-		log:        logger.GetStructLogger("timetrackerWindowData"),
+		app:                 &app,
+		appVersion:          appVersion,
+		Window:              app.NewWindow("Timetracker"),
+		log:                 logger.GetStructLogger("timetrackerWindowData"),
+		elapsedTimeRunning:  false,
+		elapsedTimeQuitChan: make(chan bool, 1),
+		toast:               tttoast.NewToast(),
 		/*bindElapsedTime:     binding.NewString(),
 		bindStartTime:       binding.NewString(),
 		bindRunningTask:     binding.NewString(),
 		selectedTaskBinding: binding.NewString(),*/
-		elapsedTimeRunning:  false,
-		elapsedTimeQuitChan: make(chan bool, 1),
-		toast:               tttoast.NewToast(),
 	}
 	err := ttw.Init()
 	if err != nil {
@@ -183,14 +179,18 @@ func (t *timetrackerWindowData) initUI() error {
 		)*/
 	// old UI above
 
-	t.container = container.NewCenter(t.compactUI)
-
+	t.container = container.NewPadded(t.compactUI)
 	t.Window.SetContent(t.container)
 	t.Window.SetIcon(icons.IconV2)
 	// get the size of the content with everything visible
 	siz := t.Window.Content().Size()
-	// Resize the window to the minimum size
-	t.Window.Resize(minimumWindowSize)
+	// Resize the window to the minimum size^H^H^H^H^H height
+	// t.Window.Resize(minimumWindowSize)
+	newWindowSize := fyne.NewSize(siz.Width, t.Window.Canvas().Size().Height)
+	if newWindowSize.Height < minimumWindowHeight {
+		newWindowSize.Height = minimumWindowHeight
+	}
+	t.Window.Resize(newWindowSize)
 	// Resize the container to the original size before we resized the window
 	t.container.Resize(siz)
 	// hide stuff now that we resized
@@ -477,7 +477,7 @@ func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
 	t.selectedTask = selectedTask
 }
 
-func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
+/*func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
 	log := logger.GetFuncLogger(t.log, "handleTaskSelectorEvent")
 	switch event := item.(type) {
 	case widgets.TaskSelectorSelectedEvent:
@@ -494,12 +494,14 @@ func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
 				Msg("error from task selector")
 		}
 	}
-}
+}*/
 
 func (t *timetrackerWindowData) handleCompactUIEvent(item interface{}) {
 	switch event := item.(type) {
 	case widgets.CompactUISelectTaskEvent:
 		t.doSelectTask()
+	case widgets.CompactUICreateAndStartEvent:
+		t.doCreateAndStartTask()
 	case widgets.CompactUIManageEvent:
 		t.doManageTasksV2()
 	case widgets.CompactUIReportEvent:
