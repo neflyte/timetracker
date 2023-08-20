@@ -423,6 +423,11 @@ func (t *timetrackerWindowData) doStopTask() {
 			Msg(tterrors.StopRunningTaskError)
 		dialog.NewError(err, t.Window).Show()
 	}
+	if stoppedTimesheet == nil {
+		log.Error().
+			Msg("stoppedTimesheet was nil; this is unexpected")
+		return
+	}
 	// Show notification that task has stopped
 	notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)                     // i18n
 	notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp)) // i18n

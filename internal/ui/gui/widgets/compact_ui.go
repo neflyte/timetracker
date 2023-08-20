@@ -359,6 +359,7 @@ func (c *CompactUI) otherTaskWasSelected() {
 	c.selectedTask = nil
 	c.selectedTaskIndex = -1
 	c.commandChan <- rxgo.Of(CompactUISelectTaskEvent{})
+	c.taskSelect.ClearSelected()
 }
 
 func (c *CompactUI) createAndStartWasTapped() {
