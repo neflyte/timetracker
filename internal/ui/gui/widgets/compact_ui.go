@@ -33,6 +33,9 @@ type CompactUIReportEvent struct{}
 // CompactUIQuitEvent represents an event which exits the application
 type CompactUIQuitEvent struct{}
 
+// CompactUIAboutEvent represents an event which opens the About window
+type CompactUIAboutEvent struct{}
+
 // CompactUISelectTaskEvent represents an event which opens the task selector
 type CompactUISelectTaskEvent struct{}
 
@@ -108,6 +111,7 @@ func (c *CompactUI) initUI() {
 			widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), c.manageButtonWasTapped),       // i18n
 			widget.NewButtonWithIcon("REPORT", theme.DocumentCreateIcon(), c.reportButtonWasTapped), // i18n
 			widget.NewButtonWithIcon("QUIT", theme.LogoutIcon(), c.quitButtonWasTapped),             // i18n
+			widget.NewButtonWithIcon("", theme.InfoIcon(), c.aboutButtonWasTapped),
 		),
 	)
 }
@@ -364,4 +368,8 @@ func (c *CompactUI) otherTaskWasSelected() {
 
 func (c *CompactUI) createAndStartWasTapped() {
 	c.commandChan <- rxgo.Of(CompactUICreateAndStartEvent{})
+}
+
+func (c *CompactUI) aboutButtonWasTapped() {
+	c.commandChan <- rxgo.Of(CompactUIAboutEvent{})
 }

@@ -512,6 +512,8 @@ func (t *timetrackerWindowData) handleCompactUIEvent(item interface{}) {
 		t.doManageTasksV2()
 	case widgets.CompactUIReportEvent:
 		t.doReport()
+	case widgets.CompactUIAboutEvent:
+		t.doAbout()
 	case widgets.CompactUIQuitEvent:
 		t.Close()
 	case widgets.CompactUITaskEvent:
