@@ -448,6 +448,7 @@ func (t *timetrackerWindowData) doManageTasksV2() {
 
 func (t *timetrackerWindowData) doSelectTask() {
 	t.taskSelector.Reset()
+	t.taskSelector.FilterTasks()
 	selectTaskDialog := dialog.NewCustomConfirm(
 		"Select a task", // i18n
 		"SELECT",        // i18n
