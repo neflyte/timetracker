@@ -215,11 +215,11 @@ func (t *timetrackerWindowData) initObservables() {
 		utils.ObservableErrorHandler("compactUI", t.log),
 		utils.ObservableCloseHandler("compactUI", t.log),
 	)
-	/*t.taskSelector.Observable().ForEach(
+	t.taskSelector.Observable().ForEach(
 		t.handleTaskSelectorEvent,
 		utils.ObservableErrorHandler("taskSelector", t.log),
 		utils.ObservableCloseHandler("taskSelector", t.log),
-	)*/
+	)
 }
 
 // initWindowData primes the window with some data
@@ -483,7 +483,7 @@ func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
 	t.selectedTask = selectedTask
 }
 
-/*func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
+func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
 	log := logger.GetFuncLogger(t.log, "handleTaskSelectorEvent")
 	switch event := item.(type) {
 	case widgets.TaskSelectorSelectedEvent:
@@ -500,7 +500,7 @@ func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
 				Msg("error from task selector")
 		}
 	}
-}*/
+}
 
 func (t *timetrackerWindowData) handleCompactUIEvent(item interface{}) {
 	switch event := item.(type) {
