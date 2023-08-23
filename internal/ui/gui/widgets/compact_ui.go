@@ -313,6 +313,10 @@ func (c *CompactUI) taskWasSelected(selection string) {
 		Bool("selectedTask", c.selectedTask != nil).
 		Int("selectedTaskIndex", c.selectedTaskIndex).
 		Msg("selected task")
+	c.commandChan <- rxgo.Of(CompactUITaskEvent{
+		TaskIndex:    c.selectedTaskIndex,
+		TaskSynopsis: c.selectedTask.Data().Synopsis,
+	})
 }
 
 func (c *CompactUI) startStopButtonWasTapped() {

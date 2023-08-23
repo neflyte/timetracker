@@ -229,18 +229,12 @@ func (t *timetrackerWindowData) initWindowData() error {
 	log.Trace().Msg("started")
 	defer log.Trace().Msg("done")
 	timesheet := models.NewTimesheet()
-	recentTasks, err := timesheet.LastStartedTasks(recentlyStartedTasks)
+	err := t.refreshTaskList()
 	if err != nil {
 		log.Err(err).
-			Uint("recentlyStartedTasks", recentlyStartedTasks).
-			Msg("unable to load last started tasks")
+			Msg("unable to refresh task list")
 		return err
 	}
-	taskList := make([]string, len(recentTasks))
-	for idx := range recentTasks {
-		taskList[idx] = recentTasks[idx].Synopsis
-	}
-	t.compactUI.SetTaskList(taskList)
 	/*err := t.selectedTaskBinding.Set("select a task -->")
 	if err != nil {
 		log.Err(err).
@@ -267,8 +261,27 @@ func (t *timetrackerWindowData) initWindowData() error {
 	t.selectedTask = models.NewTaskWithData(runningTS.Task)
 	t.compactUI.SelectTask(runningTS.Task.Synopsis)
 	t.compactUI.SetTaskName(runningTS.Task.Synopsis)
+	elapsedTimeDisplay := time.Since(runningTS.StartTime).Truncate(time.Second).String()
+	t.compactUI.SetElapsedTime(elapsedTimeDisplay)
 	// Start elapsed time counter
 	go t.elapsedTimeLoop(runningTS.StartTime, t.elapsedTimeQuitChan)
+	return nil
+}
+
+func (t *timetrackerWindowData) refreshTaskList() error {
+	log := logger.GetFuncLogger(t.log, "refreshTaskList")
+	recentTasks, err := models.NewTimesheet().LastStartedTasks(recentlyStartedTasks)
+	if err != nil {
+		log.Err(err).
+			Uint("recentlyStartedTasks", recentlyStartedTasks).
+			Msg("unable to load last started tasks")
+		return err
+	}
+	taskList := make([]string, len(recentTasks))
+	for idx := range recentTasks {
+		taskList[idx] = recentTasks[idx].Synopsis
+	}
+	t.compactUI.SetTaskList(taskList)
 	return nil
 }
 
@@ -316,9 +329,17 @@ func (t *timetrackerWindowData) setNoRunningTimesheet() {
 }
 
 func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
-	// log := logger.GetFuncLogger(t.log, "runningTimesheetChanged")
+	log := logger.GetFuncLogger(t.log, "runningTimesheetChanged")
 	runningTS, ok := item.(*models.TimesheetData)
 	if ok {
+		defer func() {
+			// Refresh task list
+			err := t.refreshTaskList()
+			if err != nil {
+				log.Err(err).
+					Msg("unable to refresh task list")
+			}
+		}()
 		if runningTS == nil {
 			t.setNoRunningTimesheet()
 			return
@@ -391,6 +412,7 @@ func (t *timetrackerWindowData) doStartSelectedTask() {
 	t.doStartTask()
 }
 
+// doStartTask starts the task in t.selectedTask. It assumes there are no tasks running.
 func (t *timetrackerWindowData) doStartTask() {
 	log := logger.GetFuncLogger(t.log, "doStartTask")
 	log.Trace().Msg("started")
@@ -439,6 +461,8 @@ func (t *timetrackerWindowData) doStartTask() {
 	t.runningTimesheetChanged(t.runningTimesheet)
 }
 
+// doStopTask attempts to stop the running task, if there is any.
+// If there is no task running, the function exits without error.
 func (t *timetrackerWindowData) doStopTask() {
 	log := logger.GetFuncLogger(t.log, "doStopTask")
 	// Stop the running task
@@ -451,8 +475,9 @@ func (t *timetrackerWindowData) doStopTask() {
 		dialog.NewError(err, t.Window).Show()
 	}
 	if stoppedTimesheet == nil {
-		log.Error().
-			Msg("stoppedTimesheet was nil; this is unexpected")
+		// There was no task running; nothing more to do
+		log.Debug().
+			Msg("no tasks were running; nothing to do")
 		return
 	}
 	// Show notification that task has stopped
@@ -572,7 +597,7 @@ func (t *timetrackerWindowData) handleCompactUITaskEvent(index int, synopsis str
 		return
 	}
 	t.selectedTask = models.NewTaskWithData(tasks[0])
-	t.doStartTask()
+	t.doStopAndStartTask()
 }
 
 func (t *timetrackerWindowData) doReport() {
