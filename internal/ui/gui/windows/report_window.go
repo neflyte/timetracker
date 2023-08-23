@@ -42,20 +42,20 @@ type reportWindow interface {
 }
 
 type reportWindowData struct {
+	log              zerolog.Logger
 	startDateBinding binding.String
 	endDateBinding   binding.String
 	fyne.Window
-	endDateEntry    *widgets.MinWidthEntry
-	startDateLabel  *widget.Label
+	container       *fyne.Container
 	endDateLabel    *widget.Label
 	startDateEntry  *widgets.MinWidthEntry
 	headerContainer *fyne.Container
-	container       *fyne.Container
+	startDateLabel  *widget.Label
 	runReportButton *widget.Button
 	exportButton    *widget.Button
 	resultTable     *widget.Table
+	endDateEntry    *widgets.MinWidthEntry
 	taskReport      models.TaskReport
-	log             zerolog.Logger
 	tableColumns    int
 	tableRows       int
 }
