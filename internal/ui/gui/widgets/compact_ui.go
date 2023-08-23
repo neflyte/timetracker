@@ -172,9 +172,9 @@ func (c *CompactUI) SetRunning(running bool) {
 }
 
 // SelectTask attempts to select the task with the specified name. If the name is empty
-// the selected task will be cleared.
+// or not present in the task list, the selected task will be cleared.
 func (c *CompactUI) SelectTask(name string) {
-	if name == "" {
+	if name == "" || !slices.Contains(c.taskList, name) {
 		c.taskSelect.ClearSelected()
 		return
 	}

@@ -30,4 +30,7 @@ const (
 
 	// DefaultLogLevel is the default logger level
 	DefaultLogLevel = "info"
+
+	// PrefKeyCloseWindowStopTask is the preferences key for the flag which causes the main window to close after creating a new task
+	PrefKeyCloseWindowStopTask = "close-window:stop-task"
 )

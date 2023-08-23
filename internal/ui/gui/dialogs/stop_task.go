@@ -8,38 +8,36 @@ import (
 	"fyne.io/fyne/v2/data/binding"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+	"github.com/neflyte/timetracker/internal/constants"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
 	"github.com/rs/zerolog"
 )
 
-const (
-	// prefKeyCloseWindowStopTask is the preferences key for the flag which causes the main window to close after creating a new task
-	prefKeyCloseWindowStopTask = "close-window:stop-task" // FIXME: there is a dupe of this in windows/constants.go
-)
-
 // StopTaskDialog is the main interface for the Stop Task dialog
 type StopTaskDialog interface {
 	dialogBase
+	SetCloseWindowCheckbox(hidden bool)
 }
 
 // stopTaskDialogData is the main data structure for the Stop Task dialog
 type stopTaskDialogData struct {
 	dialog.Dialog
-	closeWindowBinding  binding.Bool
-	messageLabel        *widget.Label
-	closeWindowCheckbox *widget.Check
-	widgetContainer     *fyne.Container
-	parentWindow        *fyne.Window
-	callbackFunc        func(bool)
-	log                 zerolog.Logger
+	closeWindowBinding      binding.Bool
+	messageLabel            *widget.Label
+	closeWindowCheckbox     *widget.Check
+	widgetContainer         *fyne.Container
+	parentWindow            *fyne.Window
+	callbackFunc            func(bool)
+	log                     zerolog.Logger
+	hideCloseWindowCheckbox bool
 }
 
 // NewStopTaskDialog creates a new instance of the Stop Task dialog
 func NewStopTaskDialog(task models.TaskData, prefs fyne.Preferences, cb func(bool), parent fyne.Window) StopTaskDialog {
 	newDialog := &stopTaskDialogData{
-		log:                logger.GetStructLogger("createAndStartTaskDialogData"),
-		closeWindowBinding: binding.BindPreferenceBool(prefKeyCloseWindowStopTask, prefs),
+		log:                logger.GetStructLogger("stopTaskDialogData"),
+		closeWindowBinding: binding.BindPreferenceBool(constants.PrefKeyCloseWindowStopTask, prefs),
 		parentWindow:       &parent,
 		messageLabel:       widget.NewLabel(fmt.Sprintf("Do you want to stop task %s?", task.Synopsis)), // i18n
 		callbackFunc:       cb,
@@ -69,4 +67,14 @@ func (d *stopTaskDialogData) Init() error {
 		*d.parentWindow,
 	)
 	return nil
+}
+
+func (d *stopTaskDialogData) SetCloseWindowCheckbox(hidden bool) {
+	d.hideCloseWindowCheckbox = hidden
+	defer d.closeWindowCheckbox.Refresh()
+	if hidden {
+		d.closeWindowCheckbox.Hide()
+		return
+	}
+	d.closeWindowCheckbox.Show()
 }
