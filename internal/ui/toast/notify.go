@@ -14,9 +14,9 @@ import (
 )
 
 type impl struct {
+	logger   zerolog.Logger
 	tempDir  string
 	iconPath string
-	logger   zerolog.Logger
 }
 
 func NewToast() Toast {

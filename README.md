@@ -29,7 +29,7 @@ A personal time tracker for simple tasks
 
 To build `timetracker` from source, install the following tools followed by the dependencies that your Operating System requires below:
 
-- [Golang v1.16+](https://golang.org)
+- [Golang v1.18+](https://golang.org)
 - [GNU Make](https://www.gnu.org/software/make/)
 - [Git](https://git-scm.com/) (for downloading on the command line)
 

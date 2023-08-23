@@ -39,21 +39,21 @@ type TimetrackerWindow interface {
 
 // timetrackerWindowData is the struct underlying the TimetrackerWindow interface
 type timetrackerWindowData struct {
+	log                         zerolog.Logger
 	rptWindow                   reportWindow
 	createNewTaskAndStartDialog dialogs.CreateAndStartTaskDialog
 	fyne.Window
 	selectedTask        models.Task
 	mngWindowV2         manageWindowV2
 	toast               tttoast.Toast
-	app                 *fyne.App
-	runningTimesheet    *models.TimesheetData
 	compactUI           *widgets.CompactUI
+	runningTimesheet    *models.TimesheetData
 	container           *fyne.Container
 	elapsedTimeQuitChan chan bool
 	elapsedTimeTicker   *time.Ticker
 	taskSelector        *widgets.TaskSelector
+	app                 *fyne.App
 	appVersion          string
-	log                 zerolog.Logger
 	elapsedTimeRunning  bool
 	// old UI below
 	/*bindElapsedTime     binding.String
