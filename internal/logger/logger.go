@@ -71,12 +71,14 @@ func InitLogger(logLevel string, console bool) {
 		logWriters = append(logWriters, zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.StampMilli})
 	}
 	// Create a new root logger
-	if len(logWriters) > 1 {
-		multi := zerolog.MultiLevelWriter(logWriters...)
-		rootLogger = zerolog.New(multi).With().Timestamp().Logger()
-	} else {
-		rootLogger = zerolog.New(logWriters[0]).With().Timestamp().Logger()
+	if len(logWriters) == 0 {
+		EmergencyLogToFile(
+			"logger_error.txt",
+			"len(logWriters) == 0; this is unexpected",
+		)
 	}
+	multi := zerolog.MultiLevelWriter(logWriters...)
+	rootLogger = zerolog.New(multi).With().Timestamp().Logger()
 	// Set global logger message level
 	lvl, ok := levelMap[logLevel]
 	if !ok {

@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"github.com/neflyte/timetracker/internal/constants"
 	tterrors "github.com/neflyte/timetracker/internal/errors"
 	"github.com/neflyte/timetracker/internal/logger"
 	"github.com/neflyte/timetracker/internal/models"
@@ -287,7 +288,7 @@ func (t *timetrackerWindowData) setNoRunningTimesheet() {
 	// log := logger.GetFuncLogger(t.log, "setNoRunningTimesheet")
 	// No task is running
 	t.compactUI.SetRunning(false)
-	t.compactUI.SetTaskName("")
+	t.compactUI.SetTaskName("idle")
 	t.compactUI.SetElapsedTime("")
 	/*err := t.bindRunningTask.Set("No task is running") // i18n
 	if err != nil {
@@ -362,6 +363,32 @@ func (t *timetrackerWindowData) runningTimesheetChanged(item interface{}) {
 func (t *timetrackerWindowData) doCreateAndStartTask() {
 	t.createNewTaskAndStartDialog.HideCloseWindowCheckbox()
 	t.createNewTaskAndStartDialog.Show()
+}
+
+func (t *timetrackerWindowData) doStartSelectedTask() {
+	log := logger.GetFuncLogger(t.log, "doStartSelectedTask")
+	openTimesheets, err := models.NewTimesheet().SearchOpen()
+	if err != nil {
+		log.Err(err).
+			Msg("unable to get a list of open timesheets")
+		return
+	}
+	if len(openTimesheets) > 0 {
+		stopTaskDialog := dialogs.NewStopTaskDialog(
+			openTimesheets[0].Task,
+			(*t.app).Preferences(),
+			func(doStop bool) {
+				if doStop {
+					t.doStopAndStartTask()
+				}
+			},
+			t.Window,
+		)
+		stopTaskDialog.SetCloseWindowCheckbox(true)
+		stopTaskDialog.Show()
+		return
+	}
+	t.doStartTask()
 }
 
 func (t *timetrackerWindowData) doStartTask() {
@@ -442,6 +469,11 @@ func (t *timetrackerWindowData) doStopTask() {
 	t.runningTimesheetChanged(t.runningTimesheet)
 }
 
+func (t *timetrackerWindowData) doStopAndStartTask() {
+	t.doStopTask()
+	t.doStartTask()
+}
+
 func (t *timetrackerWindowData) doManageTasksV2() {
 	t.mngWindowV2.Show()
 }
@@ -474,13 +506,15 @@ func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
 			Msg("selected task is nil; this is unexpected")
 		return
 	}
+	t.selectedTask = selectedTask
+	t.compactUI.SelectTask(selectedTask.Data().Synopsis)
+	t.doStartSelectedTask()
 	/*err := t.selectedTaskBinding.Set(selectedTask.String())
 	if err != nil {
 		log.Err(err).
 			Str("newValue", selectedTask.String()).
 			Msg("error setting selected task binding")
 	}*/
-	t.selectedTask = selectedTask
 }
 
 func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
@@ -491,8 +525,6 @@ func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
 			log.Debug().
 				Str("selected", event.SelectedTask.String()).
 				Msg("got selected task")
-			// TODO: What should happen if the selected task that wasn't in the last x started tasks?
-			t.compactUI.SelectTask(event.SelectedTask.Data().Synopsis)
 		}
 	case widgets.TaskSelectorErrorEvent:
 		if event.Err != nil {
@@ -643,7 +675,7 @@ func (t *timetrackerWindowData) maybeStopRunningTask(stopTask bool) {
 	t.runningTimesheet = nil
 	t.runningTimesheetChanged(t.runningTimesheet)
 	// Check if we should close the main window
-	shouldCloseMainWindow := (*t.app).Preferences().BoolWithFallback(prefKeyCloseWindowStopTask, false)
+	shouldCloseMainWindow := (*t.app).Preferences().BoolWithFallback(constants.PrefKeyCloseWindowStopTask, false)
 	if shouldCloseMainWindow {
 		t.Close()
 	}
