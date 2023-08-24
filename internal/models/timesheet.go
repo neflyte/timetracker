@@ -233,7 +233,7 @@ func (tsd *TimesheetData) LastStartedTasks(limit uint) (startedTasks []TaskData,
 
 // TaskReportData is a struct that contains a single entry of a Task Report
 type TaskReportData struct {
-	XMLName         xml.Name     `xml:"Report" csv:"-" json:"-"`
+	XMLName         xml.Name     `csv:"-" json:"-" xml:"Report" gorm:"-"`
 	StartDate       sql.NullTime `csv:"started_on,omitempty" json:"started_on,omitempty" xml:"StartedOn,omitempty"`
 	TaskSynopsis    string       `csv:"synopsis" json:"synopsis" xml:"Synopsis"`
 	TaskDescription string       `csv:"description,omitempty" json:"description,omitempty" xml:"Description,omitempty"`
