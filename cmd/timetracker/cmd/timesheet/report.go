@@ -2,6 +2,7 @@ package timesheet
 
 import (
 	"encoding/csv"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"os"
@@ -93,14 +94,15 @@ func printReport(reportData models.TaskReport, reportFormat string) {
 		cli.PrintCSV(log, reportData)
 	case outputFormatJSON:
 		jsonData := struct {
-			TaskReport []models.TaskReportData `json:"TaskReport"`
+			TaskReport []models.TaskReportData `json:"Data"`
 		}{
 			TaskReport: reportData,
 		}
 		cli.PrintJSON(log, jsonData)
 	case outputFormatXML:
 		xmlData := struct {
-			TaskReport []models.TaskReportData `xml:"TaskReport"`
+			XMLName    xml.Name                `xml:"TaskReport"`
+			TaskReport []models.TaskReportData `xml:"Data"`
 		}{
 			TaskReport: reportData,
 		}

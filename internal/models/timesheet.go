@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"encoding/xml"
 	"fmt"
 	"time"
 
@@ -22,6 +23,7 @@ const (
 
 // TimesheetData is the main timesheet data structure
 type TimesheetData struct {
+	XMLName xml.Name `gorm:"-" xml:"Timesheet"`
 	// Task is the task object linked to this Timesheet
 	Task TaskData `json:"Task" xml:"Task" csv:"-"`
 	// log is the struct logger
@@ -231,6 +233,7 @@ func (tsd *TimesheetData) LastStartedTasks(limit uint) (startedTasks []TaskData,
 
 // TaskReportData is a struct that contains a single entry of a Task Report
 type TaskReportData struct {
+	XMLName         xml.Name     `xml:"Report" csv:"-" json:"-"`
 	StartDate       sql.NullTime `csv:"started_on,omitempty" json:"started_on,omitempty" xml:"StartedOn,omitempty"`
 	TaskSynopsis    string       `csv:"synopsis" json:"synopsis" xml:"Synopsis"`
 	TaskDescription string       `csv:"description,omitempty" json:"description,omitempty" xml:"Description,omitempty"`

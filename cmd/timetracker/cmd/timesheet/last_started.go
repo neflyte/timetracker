@@ -1,6 +1,7 @@
 package timesheet
 
 import (
+	"encoding/xml"
 	"fmt"
 	"strconv"
 
@@ -56,7 +57,8 @@ func printLastStarted(tasks []models.TaskData, format string) {
 		cli.PrintJSON(log, jsonData)
 	case outputFormatXML:
 		xmlData := struct {
-			Tasks []models.TaskData `xml:"Tasks"`
+			XMLName xml.Name          `xml:"LastStarted"`
+			Tasks   []models.TaskData `xml:"Tasks"`
 		}{
 			Tasks: tasks,
 		}

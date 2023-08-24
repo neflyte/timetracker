@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 
 // TaskData is the main Task data structure
 type TaskData struct {
+	XMLName xml.Name `gorm:"-" xml:"Task"`
 	// log is the struct logger
 	log        zerolog.Logger `gorm:"-"`
 	gorm.Model `json:"-" xml:"-" csv:"-"`
