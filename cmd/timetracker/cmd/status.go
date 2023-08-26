@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/neflyte/timetracker/internal/constants"
-	"github.com/neflyte/timetracker/internal/logger"
-	"github.com/neflyte/timetracker/internal/models"
+	"github.com/neflyte/timetracker/lib/constants"
+	"github.com/neflyte/timetracker/lib/logger"
+	"github.com/neflyte/timetracker/lib/models"
 	"github.com/spf13/cobra"
 )
 

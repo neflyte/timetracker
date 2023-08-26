@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/neflyte/timetracker/internal/logger"
-	"github.com/neflyte/timetracker/internal/startup"
+	"github.com/neflyte/timetracker/lib/logger"
+	"github.com/neflyte/timetracker/lib/startup"
 	"github.com/spf13/cobra"
 )
 

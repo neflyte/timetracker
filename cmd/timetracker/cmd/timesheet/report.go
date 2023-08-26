@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/alexeyco/simpletable"
-	"github.com/neflyte/timetracker/internal/constants"
-	"github.com/neflyte/timetracker/internal/logger"
-	"github.com/neflyte/timetracker/internal/models"
-	"github.com/neflyte/timetracker/internal/ui/cli"
+	"github.com/neflyte/timetracker/lib/constants"
+	"github.com/neflyte/timetracker/lib/logger"
+	"github.com/neflyte/timetracker/lib/models"
+	"github.com/neflyte/timetracker/lib/ui/cli"
 	"github.com/spf13/cobra"
 )
 

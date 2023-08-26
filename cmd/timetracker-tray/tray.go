@@ -5,10 +5,10 @@ import (
 	"os"
 	"path"
 
-	"github.com/neflyte/timetracker/internal/constants"
-	"github.com/neflyte/timetracker/internal/logger"
-	"github.com/neflyte/timetracker/internal/ui/tray"
-	"github.com/neflyte/timetracker/internal/utils"
+	"github.com/neflyte/timetracker/lib/constants"
+	"github.com/neflyte/timetracker/lib/logger"
+	"github.com/neflyte/timetracker/lib/ui/tray"
+	"github.com/neflyte/timetracker/lib/utils"
 	"github.com/nightlyone/lockfile"
 )
 
