@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/neflyte/timetracker/cmd/timetracker-tray/cmd"
-	"github.com/neflyte/timetracker/internal/constants"
-	"github.com/neflyte/timetracker/internal/logger"
-	"github.com/neflyte/timetracker/internal/startup"
+	"github.com/neflyte/timetracker/lib/constants"
+	"github.com/neflyte/timetracker/lib/logger"
+	"github.com/neflyte/timetracker/lib/startup"
 )
 
 const (

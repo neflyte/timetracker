@@ -6,10 +6,10 @@ import (
 	"path"
 
 	"github.com/neflyte/timetracker/cmd/timetracker-gui/cmd"
-	"github.com/neflyte/timetracker/internal/constants"
-	"github.com/neflyte/timetracker/internal/logger"
-	"github.com/neflyte/timetracker/internal/ui/gui"
-	"github.com/neflyte/timetracker/internal/utils"
+	"github.com/neflyte/timetracker/lib/constants"
+	"github.com/neflyte/timetracker/lib/logger"
+	"github.com/neflyte/timetracker/lib/ui/gui"
+	"github.com/neflyte/timetracker/lib/utils"
 	"github.com/nightlyone/lockfile"
 )
 

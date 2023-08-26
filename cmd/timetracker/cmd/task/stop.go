@@ -1,7 +1,7 @@
 package task
 
 import (
-	"github.com/neflyte/timetracker/internal/ui/cli"
+	"github.com/neflyte/timetracker/lib/ui/cli"
 	"github.com/spf13/cobra"
 )
 
