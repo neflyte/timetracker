@@ -323,6 +323,37 @@ func TestUnit_Timesheet_SearchOpen_Nominal(t *testing.T) {
 	require.Equal(t, tsd.Data().StartTime.Format(constants.TimestampLayout), opensheets[0].StartTime.Format(constants.TimestampLayout))
 }
 
+func TestUnit_Timesheet_RunningTimesheet_Nominal(t *testing.T) {
+	db := MustOpenTestDB(t)
+	defer CloseTestDB(t, db)
+	database.Set(db)
+
+	// Create a task
+	td := NewTask()
+	td.Data().Synopsis = testTaskSynopsis
+	td.Data().Description = testTaskDescription
+	err := td.Create()
+	require.Nil(t, err)
+
+	// Create an open timesheet for the task
+	tsd := NewTimesheet()
+	tsd.Data().Task = *td.Data()
+	tsd.Data().StartTime = time.Now()
+	err = tsd.Create()
+	require.Nil(t, err)
+
+	// Get running timesheet
+	runningTS, err := tsd.RunningTimesheet()
+	require.Nil(t, err)
+	require.NotNil(t, runningTS)
+	opensheet := runningTS.Data()
+	require.Equal(t, tsd.Data().ID, opensheet.ID)
+	require.Equal(t, tsd.Data().Task.ID, opensheet.Task.ID)
+	require.Equal(t, tsd.Data().Task.Synopsis, opensheet.Task.Synopsis)
+	require.Equal(t, tsd.Data().Task.Description, opensheet.Task.Description)
+	require.Equal(t, tsd.Data().StartTime.Format(constants.TimestampLayout), opensheet.StartTime.Format(constants.TimestampLayout))
+}
+
 func TestUnit_Timesheet_Update_Nominal(t *testing.T) {
 	db := MustOpenTestDB(t)
 	defer CloseTestDB(t, db)
