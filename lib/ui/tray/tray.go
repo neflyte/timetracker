@@ -159,19 +159,19 @@ func updateStatus(tsd *models.TimesheetData) {
 		systray.SetIcon(icons.IconV2NotRunning.StaticContent)
 		mStatus.SetTitle(statusStartTaskTitle)
 		mStatus.SetTooltip(statusStartTaskDescription)
-	} else {
-		log.Trace().
-			Str("object", tsd.String()).
-			Msg("got running timesheet")
-		systray.SetIcon(icons.IconV2Running.StaticContent)
-		statusText := fmt.Sprintf(
-			"Stop task %s (%s)", // i18n
-			tsd.Task.Synopsis,
-			time.Since(tsd.StartTime).Truncate(time.Second).String(),
-		)
-		mStatus.SetTitle(statusText)
-		mStatus.SetTooltip(statusStopTaskDescription)
+		return
 	}
+	log.Trace().
+		Str("object", tsd.String()).
+		Msg("got running timesheet")
+	systray.SetIcon(icons.IconV2Running.StaticContent)
+	statusText := fmt.Sprintf(
+		"Stop task %s (%s)", // i18n
+		tsd.Task.Synopsis,
+		time.Since(tsd.StartTime).Truncate(time.Second).String(),
+	)
+	mStatus.SetTitle(statusText)
+	mStatus.SetTooltip(statusStopTaskDescription)
 }
 
 func updateLast5StartedTasks() {
@@ -272,7 +272,7 @@ func mainLoop(quitChan chan bool) { //nolint:cyclop
 	}
 }
 
-// launchGUI launches this executable again with gui-specific parameters
+// launchGUI launches the gui with specific parameters
 func launchGUI(guiOptions ...string) {
 	log := logger.GetFuncLogger(trayLogger, "launchGUI")
 	log.Debug().
@@ -377,25 +377,24 @@ func stopRunningTask() {
 	log := logger.GetFuncLogger(trayLogger, "stopRunningTask")
 	// Stop the task
 	stoppedTimesheet, err := models.NewTask().StopRunningTask()
-	if err != nil {
-		stoppedTimesheet = nil
-		if !errors.Is(err, tterrors.ErrNoRunningTask{}) {
+	if err != nil && !errors.Is(err, tterrors.ErrNoRunningTask{}) {
+		log.Err(err).
+			Msg("error stopping the running task")
+		err = toast.Notify(
+			"Error Stopping Task", // i18n
+			fmt.Sprintf("Error stopping the running task: %s", err.Error()), // i18n
+		)
+		if err != nil {
 			log.Err(err).
-				Msg("error stopping the running task")
-			err = toast.Notify(
-				"Error Stopping Task", // i18n
-				fmt.Sprintf("Error stopping the running task: %s", err.Error()), // i18n
-			)
-			if err != nil {
-				log.Err(err).
-					Msg("error sending notification for stop task error")
-			}
-			return
+				Msg("error sending notification for stop task error")
 		}
+		return
 	}
+	runningTimesheet = nil
+	lastState = constants.TimesheetStatusIdle
+	lastError = nil
 	// Show notification that the task has stopped
 	if stoppedTimesheet != nil {
-		runningTimesheet = nil
 		notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)                     // i18n
 		notificationContents := fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp)) // i18n
 		err = toast.Notify(notificationTitle, notificationContents)
@@ -422,6 +421,8 @@ func startTask(taskData *models.TaskData) (err error) {
 		return
 	}
 	runningTimesheet = timesheet.Data()
+	lastState = constants.TimesheetStatusRunning
+	lastError = nil
 	updateStatus(runningTimesheet)
 	// Show notification that task started
 	notificationTitle := fmt.Sprintf("Task %s started", taskData.Synopsis)                              // i18n

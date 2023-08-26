@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"time"
 
@@ -71,6 +72,7 @@ type Timesheet interface {
 	SearchDateRange(withDeleted bool) ([]TimesheetData, error)
 	LastStartedTasks(limit uint) (startedTasks []TaskData, err error)
 	TaskReport(startDate, endDate time.Time, withDeleted bool) (reportData TaskReport, err error)
+	RunningTimesheet() (Timesheet, error)
 }
 
 // Data returns the struct underlying the interface
@@ -229,6 +231,23 @@ func (tsd *TimesheetData) LastStartedTasks(limit uint) (startedTasks []TaskData,
 		Scan(&startedTasks).
 		Error
 	return
+}
+
+// RunningTimesheet returns the currently open timesheet. If no timesheet is open
+// then ErrNoRunningTask is returned. If more than 1 timesheet is open, an error
+// is returned.
+func (tsd *TimesheetData) RunningTimesheet() (Timesheet, error) {
+	openTimesheets, err := tsd.SearchOpen()
+	if err != nil {
+		return nil, err
+	}
+	if len(openTimesheets) != 1 {
+		if len(openTimesheets) == 0 {
+			return nil, ttErrors.ErrNoRunningTask{}
+		}
+		return nil, errors.New("more than 1 timesheet is open; this is unexpected")
+	}
+	return NewTimesheetWithData(openTimesheets[0]), nil
 }
 
 // TaskReportData is a struct that contains a single entry of a Task Report
