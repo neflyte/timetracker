@@ -30,15 +30,18 @@ type TaskData struct {
 
 // NewTask creates a new TaskData structure and returns a Task interface to it
 func NewTask() Task {
-	return &TaskData{
-		log: logger.GetStructLogger("TaskData"),
-	}
+	return NewTaskWithData(NewTaskData())
 }
 
 // NewTaskWithData returns a new Task interfaced based on the supplied TaskData struct
 func NewTaskWithData(data TaskData) Task {
-	data.log = logger.GetStructLogger("TaskData")
 	return &data
+}
+
+func NewTaskData() TaskData {
+	return TaskData{
+		log: logger.GetStructLogger("TaskData"),
+	}
 }
 
 // TableName implements schema.Tabler

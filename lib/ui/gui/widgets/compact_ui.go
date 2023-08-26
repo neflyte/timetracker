@@ -285,7 +285,7 @@ func (c *CompactUI) taskListWasUpdated() {
 	taskList = append(taskList, compactUIOtherTaskLabel)
 	// Update the Select widget's list
 	c.taskSelect.Options = taskList
-	// If the the selected task is in the new list, make that selection stand.
+	// If the selected task is in the new list, make that selection stand.
 	if c.selectedTask != nil {
 		c.selectedTaskIndex = -1
 		if slices.Contains(taskList, c.selectedTask.Data().Synopsis) {
