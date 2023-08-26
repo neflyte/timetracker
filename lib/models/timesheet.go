@@ -38,19 +38,23 @@ type TimesheetData struct {
 	TaskID uint `gorm:"index:idx_timesheet_laststarted" json:"TaskID" xml:"TaskID" csv:"task_id"`
 }
 
-// NewTimesheet returns an new, initialized Timesheet interface
+// NewTimesheet returns a newly-initialized Timesheet interface
 func NewTimesheet() Timesheet {
-	return &TimesheetData{
-		Task:     TaskData{},
-		StopTime: sql.NullTime{},
-		log:      logger.GetStructLogger("TimesheetData"),
-	}
+	return NewTimesheetWithData(NewTimesheetData())
 }
 
 // NewTimesheetWithData returns a new Timesheet interface based on the supplied TimesheetData struct
 func NewTimesheetWithData(data TimesheetData) Timesheet {
-	data.log = logger.GetStructLogger("TimesheetData")
 	return &data
+}
+
+// NewTimesheetData returns a newly-initialized TimesheetData struct
+func NewTimesheetData() TimesheetData {
+	return TimesheetData{
+		log:      logger.GetStructLogger("TimesheetData"),
+		Task:     NewTaskData(),
+		StopTime: sql.NullTime{},
+	}
 }
 
 // TableName implements schema.Tabler
