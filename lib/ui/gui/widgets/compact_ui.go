@@ -18,8 +18,14 @@ const (
 	compactUIOtherTaskLabel  = "Other..." // i18n
 )
 
+/*
+ * Event data structs
+ */
+
 // CompactUITaskEvent represents an event which starts or stops a task
 type CompactUITaskEvent struct {
+	// Task is the task object
+	Task models.Task
 	// TaskSynopsis is the synopsis of the task
 	TaskSynopsis string
 	// TaskIndex is the index of the task in the taskList
@@ -43,6 +49,10 @@ type CompactUISelectTaskEvent struct{}
 
 // CompactUICreateAndStartEvent represents an event which creates and starts a new task
 type CompactUICreateAndStartEvent struct{}
+
+/*
+ * Main data struct
+ */
 
 var _ fyne.Widget = (*CompactUI)(nil)
 
@@ -152,6 +162,9 @@ func (c *CompactUI) SetTaskList(taskList []string) {
 			Msg("cannot set task list with a nil list")
 		return
 	}
+	log = log.With().
+		Int("taskCount", len(taskList)).
+		Logger()
 	err := c.taskListBinding.Set(taskList)
 	if err != nil {
 		log.Err(err).
@@ -159,6 +172,8 @@ func (c *CompactUI) SetTaskList(taskList []string) {
 		return
 	}
 	c.taskList = taskList
+	log.Debug().
+		Msg("set task list binding")
 }
 
 // SetRunning sets the "task is running" status of the UI
@@ -171,17 +186,28 @@ func (c *CompactUI) SetRunning(running bool) {
 			Msg("unable to set task running binding")
 		return
 	}
-	log.Debug().Msg("set task running status")
+	log.Debug().
+		Msg("set task running status")
 }
 
 // SelectTask attempts to select the task with the specified name. If the name is empty
 // or not present in the task list, the selected task will be cleared.
 func (c *CompactUI) SelectTask(name string) {
-	defer c.taskWasSelected(name)
-	if name == "" || !slices.Contains(c.taskList, name) {
+	log := logger.GetFuncLogger(c.log, "SelectTask").
+		With().Str("name", name).Logger()
+	if name == "" {
+		log.Debug().
+			Msg("clearing selection; name was empty")
+		c.taskSelect.ClearSelected()
+		return
+	} else if !slices.Contains(c.taskList, name) {
+		log.Debug().
+			Msg("clearing selection; taskList does not contain name")
 		c.taskSelect.ClearSelected()
 		return
 	}
+	log.Debug().
+		Msg("set selected task")
 	c.taskSelect.SetSelected(name)
 }
 
@@ -195,7 +221,7 @@ func (c *CompactUI) SetTaskName(name string) {
 			Msg("unable to set task name binding")
 		return
 	}
-	log.Debug().Msg("set task name")
+	log.Debug().Msg("set task name binding")
 }
 
 // SetElapsedTime sets the display text of the elapsed time label
@@ -206,7 +232,6 @@ func (c *CompactUI) SetElapsedTime(elapsed string) {
 			With().Str("elapsed", elapsed).Logger()
 		log.Err(err).
 			Msg("unable to set elapsed time binding")
-		return
 	}
 	// There is no log message here because this function could be called
 	// often enough that it would only add noise to the logs.
@@ -232,23 +257,32 @@ func (c *CompactUI) isRunning() bool {
 	return taskIsRunning
 }
 
+// updateStartStopButton enables or disables the start/stop button
 func (c *CompactUI) updateStartStopButton() {
-	defer c.startStopButton.Refresh()
-	if c.isRunning() {
+	log := logger.GetFuncLogger(c.log, "updateStartStopButton")
+	enable := false
+	switch c.isRunning() {
+	case true:
+		enable = true
+	case false:
+		if c.selectedTask != nil {
+			enable = true
+		}
+	}
+	switch enable {
+	case true:
 		c.startStopButton.Enable()
-		return
-	}
-	if c.selectedTask == nil {
+	case false:
 		c.startStopButton.Disable()
-		return
 	}
-	c.startStopButton.Enable()
+	log.Debug().
+		Bool("enable", enable).
+		Msg("set start/stop button state")
 }
 
 func (c *CompactUI) taskRunningWasUpdated() {
 	// log := logger.GetFuncLogger(c.log, "taskRunningWasUpdated")
 	defer c.updateStartStopButton()
-	defer c.taskNameLabel.Refresh()
 	// assume a task is not running
 	buttonIcon := theme.MediaPlayIcon()
 	buttonText := "START" // i18n
@@ -266,7 +300,10 @@ func (c *CompactUI) taskRunningWasUpdated() {
 	// update the start/stop button and task label
 	c.startStopButton.SetIcon(buttonIcon)
 	c.startStopButton.SetText(buttonText)
-	c.taskNameLabel.TextStyle = taskNameLabelStyle
+	if c.taskNameLabel.TextStyle != taskNameLabelStyle {
+		c.taskNameLabel.TextStyle = taskNameLabelStyle
+		defer c.taskNameLabel.Refresh()
+	}
 	if !c.isRunning() {
 		c.taskNameLabel.SetText("idle") // i18n
 	}
@@ -281,23 +318,23 @@ func (c *CompactUI) taskListWasUpdated() {
 		return
 	}
 	defer c.updateStartStopButton()
-	// Add the 'other' item to the list
+	// Update the Select widget's list after appending the 'other' item
 	taskList = append(taskList, compactUIOtherTaskLabel)
-	// Update the Select widget's list
 	c.taskSelect.Options = taskList
 	// If the selected task is in the new list, make that selection stand.
 	if c.selectedTask != nil {
-		c.selectedTaskIndex = -1
-		if slices.Contains(taskList, c.selectedTask.Data().Synopsis) {
-			c.selectedTaskIndex = slices.Index(taskList, c.selectedTask.Data().Synopsis)
+		c.selectedTaskIndex = slices.Index(taskList, c.selectedTask.Data().Synopsis)
+		if c.selectedTaskIndex > -1 {
 			c.taskSelect.SetSelectedIndex(c.selectedTaskIndex)
 		} else {
 			c.selectedTask = nil
 			c.taskSelect.ClearSelected()
 		}
+	} else {
+		// Need an explicit refresh here because the other code paths indirectly refresh
+		// the taskSelect widget.
+		c.taskSelect.Refresh()
 	}
-	// Refresh the Select widget
-	c.taskSelect.Refresh()
 }
 
 func (c *CompactUI) taskWasSelected(selection string) {
@@ -327,18 +364,21 @@ func (c *CompactUI) taskWasSelected(selection string) {
 			Msg("could not find selected task by synopsis")
 		return
 	}
-	defer c.updateStartStopButton()
 	taskData := task[0]
 	log.Debug().
 		Uint("id", taskData.ID).
 		Str("synopsis", taskData.Synopsis).
 		Msg("found task")
-	c.selectedTask = models.NewTaskWithData(taskData)
-	c.selectedTaskIndex = slices.Index(c.taskList, selection)
-	if c.selectedTaskIndex == -1 {
+	taskIndex := slices.Index(c.taskList, taskData.Synopsis)
+	if taskIndex == -1 {
 		log.Error().
-			Msg("selectedTaskIndex was -1; this is unexpected")
+			Uint("id", taskData.ID).
+			Str("synopsis", taskData.Synopsis).
+			Msg("could not find selected task in taskList; will not change selectedTask")
+		return
 	}
+	c.selectedTaskIndex = taskIndex
+	c.selectedTask = models.NewTaskWithData(taskData)
 	log.Debug().
 		Bool("selectedTask", c.selectedTask != nil).
 		Int("selectedTaskIndex", c.selectedTaskIndex).
@@ -346,33 +386,28 @@ func (c *CompactUI) taskWasSelected(selection string) {
 	c.commandChan <- rxgo.Of(CompactUITaskEvent{
 		TaskIndex:    c.selectedTaskIndex,
 		TaskSynopsis: c.selectedTask.Data().Synopsis,
+		Task:         c.selectedTask,
 	})
 }
 
 func (c *CompactUI) startStopButtonWasTapped() {
 	log := logger.GetFuncLogger(c.log, "startStopButtonWasTapped")
-	taskIsRunning := c.isRunning()
-	if taskIsRunning {
-		log.Debug().
-			Bool("taskIsRunning", taskIsRunning).
-			Msg("sending task event to stop running task")
-		c.commandChan <- rxgo.Of(CompactUITaskEvent{
-			TaskSynopsis: "",
-			TaskIndex:    -1,
-		})
-		return
-	}
 	synopsis := ""
-	if c.selectedTask != nil {
+	taskIndex := -1
+	var task models.Task
+	if !c.isRunning() && c.selectedTask != nil {
 		synopsis = c.selectedTask.Data().Synopsis
+		taskIndex = c.selectedTaskIndex
+		task = c.selectedTask
 	}
 	log.Debug().
 		Str("synopsis", synopsis).
-		Int("index", c.selectedTaskIndex).
+		Int("index", taskIndex).
 		Msg("sending task event to start task")
 	c.commandChan <- rxgo.Of(CompactUITaskEvent{
 		TaskSynopsis: synopsis,
-		TaskIndex:    c.selectedTaskIndex,
+		TaskIndex:    taskIndex,
+		Task:         task,
 	})
 }
 
@@ -389,11 +424,7 @@ func (c *CompactUI) quitButtonWasTapped() {
 }
 
 func (c *CompactUI) otherTaskWasSelected() {
-	defer c.updateStartStopButton()
-	c.selectedTask = nil
-	c.selectedTaskIndex = -1
 	c.commandChan <- rxgo.Of(CompactUISelectTaskEvent{})
-	c.taskSelect.ClearSelected()
 }
 
 func (c *CompactUI) createAndStartWasTapped() {
