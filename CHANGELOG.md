@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.4] - TBA
 ### Added
 - Improved notification support for Windows
+- Unique index on the `timesheet.StopTime` database column to ensure only one running task at a time
 
 ### Changed
 - Updated minimum Golang version to v1.18
