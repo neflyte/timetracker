@@ -42,32 +42,30 @@ var (
 			return availableTaskIDs[randomIndex], nil
 		}).
 		Attr("StartTime", func(_ factory.Args) (interface{}, error) {
-			// time.Now() minus random hours from 0-3 and random minutes from 1-59
-			randHours := rnd.Intn(3)
+			// time.Now() minus random hours from 0-6, random minutes and seconds from 0-59
+			randHours := rnd.Intn(6)
 			randMinutes := rnd.Intn(59)
-			if randMinutes == 0 {
-				randMinutes = 1
-			}
+			randSeconds := rnd.Intn(59)
 			timesheetStartTime := time.Now().
 				Truncate(time.Second).
 				Add(-time.Hour * time.Duration(randHours)).
-				Add(-time.Minute * time.Duration(randMinutes))
+				Add(-time.Minute * time.Duration(randMinutes)).
+				Add(-time.Second * time.Duration(randSeconds))
 			return timesheetStartTime, nil
 		}).
 		Attr("StopTime", func(args factory.Args) (interface{}, error) {
-			// StartTime plus random hours from 0-3 and random minutes from 1-59
+			// StartTime plus random hours from 0-6 and random minutes and seconds from 0-59
 			tsdPtr, castOK := args.Instance().(*TimesheetData)
 			if !castOK {
 				return nil, errors.New("arg was not *TimesheetData; this is unexpected")
 			}
-			randHours := rnd.Intn(3)
+			randHours := rnd.Intn(6)
 			randMinutes := rnd.Intn(59)
-			if randMinutes == 0 {
-				randMinutes = 1
-			}
+			randSeconds := rnd.Intn(59)
 			timesheetStopTime := tsdPtr.StartTime.
 				Add(time.Hour * time.Duration(randHours)).
-				Add(time.Minute * time.Duration(randMinutes))
+				Add(time.Minute * time.Duration(randMinutes)).
+				Add(time.Second * time.Duration(randSeconds))
 			stopTimeNulltime := sql.NullTime{
 				Time:  timesheetStopTime,
 				Valid: true,

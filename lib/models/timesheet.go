@@ -24,7 +24,7 @@ const (
 
 // TimesheetData is the main timesheet data structure
 type TimesheetData struct {
-	XMLName xml.Name `gorm:"-" xml:"Timesheet"`
+	XMLName xml.Name `gorm:"-" xml:"Timesheet" json:"-" csv:"-"`
 	// Task is the task object linked to this Timesheet
 	Task TaskData `json:"Task" xml:"Task" csv:"-"`
 	// log is the struct logger
@@ -33,7 +33,7 @@ type TimesheetData struct {
 	StartTime  time.Time `gorm:"not null;index:idx_timesheet_laststarted,sort:desc" json:"StartTime" xml:"StartTime" csv:"start_time"`
 	gorm.Model `json:"-" xml:"-" csv:"-"`
 	// StopTime is the time that the task was stopped at; if it is NULL, that means the task is still running
-	StopTime sql.NullTime `json:"StopTime,omitempty" xml:"StopTime,omitempty" csv:"stop_time,omitempty"`
+	StopTime sql.NullTime `gorm:"uniqueIndex:idx_timesheet_stoptime" json:"StopTime,omitempty" xml:"StopTime,omitempty" csv:"stop_time,omitempty"`
 	// TaskID is the database ID of the linked task object
 	TaskID uint `gorm:"index:idx_timesheet_laststarted" json:"TaskID" xml:"TaskID" csv:"task_id"`
 }
