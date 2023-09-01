@@ -3,6 +3,7 @@ package tray
 import (
 	"errors"
 	"fmt"
+	"github.com/neflyte/timetracker/lib/utils"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -16,6 +17,7 @@ import (
 	tterrors "github.com/neflyte/timetracker/lib/errors"
 	"github.com/neflyte/timetracker/lib/logger"
 	"github.com/neflyte/timetracker/lib/models"
+	ttmonitor "github.com/neflyte/timetracker/lib/monitor"
 	"github.com/neflyte/timetracker/lib/ui/icons"
 	tttoast "github.com/neflyte/timetracker/lib/ui/toast"
 	"github.com/spf13/viper"
@@ -49,10 +51,8 @@ var (
 	actionLoopQuitChan         chan bool
 	trayLogger                 = logger.GetPackageLogger("tray")
 	cleanupFunc                func()
-	runningTimesheet           *models.TimesheetData
-	lastError                  error
-	lastState                  int
 	toast                      tttoast.Toast
+	monitor                    ttmonitor.MonitorService
 )
 
 // Run starts the systray app
@@ -98,7 +98,7 @@ func onReady() {
 	mQuit = systray.AddMenuItem("Quit", "Quit the Timetracker tray app")           // i18n
 	// Start mainLoop
 	trayQuitChan = make(chan bool, 1)
-	log.Trace().
+	log.Debug().
 		Msg("go mainLoop(...)")
 	go mainLoop(trayQuitChan)
 	// Start the ActionLoop
@@ -107,11 +107,27 @@ func onReady() {
 	defer func() {
 		actionLoopStartChan <- true
 	}()
-	log.Trace().
-		Msg("go actionLoop(...)")
-	go actionLoop(actionLoopQuitChan, actionLoopStartChan)
-	log.Trace().
-		Msg("done")
+	monitor = ttmonitor.NewMonitorService(actionLoopQuitChan)
+	monitor.Observable().ForEach(
+		func(item interface{}) {
+			switch item.(type) {
+			case ttmonitor.MonitorServiceUpdateEvent:
+				updateStatus()
+			default:
+				log.Warn().
+					Type("event", item).
+					Msg("unknown event type")
+			}
+		},
+		utils.ObservableErrorHandler("monitor", log),
+		utils.ObservableCloseHandler("monitor", log),
+	)
+	log.Debug().
+		Msg("start monitor")
+	monitor.Start(actionLoopStartChan)
+	// go actionLoop(actionLoopQuitChan, actionLoopStartChan)
+	log.Debug().
+		Msg("tray is ready")
 }
 
 func onExit() {
@@ -132,18 +148,20 @@ func onExit() {
 	}
 }
 
-func updateStatus(tsd *models.TimesheetData) {
+func updateStatus() {
 	log := logger.GetFuncLogger(trayLogger, "updateStatus")
+	defer log.Debug().Msg("finished updating status")
 	// Update the last 5 started tasks regardless of what happens in this function
-	defer updateLast5StartedTasks()
+	defer updateLastStartedTasks()
 	// Check if last status was error and show the error icon
-	if lastState == constants.TimesheetStatusError {
-		log.Trace().
+	if monitor.TimesheetStatus() == constants.TimesheetStatusError {
+		log.Debug().
 			Msg("got error for lastState")
 		// Get the error
-		if lastError != nil {
+		timesheetError := monitor.TimesheetError()
+		if timesheetError != nil {
 			log.Trace().
-				Err(lastError).
+				Err(timesheetError).
 				Msg("got last error")
 		}
 		systray.SetIcon(icons.IconV2Error.StaticContent)
@@ -152,41 +170,42 @@ func updateStatus(tsd *models.TimesheetData) {
 		return
 	}
 	// Check the supplied timesheet
-	if tsd == nil {
+	runningTS := monitor.RunningTimesheet()
+	if runningTS == nil || runningTS.Data() == nil {
 		// No running timesheet
-		log.Trace().
+		log.Debug().
 			Msg("got nil running timesheet item")
 		systray.SetIcon(icons.IconV2NotRunning.StaticContent)
 		mStatus.SetTitle(statusStartTaskTitle)
 		mStatus.SetTooltip(statusStartTaskDescription)
 		return
 	}
-	log.Trace().
-		Str("object", tsd.String()).
+	log.Debug().
+		Str("object", runningTS.String()).
 		Msg("got running timesheet")
 	systray.SetIcon(icons.IconV2Running.StaticContent)
 	statusText := fmt.Sprintf(
 		"Stop task %s (%s)", // i18n
-		tsd.Task.Synopsis,
-		time.Since(tsd.StartTime).Truncate(time.Second).String(),
+		runningTS.Data().Task.Synopsis,
+		time.Since(runningTS.Data().StartTime).Truncate(time.Second).String(),
 	)
 	mStatus.SetTitle(statusText)
 	mStatus.SetTooltip(statusStopTaskDescription)
 }
 
-func updateLast5StartedTasks() {
-	log := logger.GetFuncLogger(trayLogger, "updateLast5StartedTasks")
+func updateLastStartedTasks() {
+	log := logger.GetFuncLogger(trayLogger, "updateLastStartedTasks")
 	lastStartedTasks, err := models.NewTimesheet().LastStartedTasks(recentlyStartedTasks)
 	if err != nil {
 		log.Err(err).
-			Msg("error loading recently-started tasks")
+			Msg("error loading last started tasks")
 		return
 	}
 	log.Debug().
 		Int("length", len(lastStartedTasks)).
-		Msg("loaded last-started tasks")
+		Msg("loaded last started tasks")
 	for idx := range lastStartedTasks {
-		log.Debug().
+		log.Trace().
 			Int("index", idx).
 			Str("task", lastStartedTasks[idx].String()).
 			Msg("lastStartedTask")
@@ -196,7 +215,7 @@ func updateLast5StartedTasks() {
 		log.Debug().
 			Msgf("len(lastStartedTasks) < recentlyStartedTasks; %d < %d", len(lastStartedTasks), recentlyStartedTasks)
 		for x := recentlyStartedTasks - 1; x > len(lastStartedItems)-1; x-- {
-			log.Debug().
+			log.Trace().
 				Int("index", x).
 				Str("item", lastStartedItems[x].String()).
 				Msg("hiding item")
@@ -208,7 +227,7 @@ func updateLast5StartedTasks() {
 	}
 	// Fill in the entries we have
 	for x := range lastStartedTasks {
-		log.Debug().
+		log.Trace().
 			Int("index", x).
 			Str("synopsis", lastStartedTasks[x].Synopsis).
 			Msg("showing item")
@@ -228,7 +247,7 @@ func mainLoop(quitChan chan bool) { //nolint:cyclop
 	// Catch OS interrupt and SIGTERM signals
 	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 	// Start main loop
-	log.Trace().
+	log.Debug().
 		Msg("starting")
 	for {
 		select {
@@ -306,7 +325,7 @@ func launchGUI(guiOptions ...string) {
 
 func handleStatusClick() {
 	log := logger.GetFuncLogger(trayLogger, "handleStatusClick")
-	switch lastState {
+	switch monitor.TimesheetStatus() {
 	case constants.TimesheetStatusRunning:
 		shouldConfirmStopTask := viper.GetBool(keyStopTaskConfirm)
 		if shouldConfirmStopTask {
@@ -315,12 +334,13 @@ func handleStatusClick() {
 		}
 		stopRunningTask()
 	case constants.TimesheetStatusError:
-		if lastError == nil {
+		timesheetError := monitor.TimesheetError()
+		if timesheetError == nil {
 			log.Error().
 				Msg("last error was nil but timesheet status is error; THIS IS UNEXPECTED")
 			return
 		}
-		err := toast.Notify("Timetracker status error", lastError.Error())
+		err := toast.Notify("Timetracker status error", timesheetError.Error())
 		if err != nil {
 			log.Err(err).
 				Msg("error sending notification about status error")
@@ -390,9 +410,10 @@ func stopRunningTask() {
 		}
 		return
 	}
-	runningTimesheet = nil
-	lastState = constants.TimesheetStatusIdle
-	lastError = nil
+	// Update the MonitorService
+	monitor.SetRunningTimesheet(nil)
+	monitor.SetTimesheetStatus(constants.TimesheetStatusIdle)
+	monitor.SetTimesheetError(nil)
 	// Show notification that the task has stopped
 	if stoppedTimesheet != nil {
 		notificationTitle := fmt.Sprintf("Task %s stopped", stoppedTimesheet.Task.Synopsis)                     // i18n
@@ -403,7 +424,7 @@ func stopRunningTask() {
 				Msg("error sending notification about stopped task")
 		}
 	}
-	updateStatus(runningTimesheet)
+	updateStatus()
 }
 
 func startTask(taskData *models.TaskData) (err error) {
@@ -420,10 +441,10 @@ func startTask(taskData *models.TaskData) (err error) {
 			Msg("error creating new timesheet to start a task")
 		return
 	}
-	runningTimesheet = timesheet.Data()
-	lastState = constants.TimesheetStatusRunning
-	lastError = nil
-	updateStatus(runningTimesheet)
+	// Update the MonitorService
+	monitor.SetRunningTimesheet(timesheet)
+	monitor.SetTimesheetStatus(constants.TimesheetStatusRunning)
+	monitor.SetTimesheetError(nil)
 	// Show notification that task started
 	notificationTitle := fmt.Sprintf("Task %s started", taskData.Synopsis)                              // i18n
 	notificationContents := fmt.Sprintf("Started at %s", timesheet.Data().StartTime.Format(time.Stamp)) // i18n
@@ -432,7 +453,8 @@ func startTask(taskData *models.TaskData) (err error) {
 		log.Err(err).
 			Msg("error sending notification about started task")
 	}
-	return
+	updateStatus()
+	return nil
 }
 
 func toggleConfirmStopTask() {
