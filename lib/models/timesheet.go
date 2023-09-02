@@ -77,6 +77,7 @@ type Timesheet interface {
 	LastStartedTasks(limit uint) (startedTasks []TaskData, err error)
 	TaskReport(startDate, endDate time.Time, withDeleted bool) (reportData TaskReport, err error)
 	RunningTimesheet() (Timesheet, error)
+	Equals(other Timesheet) bool
 }
 
 // Data returns the struct underlying the interface
@@ -95,6 +96,18 @@ func (tsd *TimesheetData) String() string {
 		"TimesheetData{Task=%s, StartTime=%s, StopTime=%s}",
 		tsd.Task.String(), startTime, stopTime,
 	)
+}
+
+// Equals determines if the specified Timesheet is equal to this one
+// by comparing data.
+func (tsd *TimesheetData) Equals(other Timesheet) bool {
+	if other == nil || other.Data() == nil {
+		return false
+	}
+	return other.Data().ID == tsd.ID &&
+		other.Data().TaskID == tsd.TaskID &&
+		other.Data().StartTime == tsd.StartTime &&
+		other.Data().StopTime == tsd.StopTime
 }
 
 // Create creates a new timesheet record
