@@ -20,17 +20,17 @@ const (
 type MonitorServiceUpdateEvent struct{}
 
 type MonitorData struct {
-	running             bool
-	quitChan            chan bool
-	commandChan         chan rxgo.Item
 	log                 zerolog.Logger
 	runningTimesheet    models.Timesheet
-	runningTimesheetMtx sync.RWMutex
-	timesheetStatus     int
-	timesheetStatusMtx  sync.RWMutex
 	timesheetError      error
-	timesheetErrorMtx   sync.RWMutex
 	tsModel             models.Timesheet
+	quitChan            chan bool
+	commandChan         chan rxgo.Item
+	timesheetStatus     int
+	runningTimesheetMtx sync.RWMutex
+	timesheetStatusMtx  sync.RWMutex
+	timesheetErrorMtx   sync.RWMutex
+	running             bool
 }
 
 type MonitorService interface {

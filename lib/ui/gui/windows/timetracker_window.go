@@ -13,6 +13,7 @@ import (
 	tterrors "github.com/neflyte/timetracker/lib/errors"
 	"github.com/neflyte/timetracker/lib/logger"
 	"github.com/neflyte/timetracker/lib/models"
+	ttmonitor "github.com/neflyte/timetracker/lib/monitor"
 	"github.com/neflyte/timetracker/lib/ui/gui/dialogs"
 	"github.com/neflyte/timetracker/lib/ui/gui/widgets"
 	"github.com/neflyte/timetracker/lib/ui/icons"
@@ -45,13 +46,15 @@ type timetrackerWindowData struct {
 	selectedTask        models.Task
 	mngWindowV2         manageWindowV2
 	toast               tttoast.Toast
-	compactUI           *widgets.CompactUI
+	monitor             ttmonitor.MonitorService
+	monitorQuitChan     chan bool
 	runningTimesheet    *models.TimesheetData
 	container           *fyne.Container
 	elapsedTimeQuitChan chan bool
 	elapsedTimeTicker   *time.Ticker
 	taskSelector        *widgets.TaskSelector
 	app                 *fyne.App
+	compactUI           *widgets.CompactUI
 	appVersion          string
 	selectedTaskMtx     sync.RWMutex
 	elapsedTimeRunning  bool
@@ -66,6 +69,7 @@ func NewTimetrackerWindow(app fyne.App, appVersion string) TimetrackerWindow {
 		log:                 logger.GetStructLogger("timetrackerWindowData"),
 		elapsedTimeRunning:  false,
 		elapsedTimeQuitChan: make(chan bool, 1),
+		monitorQuitChan:     make(chan bool, 1),
 		toast:               tttoast.NewToast(),
 		selectedTaskMtx:     sync.RWMutex{},
 	}
@@ -85,6 +89,8 @@ func (t *timetrackerWindowData) Init() error {
 	if err != nil {
 		return err
 	}
+	// Initialize monitor service
+	t.monitor = ttmonitor.NewMonitorService(t.monitorQuitChan)
 	// Initialize observables
 	t.initObservables()
 	// Initialize window display data
@@ -138,11 +144,18 @@ func (t *timetrackerWindowData) initObservables() {
 		utils.ObservableErrorHandler("taskSelector", t.log),
 		utils.ObservableCloseHandler("taskSelector", t.log),
 	)
+	t.monitor.Observable().ForEach(
+		t.handleMonitorServiceEvent,
+		utils.ObservableErrorHandler("monitor", t.log),
+		utils.ObservableCloseHandler("monitor", t.log),
+	)
 }
 
 // initWindowData primes the window with some data
 func (t *timetrackerWindowData) initWindowData() error {
 	log := logger.GetFuncLogger(t.log, "initWindowData")
+	// Load the last running task list
+	t.refreshTaskList()
 	// Load the running task, if any
 	runningTimesheet, err := models.NewTimesheet().RunningTimesheet()
 	if err != nil && !errors.Is(err, tterrors.ErrNoRunningTask{}) {
@@ -181,7 +194,7 @@ func (t *timetrackerWindowData) setRunningTimesheet(tsd *models.TimesheetData) {
 	log := logger.GetFuncLogger(t.log, "setRunningTimesheet")
 	t.runningTimesheet = tsd
 	running := false
-	taskName := ""
+	taskName := "idle"
 	elapsedTime := ""
 	if tsd != nil {
 		running = true
@@ -196,14 +209,6 @@ func (t *timetrackerWindowData) setRunningTimesheet(tsd *models.TimesheetData) {
 	t.compactUI.SetRunning(running)
 	t.compactUI.SetTaskName(taskName)
 	t.compactUI.SetElapsedTime(elapsedTime)
-	/*	// Update the selectedTask
-		var selectedTask models.Task
-		if tsd != nil {
-			selectedTask = models.NewTaskWithData(tsd.Task)
-		}
-		t.selectedTaskMtx.Lock()
-		t.selectedTask = selectedTask
-		t.selectedTaskMtx.Unlock()*/
 	// Handle the elapsedTimeLoop
 	switch running {
 	case true:
@@ -421,6 +426,34 @@ func (t *timetrackerWindowData) handleCompactUITaskEvent(index int, synopsis str
 	t.doStartTask()
 }
 
+func (t *timetrackerWindowData) handleMonitorServiceEvent(item interface{}) {
+	log := logger.GetFuncLogger(t.log, "handleMonitorServiceEvent")
+	if _, ok := item.(ttmonitor.MonitorServiceUpdateEvent); ok {
+		switch t.monitor.TimesheetStatus() {
+		case constants.TimesheetStatusError:
+			tsErr := t.monitor.TimesheetError()
+			if tsErr != nil {
+				log.Err(tsErr).
+					Msg("error from TimesheetStatus")
+			}
+			// TODO: should we do anything else here?
+		case constants.TimesheetStatusIdle:
+			// if we're running, stop.
+			if t.runningTimesheet != nil {
+				t.setRunningTimesheet(nil)
+			}
+		case constants.TimesheetStatusRunning:
+			runningTS := t.monitor.RunningTimesheet()
+			if runningTS != nil {
+				// if we're not running or if we're running something different, update.
+				if t.runningTimesheet == nil || !t.runningTimesheet.Equals(runningTS) {
+					t.setRunningTimesheet(runningTS.Data())
+				}
+			}
+		}
+	}
+}
+
 func (t *timetrackerWindowData) doReport() {
 	t.rptWindow.Show()
 }
@@ -451,6 +484,11 @@ func (t *timetrackerWindowData) elapsedTime(since time.Time) string {
 
 // Show shows the main window
 func (t *timetrackerWindowData) Show() {
+	// Start the monitor service if it is not running
+	if !t.monitor.IsRunning() {
+		t.monitor.Start(nil)
+	}
+	// Show the window
 	t.Window.Show()
 }
 
@@ -511,6 +549,10 @@ func (t *timetrackerWindowData) Close() {
 	// Check if elapsed time counter is running and stop it if it is
 	if t.elapsedTimeRunning {
 		t.elapsedTimeQuitChan <- true
+	}
+	// Check if monitor service is running and stop it if it is
+	if t.monitor.IsRunning() {
+		t.monitor.Stop()
 	}
 	// Close the window
 	t.Window.Close()
