@@ -3,7 +3,6 @@ package tray
 import (
 	"errors"
 	"fmt"
-	"github.com/neflyte/timetracker/lib/utils"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -20,6 +19,7 @@ import (
 	ttmonitor "github.com/neflyte/timetracker/lib/monitor"
 	"github.com/neflyte/timetracker/lib/ui/icons"
 	tttoast "github.com/neflyte/timetracker/lib/ui/toast"
+	"github.com/neflyte/timetracker/lib/utils"
 	"github.com/spf13/viper"
 )
 
@@ -52,7 +52,7 @@ var (
 	trayLogger                 = logger.GetPackageLogger("tray")
 	cleanupFunc                func()
 	toast                      tttoast.Toast
-	monitor                    ttmonitor.MonitorService
+	monitor                    ttmonitor.Service
 )
 
 // Run starts the systray app
@@ -107,11 +107,11 @@ func onReady() {
 	defer func() {
 		actionLoopStartChan <- true
 	}()
-	monitor = ttmonitor.NewMonitorService(actionLoopQuitChan)
+	monitor = ttmonitor.NewService(actionLoopQuitChan)
 	monitor.Observable().ForEach(
 		func(item interface{}) {
 			switch item.(type) {
-			case ttmonitor.MonitorServiceUpdateEvent:
+			case ttmonitor.ServiceUpdateEvent:
 				updateStatus()
 			default:
 				log.Warn().
@@ -410,7 +410,7 @@ func stopRunningTask() {
 		}
 		return
 	}
-	// Update the MonitorService
+	// Update the Service
 	monitor.SetRunningTimesheet(nil)
 	monitor.SetTimesheetStatus(constants.TimesheetStatusIdle)
 	monitor.SetTimesheetError(nil)
@@ -441,7 +441,7 @@ func startTask(taskData *models.TaskData) (err error) {
 			Msg("error creating new timesheet to start a task")
 		return
 	}
-	// Update the MonitorService
+	// Update the Service
 	monitor.SetRunningTimesheet(timesheet)
 	monitor.SetTimesheetStatus(constants.TimesheetStatusRunning)
 	monitor.SetTimesheetError(nil)

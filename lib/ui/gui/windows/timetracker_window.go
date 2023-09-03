@@ -46,7 +46,7 @@ type timetrackerWindowData struct {
 	selectedTask        models.Task
 	mngWindowV2         manageWindowV2
 	toast               tttoast.Toast
-	monitor             ttmonitor.MonitorService
+	monitor             ttmonitor.Service
 	monitorQuitChan     chan bool
 	runningTimesheet    *models.TimesheetData
 	container           *fyne.Container
@@ -90,7 +90,7 @@ func (t *timetrackerWindowData) Init() error {
 		return err
 	}
 	// Initialize monitor service
-	t.monitor = ttmonitor.NewMonitorService(t.monitorQuitChan)
+	t.monitor = ttmonitor.NewService(t.monitorQuitChan)
 	// Initialize observables
 	t.initObservables()
 	// Initialize window display data
@@ -428,7 +428,7 @@ func (t *timetrackerWindowData) handleCompactUITaskEvent(index int, synopsis str
 
 func (t *timetrackerWindowData) handleMonitorServiceEvent(item interface{}) {
 	log := logger.GetFuncLogger(t.log, "handleMonitorServiceEvent")
-	if _, ok := item.(ttmonitor.MonitorServiceUpdateEvent); ok {
+	if _, ok := item.(ttmonitor.ServiceUpdateEvent); ok {
 		switch t.monitor.TimesheetStatus() {
 		case constants.TimesheetStatusError:
 			tsErr := t.monitor.TimesheetError()
