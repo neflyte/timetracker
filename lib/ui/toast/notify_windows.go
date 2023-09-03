@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/neflyte/timetracker/lib/logger"
+	"github.com/neflyte/timetracker/lib/ui/icons"
 	"github.com/rs/zerolog"
 )
 
@@ -83,7 +84,7 @@ func (t *impl) ensureScript() error {
 		t.tempDir = tempDir
 	}
 	if t.scriptPath == "" {
-		t.scriptPath = path.Join(tempDir, "toast.ps1")
+		t.scriptPath = path.Join(t.tempDir, "toast.ps1")
 	}
 	if _, err := os.Stat(t.scriptPath); err != nil {
 		log.Debug().
@@ -101,9 +102,9 @@ func (t *impl) ensureScript() error {
 			Msg("wrote script to temp directory")
 	}
 	if t.iconPath == "" {
-		t.iconPath = path.Join(tempDir, "icon-v2.ico")
+		t.iconPath = path.Join(t.tempDir, "icon-v2.ico")
 	}
-	if _, err = os.Stat(t.iconPath); err != nil {
+	if _, err := os.Stat(t.iconPath); err != nil {
 		log.Debug().
 			Err(err).
 			Str("iconPath", t.iconPath).
