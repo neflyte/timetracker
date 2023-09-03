@@ -20,9 +20,15 @@ type impl struct {
 }
 
 func NewToast() Toast {
-	return &impl{
+	t := &impl{
 		logger: packageLogger.With().Str("struct", "impl").Logger(),
 	}
+	err := t.ensureIcon()
+	if err != nil {
+		t.logger.Err(err).
+			Msg("unable to write temp file")
+	}
+	return t
 }
 
 func (t *impl) Notify(title string, description string) error {
@@ -31,9 +37,7 @@ func (t *impl) Notify(title string, description string) error {
 	if err != nil {
 		log.Err(err).
 			Msg("unable to write temp file")
-		return err
 	}
-	defer t.Cleanup()
 	err = beeep.Alert(title, description, t.iconPath)
 	if err != nil {
 		log.Err(err).
@@ -45,26 +49,36 @@ func (t *impl) Notify(title string, description string) error {
 
 func (t *impl) ensureIcon() error {
 	log := logger.GetFuncLogger(t.logger, "ensureIcon")
-	tempDir, err := os.MkdirTemp("", "timetracker-toast")
-	if err != nil {
-		log.Err(err).
-			Msg("unable to create temp directory")
-		return err
+	if t.tempDir == "" {
+		tempDir, err := os.MkdirTemp("", "timetracker-toast")
+		if err != nil {
+			log.Err(err).
+				Msg("unable to create temp directory")
+			return err
+		}
+		log.Debug().
+			Str("tempDir", tempDir).
+			Msg("created temp directory")
+		t.tempDir = tempDir
 	}
-	log.Debug().
-		Str("tempDir", tempDir).
-		Msg("created temp directory")
-	t.tempDir = tempDir
-	t.iconPath = path.Join(tempDir, "icon-v2.ico")
-	err = os.WriteFile(t.iconPath, icons.IconV2.StaticContent, tempFileMode)
-	if err != nil {
-		log.Err(err).
-			Msg("unable to write icon to temp directory")
-		return err
+	if t.iconPath == "" {
+		t.iconPath = path.Join(t.tempDir, "icon-v2.ico")
+		if _, err := os.Stat(t.iconPath); err != nil {
+			log.Debug().
+				Err(err).
+				Str("iconPath", t.iconPath).
+				Msg("got error running stat()")
+			err = os.WriteFile(t.iconPath, icons.IconV2.StaticContent, tempFileMode)
+			if err != nil {
+				log.Err(err).
+					Msg("unable to write icon to temp directory")
+				return err
+			}
+			log.Debug().
+				Str("iconPath", t.iconPath).
+				Msg("wrote icon to temp directory")
+		}
 	}
-	log.Debug().
-		Str("iconPath", t.iconPath).
-		Msg("wrote icon to temp directory")
 	return nil
 }
 

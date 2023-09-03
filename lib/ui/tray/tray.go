@@ -138,6 +138,8 @@ func onExit() {
 		log.Err(err).
 			Msg("error saving app config")
 	}
+	// Clean up toast
+	toast.Cleanup()
 	// Shut down mainLoop
 	trayQuitChan <- true
 	// Shut down ActionLoop

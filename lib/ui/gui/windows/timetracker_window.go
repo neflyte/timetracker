@@ -546,6 +546,8 @@ func (t *timetrackerWindowData) Hide() {
 
 // Close closes the main window
 func (t *timetrackerWindowData) Close() {
+	// Clean up the notification object
+	t.toast.Cleanup()
 	// Check if elapsed time counter is running and stop it if it is
 	if t.elapsedTimeRunning {
 		t.elapsedTimeQuitChan <- true

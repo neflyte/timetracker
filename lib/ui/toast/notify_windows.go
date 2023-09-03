@@ -9,7 +9,6 @@ import (
 	"syscall"
 
 	"github.com/neflyte/timetracker/lib/logger"
-	"github.com/neflyte/timetracker/lib/ui/icons"
 	"github.com/rs/zerolog"
 )
 
@@ -24,26 +23,30 @@ type impl struct {
 }
 
 func NewToast() Toast {
-	return &impl{
+	t := &impl{
 		logger: packageLogger.With().Str("struct", "impl").Logger(),
 	}
+	err := t.ensureScript()
+	if err != nil {
+		t.logger.Err(err).
+			Msg("unable to write temp files")
+	}
+	return t
 }
 
 func (t *impl) Notify(title string, description string) error {
 	log := logger.GetFuncLogger(t.logger, "Notify")
-	err := t.ensureScript()
-	if err != nil {
-		log.Err(err).
-			Msg("unable to write temp files")
-		return err
-	}
-	defer t.Cleanup()
 	toastArgs := []string{
 		"-NoLogo", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-File", t.scriptPath,
 		"-AppId", "Timetracker",
 		"-Title", title,
 		"-Description", description,
 		"-Icon", t.iconPath,
+	}
+	err := t.ensureScript()
+	if err != nil {
+		t.logger.Err(err).
+			Msg("unable to write temp files")
 	}
 	var out, stderr strings.Builder
 	toastCmd := exec.Command("powershell.exe", toastArgs...)
@@ -67,36 +70,54 @@ func (t *impl) Notify(title string, description string) error {
 
 func (t *impl) ensureScript() error {
 	log := logger.GetFuncLogger(t.logger, "ensureScript")
-	tempDir, err := os.MkdirTemp("", "timetracker-toast")
-	if err != nil {
-		log.Err(err).
-			Msg("unable to create temp directory")
-		return err
+	if t.tempDir == "" {
+		tempDir, err := os.MkdirTemp("", "timetracker-toast")
+		if err != nil {
+			log.Err(err).
+				Msg("unable to create temp directory")
+			return err
+		}
+		log.Debug().
+			Str("tempDir", tempDir).
+			Msg("created temp directory")
+		t.tempDir = tempDir
 	}
-	log.Debug().
-		Str("tempDir", tempDir).
-		Msg("created temp directory")
-	t.tempDir = tempDir
-	t.scriptPath = path.Join(tempDir, "toast.ps1")
-	err = os.WriteFile(t.scriptPath, toastPs1, tempFileMode)
-	if err != nil {
-		log.Err(err).
-			Msg("unable to write script to temp directory")
-		return err
+	if t.scriptPath == "" {
+		t.scriptPath = path.Join(tempDir, "toast.ps1")
 	}
-	log.Debug().
-		Str("scriptPath", t.scriptPath).
-		Msg("wrote script to temp directory")
-	t.iconPath = path.Join(tempDir, "icon-v2.ico")
-	err = os.WriteFile(t.iconPath, icons.IconV2.StaticContent, tempFileMode)
-	if err != nil {
-		log.Err(err).
-			Msg("unable to write icon to temp directory")
-		return err
+	if _, err := os.Stat(t.scriptPath); err != nil {
+		log.Debug().
+			Err(err).
+			Str("scriptPath", t.scriptPath).
+			Msg("got error running stat()")
+		err = os.WriteFile(t.scriptPath, toastPs1, tempFileMode)
+		if err != nil {
+			log.Err(err).
+				Msg("unable to write script to temp directory")
+			return err
+		}
+		log.Debug().
+			Str("scriptPath", t.scriptPath).
+			Msg("wrote script to temp directory")
 	}
-	log.Debug().
-		Str("iconPath", t.iconPath).
-		Msg("wrote icon to temp directory")
+	if t.iconPath == "" {
+		t.iconPath = path.Join(tempDir, "icon-v2.ico")
+	}
+	if _, err = os.Stat(t.iconPath); err != nil {
+		log.Debug().
+			Err(err).
+			Str("iconPath", t.iconPath).
+			Msg("got error running stat()")
+		err = os.WriteFile(t.iconPath, icons.IconV2.StaticContent, tempFileMode)
+		if err != nil {
+			log.Err(err).
+				Msg("unable to write icon to temp directory")
+			return err
+		}
+		log.Debug().
+			Str("iconPath", t.iconPath).
+			Msg("wrote icon to temp directory")
+	}
 	return nil
 }
 
