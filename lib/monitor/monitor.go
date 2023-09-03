@@ -17,9 +17,11 @@ const (
 	monitorServiceCommandChanSize = 5
 )
 
-type MonitorServiceUpdateEvent struct{}
+// ServiceUpdateEvent represents an event indicating data has been refreshed
+type ServiceUpdateEvent struct{}
 
-type MonitorData struct {
+// ServiceData is the main data struct of the Service
+type ServiceData struct {
 	log                 zerolog.Logger
 	runningTimesheet    models.Timesheet
 	timesheetError      error
@@ -33,7 +35,8 @@ type MonitorData struct {
 	running             bool
 }
 
-type MonitorService interface {
+// Service is the interface to the monitor service functions
+type Service interface {
 	Start(startChannel chan bool)
 	Stop()
 	IsRunning() bool
@@ -46,12 +49,13 @@ type MonitorService interface {
 	SetTimesheetError(err error)
 }
 
-func NewMonitorService(quitChannel chan bool) MonitorService {
+// NewService returns an initialized Service using the supplied quit channel
+func NewService(quitChannel chan bool) Service {
 	if quitChannel == nil {
-		panic("NewMonitorService(): quitChan cannot be nil")
+		panic("NewService(): quitChan cannot be nil")
 	}
-	return &MonitorData{
-		log:                 logger.GetStructLogger("MonitorData"),
+	return &ServiceData{
+		log:                 logger.GetStructLogger("ServiceData"),
 		quitChan:            quitChannel,
 		commandChan:         make(chan rxgo.Item, monitorServiceCommandChanSize),
 		runningTimesheetMtx: sync.RWMutex{},
@@ -62,7 +66,8 @@ func NewMonitorService(quitChannel chan bool) MonitorService {
 	}
 }
 
-func (m *MonitorData) Start(startChannel chan bool) {
+// Start starts the monitor, optionally using a start channel
+func (m *ServiceData) Start(startChannel chan bool) {
 	log := logger.GetFuncLogger(m.log, "Start")
 	if m.IsRunning() {
 		log.Warn().
@@ -72,58 +77,61 @@ func (m *MonitorData) Start(startChannel chan bool) {
 	go m.actionLoop(startChannel)
 }
 
-func (m *MonitorData) Stop() {
+// Stop stops the monitor
+func (m *ServiceData) Stop() {
 	if !m.IsRunning() {
 		return
 	}
 	m.quitChan <- true
 }
 
-func (m *MonitorData) IsRunning() bool {
+// IsRunning returns the running status of the monitor
+func (m *ServiceData) IsRunning() bool {
 	return m.running
 }
 
-func (m *MonitorData) Observable() rxgo.Observable {
+// Observable returns an rxgo Observable for the monitor's command channel
+func (m *ServiceData) Observable() rxgo.Observable {
 	return rxgo.FromEventSource(m.commandChan)
 }
 
-func (m *MonitorData) TimesheetStatus() int {
+func (m *ServiceData) TimesheetStatus() int {
 	m.timesheetStatusMtx.RLock()
 	defer m.timesheetStatusMtx.RUnlock()
 	return m.timesheetStatus
 }
 
-func (m *MonitorData) SetTimesheetStatus(status int) {
+func (m *ServiceData) SetTimesheetStatus(status int) {
 	m.timesheetStatusMtx.Lock()
 	defer m.timesheetStatusMtx.Unlock()
 	m.timesheetStatus = status
 }
 
-func (m *MonitorData) TimesheetError() error {
+func (m *ServiceData) TimesheetError() error {
 	m.timesheetErrorMtx.RLock()
 	defer m.timesheetErrorMtx.RUnlock()
 	return m.timesheetError
 }
 
-func (m *MonitorData) SetTimesheetError(err error) {
+func (m *ServiceData) SetTimesheetError(err error) {
 	m.timesheetErrorMtx.Lock()
 	defer m.timesheetErrorMtx.Unlock()
 	m.timesheetError = err
 }
 
-func (m *MonitorData) RunningTimesheet() models.Timesheet {
+func (m *ServiceData) RunningTimesheet() models.Timesheet {
 	m.runningTimesheetMtx.RLock()
 	defer m.runningTimesheetMtx.RUnlock()
 	return m.runningTimesheet
 }
 
-func (m *MonitorData) SetRunningTimesheet(timesheet models.Timesheet) {
+func (m *ServiceData) SetRunningTimesheet(timesheet models.Timesheet) {
 	m.runningTimesheetMtx.Lock()
 	defer m.runningTimesheetMtx.Unlock()
 	m.runningTimesheet = timesheet
 }
 
-func (m *MonitorData) actionLoop(startChan chan bool) {
+func (m *ServiceData) actionLoop(startChan chan bool) {
 	log := logger.GetFuncLogger(m.log, "actionLoop")
 	if m.IsRunning() {
 		log.Warn().
@@ -147,7 +155,7 @@ func (m *MonitorData) actionLoop(startChan chan bool) {
 		m.updateTimesheet()
 		log.Trace().
 			Msg("sending UpdateEvent")
-		m.commandChan <- rxgo.Of(MonitorServiceUpdateEvent{})
+		m.commandChan <- rxgo.Of(ServiceUpdateEvent{})
 		select {
 		case <-m.quitChan:
 			log.Debug().
@@ -162,7 +170,7 @@ func (m *MonitorData) actionLoop(startChan chan bool) {
 	}
 }
 
-func (m *MonitorData) updateTimesheet() {
+func (m *ServiceData) updateTimesheet() {
 	log := logger.GetFuncLogger(m.log, "updateTimesheet")
 	// Get the running timesheet, if any
 	runningTS, err := m.tsModel.RunningTimesheet()
