@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"github.com/neflyte/timetracker/lib/utils"
 	"strconv"
 	"time"
 
@@ -14,6 +15,11 @@ import (
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
+)
+
+const (
+	// taskDescriptionTrimLength is the number of characters of the description to show before truncation
+	taskDescriptionTrimLength = 32
 )
 
 // TaskData is the main Task data structure
@@ -92,6 +98,8 @@ type Task interface {
 	StopRunningTask() (*TimesheetData, error)
 	FindTaskBySynopsis(tasks []TaskData, synopsis string) *TaskData
 	Resolve(arg string) (uint, string)
+	DisplayString() string
+	Equals(task Task) bool
 }
 
 // Data returns the underlying struct of the interface
@@ -102,6 +110,15 @@ func (td *TaskData) Data() *TaskData {
 // String implements fmt.Stringer
 func (td *TaskData) String() string {
 	return fmt.Sprintf("%s (#%d)", td.Synopsis, td.ID)
+}
+
+// DisplayString returns a string form of the Task suitable for display
+func (td *TaskData) DisplayString() string {
+	return fmt.Sprintf(
+		"%s: %s",
+		td.Synopsis,
+		utils.TrimWithEllipsis(td.Description, taskDescriptionTrimLength),
+	)
 }
 
 // Create creates a new task
@@ -289,4 +306,17 @@ func (td *TaskData) Resolve(arg string) (taskid uint, tasksynopsis string) {
 	}
 	log.Trace().Msgf("returning %d", uint(id))
 	return uint(id), ""
+}
+
+// Equals tests if this Task is equal to the specified Task
+func (td *TaskData) Equals(task Task) bool {
+	if task == nil {
+		return false
+	}
+	if task.Data() == nil {
+		return false
+	}
+	return td.ID == task.Data().ID &&
+		td.Synopsis == task.Data().Synopsis &&
+		td.Description == task.Data().Description
 }

@@ -181,9 +181,9 @@ func (t *timetrackerWindowData) refreshTaskList() {
 			Msg("unable to load last started tasks")
 		return
 	}
-	taskList := make([]string, len(recentTasks))
+	taskList := make(models.TaskList, len(recentTasks))
 	for idx := range recentTasks {
-		taskList[idx] = recentTasks[idx].Synopsis
+		taskList[idx] = models.NewTaskWithData(recentTasks[idx])
 	}
 	t.compactUI.SetTaskList(taskList)
 }

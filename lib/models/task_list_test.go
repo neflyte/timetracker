@@ -37,7 +37,7 @@ func TestUnit_TaskListFromSliceIntf_NonTaskInSlice(t *testing.T) {
 		"foo bar",
 		12345,
 	}
-	expected := make(TaskList, 0)
+	expected := make(TaskList, len(input))
 	actual := TaskListFromSliceIntf(input)
 	assert.Equal(t, expected, actual)
 }
@@ -59,12 +59,6 @@ func TestUnit_TaskListToSliceIntf_Nominal(t *testing.T) {
 		task1,
 		task2,
 	}
-	actual := TaskListToSliceIntf(input)
-	assert.Equal(t, expected, actual)
-}
-
-func TestUnit_TaskListToSliceIntf_NilTaskList(t *testing.T) {
-	expected := make([]interface{}, 0)
-	actual := TaskListToSliceIntf(nil)
+	actual := input.ToSliceIntf()
 	assert.Equal(t, expected, actual)
 }
