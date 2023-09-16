@@ -321,8 +321,6 @@ func (t *timetrackerWindowData) doStopTask() {
 		fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp)), // i18n
 	)
 	t.setRunningTimesheet(nil)
-	// Refresh task list
-	t.refreshTaskList()
 }
 
 func (t *timetrackerWindowData) doStopAndStartTask() {
@@ -365,7 +363,7 @@ func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
 	t.selectedTaskMtx.Lock()
 	t.selectedTask = selectedTask
 	t.selectedTaskMtx.Unlock()
-	t.compactUI.SelectTask(selectedTask.Data().Synopsis)
+	t.compactUI.SelectTask(selectedTask)
 	t.doStartSelectedTask()
 }
 
@@ -373,19 +371,20 @@ func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
 	log := logger.GetFuncLogger(t.log, "handleTaskSelectorEvent")
 	switch event := item.(type) {
 	case widgets.TaskSelectorSelectedEvent:
-		if event.SelectedTask != nil {
-			log.Debug().
-				Str("selected", event.SelectedTask.String()).
-				Msg("got selected task")
-			t.selectedTaskMtx.Lock()
-			t.selectedTask = event.SelectedTask
-			t.selectedTaskMtx.Unlock()
-			log.Debug().
-				Msg("set selected task")
+		if event.SelectedTask == nil {
+			log.Warn().
+				Msg("nil task in SelectedEvent")
 			return
 		}
-		log.Warn().
-			Msg("nil task in SelectedEvent")
+		log.Debug().
+			Str("selected", event.SelectedTask.String()).
+			Msg("got selected task")
+		t.selectedTaskMtx.Lock()
+		t.selectedTask = event.SelectedTask
+		t.selectedTaskMtx.Unlock()
+		t.compactUI.SelectTask(event.SelectedTask)
+		log.Debug().
+			Msg("set selected task")
 	case widgets.TaskSelectorErrorEvent:
 		if event.Err != nil {
 			log.Err(event.Err).
@@ -409,21 +408,15 @@ func (t *timetrackerWindowData) handleCompactUIEvent(item interface{}) {
 	case widgets.CompactUIQuitEvent:
 		t.Close()
 	case widgets.CompactUITaskEvent:
-		t.handleCompactUITaskEvent(event.TaskIndex, event.TaskSynopsis, event.Task)
-	}
-}
-
-func (t *timetrackerWindowData) handleCompactUITaskEvent(index int, synopsis string, task models.Task) {
-	// log := logger.GetFuncLogger(t.log, "handleCompactUITaskEvent")
-	if index == -1 || synopsis == "" || task == nil {
 		t.doStopTask()
-		return
+		if event.ShouldStopTask() {
+			return
+		}
+		t.selectedTaskMtx.Lock()
+		t.selectedTask = event.Task
+		t.selectedTaskMtx.Unlock()
+		t.doStartTask()
 	}
-	t.doStopTask()
-	t.selectedTaskMtx.Lock()
-	t.selectedTask = task
-	t.selectedTaskMtx.Unlock()
-	t.doStartTask()
 }
 
 func (t *timetrackerWindowData) handleMonitorServiceEvent(item interface{}) {
