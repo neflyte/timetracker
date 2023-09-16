@@ -32,6 +32,11 @@ type CompactUITaskEvent struct {
 	TaskIndex int
 }
 
+// ShouldStopTask determines if the task event is meant to stop the running task
+func (c *CompactUITaskEvent) ShouldStopTask() bool {
+	return c.TaskIndex == -1 || c.TaskSynopsis == "" || c.Task == nil
+}
+
 // CompactUIManageEvent represents an event which opens the Manage window
 type CompactUIManageEvent struct{}
 
@@ -197,17 +202,17 @@ func (c *CompactUI) SetRunning(running bool) {
 		Msg("set task running status")
 }
 
-// SelectTask attempts to select the task with the specified name. If the name is empty
-// or not present in the task list, the selected task will be cleared.
-func (c *CompactUI) SelectTask(name string) {
-	log := logger.GetFuncLogger(c.log, "SelectTask").
-		With().Str("name", name).Logger()
-	if name == "" {
+// SelectTask attempts to select the specified task. If the task is nil,
+// the selected task will be cleared.
+func (c *CompactUI) SelectTask(task models.Task) {
+	log := logger.GetFuncLogger(c.log, "SelectTask")
+	if task == nil {
 		log.Debug().
 			Msg("clearing selection; name was empty")
 		c.taskSelect.ClearSelected()
 		return
-	} else if !slices.Contains(c.taskList, name) {
+	}
+	if !c.taskModels.Contains(task) {
 		log.Debug().
 			Msg("clearing selection; taskList does not contain name")
 		c.taskSelect.ClearSelected()
@@ -215,7 +220,7 @@ func (c *CompactUI) SelectTask(name string) {
 	}
 	log.Debug().
 		Msg("set selected task")
-	c.taskSelect.SetSelected(name)
+	c.taskSelect.SetSelected(task.DisplayString())
 }
 
 // SetTaskName sets the display text of the task name label
