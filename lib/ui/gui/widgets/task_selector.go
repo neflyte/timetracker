@@ -101,7 +101,7 @@ func (t *TaskSelector) MinSize() fyne.Size {
 // Deprecated
 func (t *TaskSelector) SetList(tasks models.TaskList) {
 	log := logger.GetFuncLogger(t.log, "SetList")
-	err := t.tasksListBinding.Set(models.TaskListToSliceIntf(tasks))
+	err := t.tasksListBinding.Set(tasks.ToSliceIntf())
 	if err != nil {
 		log.Err(err).
 			Msg("unable to set tasksListBinding")
@@ -254,9 +254,7 @@ func (t *TaskSelector) FilterTasks() {
 	// Update list binding with results of search
 	taskList := models.TaskDatas(filteredTaskDatas).AsTaskList()
 	slices.Reverse(taskList)
-	err = t.tasksListBinding.Set(
-		models.TaskListToSliceIntf(taskList),
-	)
+	err = t.tasksListBinding.Set(taskList.ToSliceIntf())
 	if err != nil {
 		log.Err(err).
 			Msg("unable to set tasks list binding")

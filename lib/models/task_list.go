@@ -1,29 +1,47 @@
 package models
 
-// TaskList represents a list of tasks
+// TaskList represents a slice of tasks
 type TaskList []Task
+
+// ToSliceIntf converts the slice of tasks into a slice of interface{}
+func (tl TaskList) ToSliceIntf() []interface{} {
+	taskListIntf := make([]interface{}, len(tl))
+	for idx := range tl {
+		taskIntf, ok := tl[idx].(interface{})
+		if ok {
+			taskListIntf[idx] = taskIntf
+		}
+	}
+	return taskListIntf
+}
+
+// Index returns the index of the specified Task in the list or -1 if the Task is not found
+func (tl TaskList) Index(task Task) int {
+	for idx := range tl {
+		if tl[idx].Equals(task) {
+			return idx
+		}
+	}
+	return -1
+}
+
+// Contains tests whether the supplied Task is present in the list
+func (tl TaskList) Contains(task Task) bool {
+	return tl.Index(task) > -1
+}
 
 // TaskListFromSliceIntf converts a slice of interface{} into a slice of tasks (TaskList).
 // Elements that are not TaskList are excluded from the result.
 func TaskListFromSliceIntf(taskListIntf []interface{}) TaskList {
-	tasks := make(TaskList, 0)
+	if taskListIntf == nil {
+		return make(TaskList, 0)
+	}
+	tasks := make(TaskList, len(taskListIntf))
 	for idx := range taskListIntf {
 		task, ok := taskListIntf[idx].(Task)
 		if ok {
-			tasks = append(tasks, task)
+			tasks[idx] = task
 		}
 	}
 	return tasks
-}
-
-// TaskListToSliceIntf converts a slice of tasks (TaskList) into a slice of interface{}
-func TaskListToSliceIntf(taskList TaskList) []interface{} {
-	taskListIntf := make([]interface{}, 0)
-	for idx := range taskList {
-		taskIntf, ok := taskList[idx].(interface{})
-		if ok {
-			taskListIntf = append(taskListIntf, taskIntf)
-		}
-	}
-	return taskListIntf
 }

@@ -73,6 +73,7 @@ type CompactUI struct {
 	elapsedTimeLabel           *widget.Label
 	commandChan                chan rxgo.Item
 	taskList                   []string
+	taskModels                 models.TaskList
 	log                        zerolog.Logger
 	widget.BaseWidget
 	selectedTaskIndex int
@@ -83,6 +84,7 @@ func NewCompactUI() *CompactUI {
 	compactui := &CompactUI{
 		log:                logger.GetStructLogger("CompactUI"),
 		taskList:           make([]string, 0),
+		taskModels:         make(models.TaskList, 0),
 		taskListBinding:    binding.NewStringList(),
 		taskNameBinding:    binding.NewString(),
 		taskRunningBinding: binding.NewBool(),
@@ -155,16 +157,21 @@ func (c *CompactUI) Observable() rxgo.Observable {
 }
 
 // SetTaskList sets the list of tasks displayed in the task selector widget
-func (c *CompactUI) SetTaskList(taskList []string) {
+func (c *CompactUI) SetTaskList(taskModels models.TaskList) {
 	log := logger.GetFuncLogger(c.log, "SetTaskList")
-	if taskList == nil {
+	if taskModels == nil {
 		log.Error().
 			Msg("cannot set task list with a nil list")
 		return
 	}
+	c.taskModels = taskModels
 	log = log.With().
-		Int("taskCount", len(taskList)).
+		Int("modelCount", len(taskModels)).
 		Logger()
+	taskList := make([]string, len(taskModels))
+	for idx := range taskModels {
+		taskList[idx] = taskModels[idx].Data().DisplayString()
+	}
 	err := c.taskListBinding.Set(taskList)
 	if err != nil {
 		log.Err(err).
@@ -323,7 +330,7 @@ func (c *CompactUI) taskListWasUpdated() {
 	c.taskSelect.Options = taskList
 	// If the selected task is in the new list, make that selection stand.
 	if c.selectedTask != nil {
-		c.selectedTaskIndex = slices.Index(taskList, c.selectedTask.Data().Synopsis)
+		c.selectedTaskIndex = c.taskModels.Index(c.selectedTask)
 		if c.selectedTaskIndex > -1 {
 			c.taskSelect.SetSelectedIndex(c.selectedTaskIndex)
 		} else {
@@ -352,35 +359,17 @@ func (c *CompactUI) taskWasSelected(selection string) {
 		c.otherTaskWasSelected()
 		return
 	}
-	log.Debug().Msg("searching for task by synopsis using selection")
-	task, err := models.NewTask().SearchBySynopsis(selection)
-	if err != nil {
-		log.Err(err).
-			Msg("unable to lookup selected task by synopsis")
-		return
-	}
-	if len(task) == 0 {
+	selectedIndex := slices.Index(c.taskList, selection)
+	if selectedIndex == -1 {
 		log.Error().
-			Msg("could not find selected task by synopsis")
+			Str("selection", selection).
+			Msg("unable to find task in taskList")
 		return
 	}
-	taskData := task[0]
+	c.selectedTaskIndex = selectedIndex
+	c.selectedTask = c.taskModels[selectedIndex]
 	log.Debug().
-		Uint("id", taskData.ID).
-		Str("synopsis", taskData.Synopsis).
-		Msg("found task")
-	taskIndex := slices.Index(c.taskList, taskData.Synopsis)
-	if taskIndex == -1 {
-		log.Error().
-			Uint("id", taskData.ID).
-			Str("synopsis", taskData.Synopsis).
-			Msg("could not find selected task in taskList; will not change selectedTask")
-		return
-	}
-	c.selectedTaskIndex = taskIndex
-	c.selectedTask = models.NewTaskWithData(taskData)
-	log.Debug().
-		Bool("selectedTask", c.selectedTask != nil).
+		Str("selectedTask", c.selectedTask.String()).
 		Int("selectedTaskIndex", c.selectedTaskIndex).
 		Msg("selected task")
 	c.commandChan <- rxgo.Of(CompactUITaskEvent{
