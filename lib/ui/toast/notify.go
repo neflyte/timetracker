@@ -91,6 +91,9 @@ func (t *impl) Cleanup() {
 				Str("iconPath", t.iconPath).
 				Msg("unable to remove temporary icon file")
 		}
+		log.Debug().
+			Str("iconPath", t.iconPath).
+			Msg("removed temporary icon file")
 		t.iconPath = ""
 	}
 	if t.tempDir != "" {
@@ -100,6 +103,9 @@ func (t *impl) Cleanup() {
 				Str("tempDir", t.tempDir).
 				Msg("unable to remove temporary directory")
 		}
+		log.Debug().
+			Str("tempDir", t.tempDir).
+			Msg("removed temporary directory")
 		t.tempDir = ""
 	}
 }
