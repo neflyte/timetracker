@@ -22,6 +22,8 @@ const (
 	testTaskDescription  = "This is a task"
 	testTaskSynopsis2    = "Foo Bar Baz"
 	testTaskDescription2 = "quux Narf fnord"
+	testTaskSynopsis3    = "zip zop zap"
+	testTaskDescription3 = "wheeeee!"
 
 	synopsisBar        = "Bar"
 	descriptionQuxQuux = "qux quux"

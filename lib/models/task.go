@@ -316,7 +316,5 @@ func (td *TaskData) Equals(task Task) bool {
 	if task.Data() == nil {
 		return false
 	}
-	return td.ID == task.Data().ID &&
-		td.Synopsis == task.Data().Synopsis &&
-		td.Description == task.Data().Description
+	return td.Synopsis == task.Data().Synopsis && td.Description == task.Data().Description
 }

@@ -54,12 +54,12 @@ var (
 			return timesheetStartTime, nil
 		}).
 		Attr("StopTime", func(args factory.Args) (interface{}, error) {
-			// StartTime plus random hours from 0-6 and random minutes and seconds from 0-59
+			// StartTime plus random hours from 0-12 and random minutes and seconds from 0-59
 			tsdPtr, castOK := args.Instance().(*TimesheetData)
 			if !castOK {
 				return nil, errors.New("arg was not *TimesheetData; this is unexpected")
 			}
-			randHours := rnd.Intn(6)
+			randHours := rnd.Intn(12)
 			randMinutes := rnd.Intn(59)
 			randSeconds := rnd.Intn(59)
 			timesheetStopTime := tsdPtr.StartTime.
