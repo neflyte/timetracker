@@ -14,18 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Task selector defaults to reverse (latest-first) sort
 - Split single-file binary into 3 binaries - CLI, GUI, and Tray - for more efficient usage on macOS and Windows platforms
 - Default main window size changed from 640x480 to 800x600
-- Updated fyne.io/fyne/v2 from v2.3.0 to v2.3.5
+- Updated fyne.io/fyne/v2 from v2.3.0 to v2.4.1
 - Updated github.com/fatih/color from v1.13.0 to v1.15.0
-- Updated github.com/gen2brain/beeep from v0.0.0-20220909211152-5a9ec94374f6 to v0.0.0-20230812223410-3e1549ef0811
+- Updated github.com/gen2brain/beeep from v0.0.0-20220909211152-5a9ec94374f6 to v0.0.0-20230907135156-1a38885a97fc
 - Updated github.com/gofrs/uuid from v4.3.1 to v4.4.0
-- Updated github.com/rs/zerolog from v1.28.0 to v1.30.0
+- Updated github.com/rs/zerolog from v1.28.0 to v1.31.0
 - Updated github.com/spf13/cobra from v1.6.1 to v1.7.0
-- Updated github.com/spf13/viper from v1.14.0 to v1.16.0
+- Updated github.com/spf13/viper from v1.14.0 to v1.17.0
 - Updated github.com/stretchr/testify from v1.8.1 to v1.8.2
-- Updated golang.org/x/sys from v0.5.0 to v0.6.0
-- Updated golang.org/x/net from v0.4.0 to v0.14.0
-- Updated gorm.io/driver/sqlite from v1.4.4 to v1.5.3
-- Updated gorm.io/gorm from v1.24.3 to v1.25.4
+- Updated golang.org/x/sys from v0.5.0 to v0.13.0
+- Updated golang.org/x/net from v0.4.0 to v0.15.0
+- Updated gorm.io/driver/sqlite from v1.4.4 to v1.5.4
+- Updated gorm.io/gorm from v1.24.3 to v1.25.5
 
 ### Removed
 

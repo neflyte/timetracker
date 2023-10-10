@@ -120,9 +120,9 @@ dist-windows: ensure-goversioninfo lint build
 
 outdated:
 ifeq ($(OS),Windows_NT)
-	PUSHD %HOMEDRIVE%%HOMEPATH% && go install github.com/psampaz/go-mod-outdated@v0.8.0
+	PUSHD %HOMEDRIVE%%HOMEPATH% && go install github.com/psampaz/go-mod-outdated@v0.9.0
 else
-	hash go-mod-outdated 2>/dev/null || { cd && go install github.com/psampaz/go-mod-outdated@v0.8.0; }
+	hash go-mod-outdated 2>/dev/null || { cd && go install github.com/psampaz/go-mod-outdated@v0.9.0; }
 endif
 	go list -json -u -m all | go-mod-outdated -direct -update
 

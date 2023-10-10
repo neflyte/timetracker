@@ -119,6 +119,9 @@ func (t *timetrackerWindowData) initUI() error {
 	if newWindowSize.Height < minimumWindowHeight {
 		newWindowSize.Height = minimumWindowHeight
 	}
+	if newWindowSize.Width < minimumWindowWidth {
+		newWindowSize.Width = minimumWindowWidth
+	}
 	t.Window.Resize(newWindowSize)
 	// Resize the container to the original size before we resized the window
 	t.container.Resize(siz)
@@ -181,15 +184,20 @@ func (t *timetrackerWindowData) refreshTaskList() {
 			Msg("unable to load last started tasks")
 		return
 	}
+	log.Debug().
+		Int("numTasks", len(recentTasks)).
+		Msg("loaded last started tasks")
 	taskList := make(models.TaskList, len(recentTasks))
 	for idx := range recentTasks {
 		taskList[idx] = models.NewTaskWithData(recentTasks[idx])
+		log.Debug().
+			Str("task", taskList[idx].DisplayString()).
+			Msg("add to task list")
 	}
 	t.compactUI.SetTaskList(taskList)
 }
 
-// setRunningTimesheet updates CompactUI, refreshes the task list, sets the
-// selectedTask, and handles the elapsedTimeLoop
+// setRunningTimesheet updates CompactUI and handles the elapsedTimeLoop
 func (t *timetrackerWindowData) setRunningTimesheet(tsd *models.TimesheetData) {
 	log := logger.GetFuncLogger(t.log, "setRunningTimesheet")
 	t.runningTimesheet = tsd
@@ -360,11 +368,7 @@ func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
 			Msg("selected task is nil; this is unexpected")
 		return
 	}
-	t.selectedTaskMtx.Lock()
-	t.selectedTask = selectedTask
-	t.selectedTaskMtx.Unlock()
 	t.compactUI.SelectTask(selectedTask)
-	t.doStartSelectedTask()
 }
 
 func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
@@ -379,9 +383,6 @@ func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
 		log.Debug().
 			Str("selected", event.SelectedTask.String()).
 			Msg("got selected task")
-		t.selectedTaskMtx.Lock()
-		t.selectedTask = event.SelectedTask
-		t.selectedTaskMtx.Unlock()
 		t.compactUI.SelectTask(event.SelectedTask)
 		log.Debug().
 			Msg("set selected task")
@@ -408,6 +409,12 @@ func (t *timetrackerWindowData) handleCompactUIEvent(item interface{}) {
 	case widgets.CompactUIQuitEvent:
 		t.Close()
 	case widgets.CompactUITaskEvent:
+		t.selectedTaskMtx.RLock()
+		if t.selectedTask != nil && t.selectedTask.Equals(event.Task) {
+			t.selectedTaskMtx.RUnlock()
+			return
+		}
+		t.selectedTaskMtx.RUnlock()
 		t.doStopTask()
 		if event.ShouldStopTask() {
 			return

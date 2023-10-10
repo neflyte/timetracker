@@ -11,6 +11,7 @@ import (
 	"github.com/reactivex/rxgo/v2"
 	"github.com/rs/zerolog"
 	"golang.org/x/exp/slices"
+	"sync"
 )
 
 const (
@@ -66,9 +67,7 @@ type CompactUI struct {
 	taskNameBinding            binding.String
 	elapsedTimeBinding         binding.String
 	taskRunningBinding         binding.Bool
-	taskListBinding            binding.StringList
 	taskRunningBindingListener binding.DataListener
-	taskListBindingListener    binding.DataListener
 	selectedTask               models.Task
 	taskSelect                 *widget.Select
 	container                  *fyne.Container
@@ -79,6 +78,7 @@ type CompactUI struct {
 	commandChan                chan rxgo.Item
 	taskList                   []string
 	taskModels                 models.TaskList
+	selectMtx                  sync.Mutex
 	log                        zerolog.Logger
 	widget.BaseWidget
 	selectedTaskIndex int
@@ -90,11 +90,11 @@ func NewCompactUI() *CompactUI {
 		log:                logger.GetStructLogger("CompactUI"),
 		taskList:           make([]string, 0),
 		taskModels:         make(models.TaskList, 0),
-		taskListBinding:    binding.NewStringList(),
 		taskNameBinding:    binding.NewString(),
 		taskRunningBinding: binding.NewBool(),
 		elapsedTimeBinding: binding.NewString(),
 		commandChan:        make(chan rxgo.Item, compactUICommandChanSize),
+		selectMtx:          sync.Mutex{},
 	}
 	compactui.ExtendBaseWidget(compactui)
 	compactui.initUI()
@@ -147,8 +147,6 @@ func (c *CompactUI) initBindings() error {
 	}
 	c.taskRunningBindingListener = binding.NewDataListener(c.taskRunningWasUpdated)
 	c.taskRunningBinding.AddListener(c.taskRunningBindingListener)
-	c.taskListBindingListener = binding.NewDataListener(c.taskListWasUpdated)
-	c.taskListBinding.AddListener(c.taskListBindingListener)
 	return nil
 }
 
@@ -171,21 +169,13 @@ func (c *CompactUI) SetTaskList(taskModels models.TaskList) {
 	}
 	c.taskModels = taskModels
 	log = log.With().
-		Int("modelCount", len(taskModels)).
+		Int("modelCount", len(c.taskModels)).
 		Logger()
-	taskList := make([]string, len(taskModels))
-	for idx := range taskModels {
-		taskList[idx] = taskModels[idx].Data().DisplayString()
-	}
-	err := c.taskListBinding.Set(taskList)
-	if err != nil {
-		log.Err(err).
-			Msg("unable to set task list binding")
-		return
-	}
-	c.taskList = taskList
+	c.taskList = c.taskModels.Names()
 	log.Debug().
+		Int("taskCount", len(c.taskList)).
 		Msg("set task list binding")
+	c.taskListWasUpdated(c.taskList)
 }
 
 // SetRunning sets the "task is running" status of the UI
@@ -206,15 +196,11 @@ func (c *CompactUI) SetRunning(running bool) {
 // the selected task will be cleared.
 func (c *CompactUI) SelectTask(task models.Task) {
 	log := logger.GetFuncLogger(c.log, "SelectTask")
-	if task == nil {
+	c.selectMtx.Lock()
+	defer c.selectMtx.Unlock()
+	if task == nil /* || !c.taskModels.Contains(task) */ {
 		log.Debug().
-			Msg("clearing selection; name was empty")
-		c.taskSelect.ClearSelected()
-		return
-	}
-	if !c.taskModels.Contains(task) {
-		log.Debug().
-			Msg("clearing selection; taskList does not contain name")
+			Msg("clearing selection; name was empty or taskList does not contain task")
 		c.taskSelect.ClearSelected()
 		return
 	}
@@ -321,31 +307,44 @@ func (c *CompactUI) taskRunningWasUpdated() {
 	}
 }
 
-func (c *CompactUI) taskListWasUpdated() {
+func (c *CompactUI) taskListWasUpdated(taskNames []string) {
 	log := logger.GetFuncLogger(c.log, "taskListWasUpdated")
-	taskList, err := c.taskListBinding.Get()
-	if err != nil {
-		log.Err(err).
-			Msg("unable to get task list from binding")
-		return
-	}
+	log.Debug().Msg("taskNames was updated")
 	defer c.updateStartStopButton()
-	// Update the Select widget's list after appending the 'other' item
-	taskList = append(taskList, compactUIOtherTaskLabel)
-	c.taskSelect.Options = taskList
+	// Append the 'other' item
+	taskNames = append(taskNames, compactUIOtherTaskLabel)
+	// Update the options
+	c.taskSelect.Options = taskNames
 	// If the selected task is in the new list, make that selection stand.
 	if c.selectedTask != nil {
-		c.selectedTaskIndex = c.taskModels.Index(c.selectedTask)
-		if c.selectedTaskIndex > -1 {
-			c.taskSelect.SetSelectedIndex(c.selectedTaskIndex)
-		} else {
-			c.selectedTask = nil
+		c.selectMtx.Lock()
+		defer c.selectMtx.Unlock()
+
+		taskModelIndex := c.taskModels.Index(c.selectedTask)
+		if taskModelIndex == -1 {
 			c.taskSelect.ClearSelected()
+			return
 		}
-	} else {
-		// Need an explicit refresh here because the other code paths indirectly refresh
-		// the taskSelect widget.
-		c.taskSelect.Refresh()
+		log.Debug().
+			Str("selectedTask", c.selectedTask.DisplayString()).
+			Int("taskModelIndex", taskModelIndex).
+			Msg("selected task is present")
+
+		//oldhandler := c.taskSelect.OnChanged
+		//defer func() {
+		//	c.taskSelect.OnChanged = oldhandler
+		//}()
+		//c.taskSelect.OnChanged = nil
+		//if c.selectedTaskIndex > -1 && c.taskSelect.Selected != taskNames[c.selectedTaskIndex] {
+		//	log.Debug().
+		//		Str("selectedTask", taskNames[c.selectedTaskIndex]).
+		//		Msg("setting selected task")
+		//	c.taskSelect.SetSelected(taskNames[c.selectedTaskIndex])
+		//} else {
+		//	log.Debug().
+		//		Msg("setting Other task as selected")
+		//	c.taskSelect.SetSelected(compactUIOtherTaskLabel)
+		//}
 	}
 }
 

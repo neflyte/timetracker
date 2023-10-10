@@ -17,6 +17,9 @@ func (tl TaskList) ToSliceIntf() []interface{} {
 
 // Index returns the index of the specified Task in the list or -1 if the Task is not found
 func (tl TaskList) Index(task Task) int {
+	if task == nil {
+		return -1
+	}
 	for idx := range tl {
 		if tl[idx].Equals(task) {
 			return idx
@@ -27,7 +30,19 @@ func (tl TaskList) Index(task Task) int {
 
 // Contains tests whether the supplied Task is present in the list
 func (tl TaskList) Contains(task Task) bool {
+	if task == nil {
+		return false
+	}
 	return tl.Index(task) > -1
+}
+
+// Names returns a slice of strings containing the DisplayString for each Task
+func (tl TaskList) Names() []string {
+	names := make([]string, len(tl))
+	for idx := range tl {
+		names[idx] = tl[idx].DisplayString()
+	}
+	return names
 }
 
 // TaskListFromSliceIntf converts a slice of interface{} into a slice of tasks (TaskList).
