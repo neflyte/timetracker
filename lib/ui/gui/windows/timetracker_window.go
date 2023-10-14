@@ -174,6 +174,12 @@ func (t *timetrackerWindowData) initWindowData() error {
 	return nil
 }
 
+func (t *timetrackerWindowData) setSelectedTask(selectedTask models.Task) {
+	t.selectedTaskMtx.Lock()
+	t.selectedTask = selectedTask
+	t.selectedTaskMtx.Unlock()
+}
+
 // refreshTaskList loads the last started tasks and sends them to the CompactUI
 func (t *timetrackerWindowData) refreshTaskList() {
 	log := logger.GetFuncLogger(t.log, "refreshTaskList")
@@ -191,6 +197,7 @@ func (t *timetrackerWindowData) refreshTaskList() {
 	for idx := range recentTasks {
 		taskList[idx] = models.NewTaskWithData(recentTasks[idx])
 		log.Debug().
+			Int("idx", idx).
 			Str("task", taskList[idx].DisplayString()).
 			Msg("add to task list")
 	}
@@ -214,9 +221,9 @@ func (t *timetrackerWindowData) setRunningTimesheet(tsd *models.TimesheetData) {
 		Str("taskName", taskName).
 		Str("elapsedTime", elapsedTime).
 		Msg("update CompactUI")
-	t.compactUI.SetRunning(running)
 	t.compactUI.SetTaskName(taskName)
 	t.compactUI.SetElapsedTime(elapsedTime)
+	t.compactUI.SetRunning(running)
 	// Handle the elapsedTimeLoop
 	switch running {
 	case true:
@@ -234,12 +241,19 @@ func (t *timetrackerWindowData) setRunningTimesheet(tsd *models.TimesheetData) {
 
 // doCreateAndStartTask shows the Create and Start Task dialog box
 func (t *timetrackerWindowData) doCreateAndStartTask() {
+	log := logger.GetFuncLogger(t.log, "doCreateAndStartTask")
+	log.Debug().
+		Msg("hide closeWindow checkbox")
 	t.createNewTaskAndStartDialog.HideCloseWindowCheckbox()
+	log.Debug().
+		Msg("show dialog")
 	t.createNewTaskAndStartDialog.Show()
 }
 
 func (t *timetrackerWindowData) doStartSelectedTask() {
 	log := logger.GetFuncLogger(t.log, "doStartSelectedTask")
+	log.Debug().
+		Msg("check for running timesheet")
 	runningTS, err := models.NewTimesheet().RunningTimesheet()
 	if err != nil && !errors.Is(err, tterrors.ErrNoRunningTask{}) {
 		log.Err(err).
@@ -247,14 +261,12 @@ func (t *timetrackerWindowData) doStartSelectedTask() {
 		return
 	}
 	if runningTS != nil {
+		log.Debug().
+			Msg("a timesheet is running; ask the user if it should stop")
 		stopTaskDialog := dialogs.NewStopTaskDialog(
 			runningTS.Data().Task,
 			(*t.app).Preferences(),
-			func(doStop bool) {
-				if doStop {
-					t.doStopAndStartTask()
-				}
-			},
+			t.handleStopTaskDialogResult,
 			t.Window,
 		)
 		stopTaskDialog.SetCloseWindowCheckbox(true)
@@ -264,11 +276,14 @@ func (t *timetrackerWindowData) doStartSelectedTask() {
 	t.doStartTask()
 }
 
-// doStartTask starts the task in t.selectedTask. It assumes there are no tasks running.
+// doStartTask starts the task in t.selectedTask if a task isn't already running
 func (t *timetrackerWindowData) doStartTask() {
 	log := logger.GetFuncLogger(t.log, "doStartTask")
-	log.Trace().Msg("started")
-	defer log.Trace().Msg("done")
+	if t.isTimesheetOpen() {
+		log.Warn().
+			Msg("a timesheet is already open; will not start a task")
+		return
+	}
 	// Lock t.selectedTask for read
 	t.selectedTaskMtx.RLock()
 	if t.selectedTask == nil {
@@ -368,9 +383,12 @@ func (t *timetrackerWindowData) handleSelectTaskResult(selected bool) {
 			Msg("selected task is nil; this is unexpected")
 		return
 	}
-	t.compactUI.SelectTask(selectedTask)
+	t.setSelectedTask(selectedTask)
+	t.doStartSelectedTask()
 }
 
+// handleTaskSelectorEvent logs the events coming from the TaskSelector. No further action
+// beyond logging is necessary.
 func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
 	log := logger.GetFuncLogger(t.log, "handleTaskSelectorEvent")
 	switch event := item.(type) {
@@ -378,14 +396,11 @@ func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
 		if event.SelectedTask == nil {
 			log.Warn().
 				Msg("nil task in SelectedEvent")
-			return
+			break
 		}
 		log.Debug().
 			Str("selected", event.SelectedTask.String()).
-			Msg("got selected task")
-		t.compactUI.SelectTask(event.SelectedTask)
-		log.Debug().
-			Msg("set selected task")
+			Msg("user selected a task from the taskSelector")
 	case widgets.TaskSelectorErrorEvent:
 		if event.Err != nil {
 			log.Err(event.Err).
@@ -395,6 +410,7 @@ func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
 }
 
 func (t *timetrackerWindowData) handleCompactUIEvent(item interface{}) {
+	log := logger.GetFuncLogger(t.log, "handleCompactUIEvent")
 	switch event := item.(type) {
 	case widgets.CompactUISelectTaskEvent:
 		t.doSelectTask()
@@ -409,20 +425,20 @@ func (t *timetrackerWindowData) handleCompactUIEvent(item interface{}) {
 	case widgets.CompactUIQuitEvent:
 		t.Close()
 	case widgets.CompactUITaskEvent:
+		if event.ShouldStopTask() {
+			t.doStopTask()
+			return
+		}
 		t.selectedTaskMtx.RLock()
 		if t.selectedTask != nil && t.selectedTask.Equals(event.Task) {
+			log.Debug().
+				Msg("selected task is the same as the event's task; doing nothing")
 			t.selectedTaskMtx.RUnlock()
 			return
 		}
 		t.selectedTaskMtx.RUnlock()
-		t.doStopTask()
-		if event.ShouldStopTask() {
-			return
-		}
-		t.selectedTaskMtx.Lock()
-		t.selectedTask = event.Task
-		t.selectedTaskMtx.Unlock()
-		t.doStartTask()
+		t.setSelectedTask(event.Task)
+		t.doStartSelectedTask()
 	}
 }
 
@@ -454,6 +470,12 @@ func (t *timetrackerWindowData) handleMonitorServiceEvent(item interface{}) {
 	}
 }
 
+func (t *timetrackerWindowData) handleStopTaskDialogResult(shouldStop bool) {
+	if shouldStop {
+		t.doStopAndStartTask()
+	}
+}
+
 func (t *timetrackerWindowData) doReport() {
 	t.rptWindow.Show()
 }
@@ -464,6 +486,123 @@ func (t *timetrackerWindowData) doAbout() {
 		fmt.Sprintf("Timetracker %s\n\nhttps://github.com/neflyte/timetracker", t.appVersion),
 		t.Window,
 	).Show()
+}
+
+func (t *timetrackerWindowData) maybeStopRunningTask(stopTask bool) {
+	// log := logger.GetFuncLogger(t.log, "maybeStopRunningTask")
+	if !stopTask {
+		return
+	}
+	// Stop the task
+	t.doStopTask()
+	// Check if we should close the main window
+	shouldCloseMainWindow := (*t.app).Preferences().BoolWithFallback(constants.PrefKeyCloseWindowStopTask, false)
+	if shouldCloseMainWindow {
+		t.Close()
+	}
+}
+
+func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart bool) {
+	log := logger.GetFuncLogger(t.log, "createAndStartTaskDialogCallback").
+		With().Bool("createAndStart", createAndStart).
+		Logger()
+	if !createAndStart {
+		log.Debug().
+			Msg("will not create/start the task")
+		return
+	}
+	taskData := t.createNewTaskAndStartDialog.GetTask()
+	if taskData == nil {
+		log.Error().
+			Msg("taskData was nil; this is unexpected")
+		return
+	}
+	log.Debug().
+		Str("newTask", taskData.DisplayString()).
+		Msg("got taskData from dialog")
+	// check for an existing task
+	existingTasks, err := models.NewTask().SearchBySynopsis(taskData.Synopsis)
+	if err != nil {
+		// error checking for existing task
+		log.Err(err).
+			Str("synopsis", taskData.Synopsis).
+			Msg("error checking for existing tasks")
+		// display an error dialog
+		errorDialog := dialog.NewError(
+			fmt.Errorf("could not check for existing tasks with synopsis '%s': %w", taskData.Synopsis, err),
+			t.Window,
+		)
+		// re-display the dialog after the error is dismissed
+		errorDialog.SetOnClosed(func() {
+			t.createNewTaskAndStartDialog.Show()
+		})
+		errorDialog.Show()
+		return
+	}
+	if len(existingTasks) > 0 {
+		// existing task!
+		log.Error().
+			Str("synopsis", taskData.Synopsis).
+			Msg("there are existing tasks with the desired synopsis; please choose another synopsis")
+		// display an error
+		errorDialog := dialog.NewError(
+			fmt.Errorf("there are existing tasks with synopsis '%s'\nplease choose another synopsis", taskData.Synopsis), // i18n
+			t.Window,
+		)
+		// re-display the dialog after the error is dismissed
+		errorDialog.SetOnClosed(func() {
+			t.createNewTaskAndStartDialog.Show()
+		})
+		errorDialog.Show()
+		return
+	}
+	// Create the new task
+	err = taskData.Create()
+	if err != nil {
+		log.Err(err).
+			Str("newTask", taskData.String()).
+			Msg("error creating new task")
+		return
+	}
+	log.Debug().
+		Str("newTask", taskData.String()).
+		Msg("created new task")
+	// reset the create dialog now that the task has been created
+	t.createNewTaskAndStartDialog.Reset()
+	// Set the new task as the "selected task"
+	t.setSelectedTask(models.NewTaskWithData(*taskData))
+	t.selectedTaskMtx.RLock()
+	t.compactUI.SetSelectedTask(t.selectedTask)
+	t.selectedTaskMtx.RUnlock()
+	// Start the new task
+	t.doStartSelectedTask()
+}
+
+// elapsedTimeLoop is a loop that draws the elapsed time since the running task was started
+func (t *timetrackerWindowData) elapsedTimeLoop(startTime time.Time, quitChan chan bool) {
+	log := logger.GetFuncLogger(t.log, "elapsedTimeLoop")
+	if t.elapsedTimeRunning {
+		return
+	}
+	t.elapsedTimeRunning = true
+	defer func() {
+		t.elapsedTimeRunning = false
+	}()
+	t.elapsedTimeTicker = time.NewTicker(time.Second)
+	defer t.elapsedTimeTicker.Stop()
+	// Clear the elapsed time display when the loop ends
+	defer t.compactUI.SetElapsedTime("")
+	log.Debug().
+		Msg("loop starting")
+	defer log.Debug().Msg("loop ending")
+	for {
+		select {
+		case <-t.elapsedTimeTicker.C:
+			t.compactUI.SetElapsedTime(t.elapsedTime(startTime))
+		case <-quitChan:
+			return
+		}
+	}
 }
 
 // notify sends a notification using the toast object
@@ -480,6 +619,17 @@ func (t *timetrackerWindowData) notify(title string, contents string) {
 
 func (t *timetrackerWindowData) elapsedTime(since time.Time) string {
 	return time.Since(since).Truncate(time.Second).String()
+}
+
+func (t *timetrackerWindowData) isTimesheetOpen() bool {
+	log := logger.GetFuncLogger(t.log, "isTimesheetOpen")
+	openCount, err := models.NewTimesheet().CountOpen()
+	if err != nil {
+		log.Err(err).
+			Msg("unable to get count of open timesheets; returning false")
+		return false
+	}
+	return openCount > 0
 }
 
 // Show shows the main window
@@ -560,77 +710,4 @@ func (t *timetrackerWindowData) Close() {
 	t.Window.Close()
 	// Quit
 	(*t.app).Quit()
-}
-
-func (t *timetrackerWindowData) maybeStopRunningTask(stopTask bool) {
-	// log := logger.GetFuncLogger(t.log, "maybeStopRunningTask")
-	if !stopTask {
-		return
-	}
-	// Stop the task
-	t.doStopTask()
-	// Check if we should close the main window
-	shouldCloseMainWindow := (*t.app).Preferences().BoolWithFallback(constants.PrefKeyCloseWindowStopTask, false)
-	if shouldCloseMainWindow {
-		t.Close()
-	}
-}
-
-func (t *timetrackerWindowData) createAndStartTaskDialogCallback(createAndStart bool) {
-	log := logger.GetFuncLogger(t.log, "createAndStartTaskDialogCallback")
-	if !createAndStart {
-		return
-	}
-	taskData := t.createNewTaskAndStartDialog.GetTask()
-	if taskData == nil {
-		log.Error().
-			Msg("taskData was nil; this is unexpected")
-		return
-	}
-	// Create the new task
-	err := taskData.Create()
-	if err != nil {
-		log.Err(err).
-			Str("newTask", taskData.String()).
-			Msgf("error creating new task")
-		return
-	}
-	log.Debug().
-		Str("newTask", taskData.String()).
-		Msgf("created new task")
-	// reset the create dialog now that the task has been created
-	t.createNewTaskAndStartDialog.Reset()
-	// Set the new task as the "selected task"
-	t.selectedTaskMtx.Lock()
-	t.selectedTask = models.NewTaskWithData(*taskData)
-	t.selectedTaskMtx.Unlock()
-	// Start the new task
-	t.doStartTask()
-}
-
-// elapsedTimeLoop is a loop that draws the elapsed time since the running task was started
-func (t *timetrackerWindowData) elapsedTimeLoop(startTime time.Time, quitChan chan bool) {
-	log := logger.GetFuncLogger(t.log, "elapsedTimeLoop")
-	if t.elapsedTimeRunning {
-		return
-	}
-	t.elapsedTimeRunning = true
-	defer func() {
-		t.elapsedTimeRunning = false
-	}()
-	t.elapsedTimeTicker = time.NewTicker(time.Second)
-	defer t.elapsedTimeTicker.Stop()
-	// Clear the elapsed time display when the loop ends
-	defer t.compactUI.SetElapsedTime("")
-	log.Debug().
-		Msg("loop starting")
-	defer log.Debug().Msg("loop ending")
-	for {
-		select {
-		case <-t.elapsedTimeTicker.C:
-			t.compactUI.SetElapsedTime(t.elapsedTime(startTime))
-		case <-quitChan:
-			return
-		}
-	}
 }
