@@ -72,6 +72,7 @@ type Timesheet interface {
 	Update() error
 	Delete() error
 	LoadAll(withDeleted bool) ([]TimesheetData, error)
+	CountOpen() (int, error)
 	SearchOpen() ([]TimesheetData, error)
 	SearchDateRange(withDeleted bool) ([]TimesheetData, error)
 	LastStartedTasks(limit uint) (startedTasks []TaskData, err error)
@@ -172,6 +173,26 @@ func (tsd *TimesheetData) LoadAll(withDeleted bool) ([]TimesheetData, error) {
 		Find(&timesheets).
 		Error
 	return timesheets, err
+}
+
+// CountOpen returns the count of open timesheets; there should be only one
+func (tsd *TimesheetData) CountOpen() (int, error) {
+	timesheets := make([]TimesheetData, 0)
+	args := map[string]interface{}{
+		"stop_time": nil,
+	}
+	if tsd.Task.ID > 0 {
+		args["task_id"] = tsd.Task.ID
+	}
+	err := database.Get().
+		Joins("Task").
+		Where(args).
+		Find(&timesheets).
+		Error
+	if err != nil {
+		return -1, err
+	}
+	return len(timesheets), nil
 }
 
 // SearchOpen returns all open timesheets; there should be only one

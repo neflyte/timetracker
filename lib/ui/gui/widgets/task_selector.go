@@ -70,12 +70,7 @@ func (t *TaskSelector) initUI() {
 	t.filterEntry = widget.NewEntryWithData(t.filterBinding)
 	t.filterEntry.SetPlaceHolder("Filter tasks") // i18n
 	t.filterEntry.Validator = nil
-	t.filterBindingListener = binding.NewDataListener(func() {
-		// Filter text has changed; re-filter the tasks.
-		t.log.Debug().
-			Msg("filterBinding changed; re-filtering tasks")
-		t.FilterTasks()
-	})
+	t.filterBindingListener = binding.NewDataListener(t.filterBindingWasUpdated)
 	t.sortButton = widget.NewButton("Sort", t.doShowSortMenu) // i18n
 	t.filterHBox = container.NewBorder(nil, nil, nil, t.sortButton, t.filterEntry)
 	t.tasksList = widget.NewListWithData(t.tasksListBinding, t.createTaskWidget, t.updateTaskWidget)
@@ -83,7 +78,7 @@ func (t *TaskSelector) initUI() {
 	t.container = container.NewBorder(t.filterHBox, nil, nil, nil, t.tasksList)
 }
 
-// Observable returns an rxgo Observable for the widget's command channel
+// Observable returns an RxGo Observable for the widget's command channel
 func (t *TaskSelector) Observable() rxgo.Observable {
 	return rxgo.FromEventSource(t.commandChan)
 }
@@ -95,21 +90,6 @@ func (t *TaskSelector) MinSize() fyne.Size {
 		minsize.Width = taskSelectorMinimumWidth
 	}
 	return minsize
-}
-
-// SetList sets the list of Task objects used in the selector
-// Deprecated
-func (t *TaskSelector) SetList(tasks models.TaskList) {
-	log := logger.GetFuncLogger(t.log, "SetList")
-	err := t.tasksListBinding.Set(tasks.ToSliceIntf())
-	if err != nil {
-		log.Err(err).
-			Msg("unable to set tasksListBinding")
-	}
-	t.tasksList.UnselectAll()
-	t.tasksList.Refresh()
-	// Reset the selected task
-	t.selectedTask = selectedTaskNone
 }
 
 // HasSelected indicates whether a selection has been made or not
@@ -147,6 +127,14 @@ func (t *TaskSelector) Reset() {
 			Msg("error resetting filter binding")
 	}
 	t.filterBinding.AddListener(t.filterBindingListener)
+}
+
+func (t *TaskSelector) filterBindingWasUpdated() {
+	log := logger.GetFuncLogger(t.log, "filterBindingWasUpdated")
+	// Filter text has changed; re-filter the tasks.
+	log.Debug().
+		Msg("filterBinding changed; re-filtering tasks")
+	t.FilterTasks()
 }
 
 // createTaskWidget creates new Task widgets for the tasksList widget
