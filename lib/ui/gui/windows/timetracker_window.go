@@ -430,9 +430,9 @@ func (t *timetrackerWindowData) handleCompactUIEvent(item interface{}) {
 			return
 		}
 		t.selectedTaskMtx.RLock()
-		if t.selectedTask != nil && t.selectedTask.Equals(event.Task) {
+		if t.selectedTask != nil && t.selectedTask.Equals(event.Task) && t.compactUI.IsRunning() {
 			log.Debug().
-				Msg("selected task is the same as the event's task; doing nothing")
+				Msg("selected task is the same as the event's task, and it is running; doing nothing")
 			t.selectedTaskMtx.RUnlock()
 			return
 		}
