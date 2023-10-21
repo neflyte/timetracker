@@ -90,7 +90,7 @@ func (m *ServiceData) IsRunning() bool {
 	return m.running
 }
 
-// Observable returns an rxgo Observable for the monitor's command channel
+// Observable returns an RxGo Observable for the monitor's command channel
 func (m *ServiceData) Observable() rxgo.Observable {
 	return rxgo.FromEventSource(m.commandChan)
 }

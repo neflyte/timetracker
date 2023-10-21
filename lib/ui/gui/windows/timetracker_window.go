@@ -315,6 +315,8 @@ func (t *timetrackerWindowData) doStartTask() {
 		fmt.Sprintf("Started at %s", timesheet.Data().StartTime.Format(time.Stamp)), // i18n
 	)
 	t.setRunningTimesheet(timesheet.Data())
+	// Tell the monitor that we've got a running task
+	t.monitor.SetRunningTimesheet(timesheet)
 	// Refresh task list
 	t.refreshTaskList()
 }
@@ -344,6 +346,7 @@ func (t *timetrackerWindowData) doStopTask() {
 		fmt.Sprintf("Stopped at %s", stoppedTimesheet.StopTime.Time.Format(time.Stamp)), // i18n
 	)
 	t.setRunningTimesheet(nil)
+	t.monitor.SetRunningTimesheet(nil)
 }
 
 func (t *timetrackerWindowData) doStopAndStartTask() {
