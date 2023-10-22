@@ -1,7 +1,6 @@
 package widgets
 
 import (
-	slices "golang.org/x/exp/slices"
 	"reflect"
 
 	"fyne.io/fyne/v2"
@@ -12,6 +11,7 @@ import (
 	"github.com/neflyte/timetracker/lib/models"
 	"github.com/reactivex/rxgo/v2"
 	"github.com/rs/zerolog"
+	"golang.org/x/exp/slices"
 )
 
 const (
