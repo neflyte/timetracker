@@ -103,7 +103,7 @@ dist-linux: lint build
 	cp dist/$(BUILD_FILENAME) dist/$(BINPREFIX)linux-amd64
 	cp dist/$(TRAY_BUILD_FILENAME) dist/$(TRAY_BINPREFIX)linux-amd64
 	cp dist/$(GUI_BUILD_FILENAME) dist/$(GUI_BINPREFIX)linux-amd64
-	cd dist && 7z a -mx9 $(BINPREFIX)linux-amd64.7z $(BINPREFIX)linux-amd64 $(GUI_BINPREFIX)linux-amd64 $(TRAY_BINPREFIX)linux-amd64
+	cd dist && 7zz a -mx -myx $(BINPREFIX)linux-amd64.7z $(BINPREFIX)linux-amd64 $(GUI_BINPREFIX)linux-amd64 $(TRAY_BINPREFIX)linux-amd64
 
 dist-darwin: ensure-fyne-cli lint build
 	if [[ ! -d dist/darwin ]]; then mkdir -p dist/darwin; fi
@@ -116,7 +116,7 @@ dist-windows: ensure-goversioninfo lint build
 	COPY dist\$(BUILD_FILENAME) dist\$(BINPREFIX)windows-amd64.exe
 	COPY dist\$(TRAY_BUILD_FILENAME) dist\$(TRAY_BINPREFIX)windows-amd64.exe
 	COPY dist\$(GUI_BUILD_FILENAME) dist\$(GUI_BINPREFIX)windows-amd64.exe
-	CD dist && 7z a -mx9 $(BINPREFIX)windows-amd64.7z $(BINPREFIX)windows-amd64.exe $(GUI_BINPREFIX)windows-amd64.exe $(TRAY_BINPREFIX)windows-amd64.exe
+	CD dist && 7z a -mx -myx $(BINPREFIX)windows-amd64.7z $(BINPREFIX)windows-amd64.exe $(GUI_BINPREFIX)windows-amd64.exe $(TRAY_BINPREFIX)windows-amd64.exe
 
 outdated:
 ifeq ($(OS),Windows_NT)

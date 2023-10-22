@@ -413,7 +413,6 @@ func (t *timetrackerWindowData) handleTaskSelectorEvent(item interface{}) {
 }
 
 func (t *timetrackerWindowData) handleCompactUIEvent(item interface{}) {
-	log := logger.GetFuncLogger(t.log, "handleCompactUIEvent")
 	switch event := item.(type) {
 	case widgets.CompactUISelectTaskEvent:
 		t.doSelectTask()
@@ -428,21 +427,26 @@ func (t *timetrackerWindowData) handleCompactUIEvent(item interface{}) {
 	case widgets.CompactUIQuitEvent:
 		t.Close()
 	case widgets.CompactUITaskEvent:
-		if event.ShouldStopTask() {
-			t.doStopTask()
-			return
-		}
-		t.selectedTaskMtx.RLock()
-		if t.selectedTask != nil && t.selectedTask.Equals(event.Task) && t.compactUI.IsRunning() {
-			log.Debug().
-				Msg("selected task is the same as the event's task, and it is running; doing nothing")
-			t.selectedTaskMtx.RUnlock()
-			return
-		}
-		t.selectedTaskMtx.RUnlock()
-		t.setSelectedTask(event.Task)
-		t.doStartSelectedTask()
+		t.handleCompactUITaskEvent(event)
 	}
+}
+
+func (t *timetrackerWindowData) handleCompactUITaskEvent(event widgets.CompactUITaskEvent) {
+	log := logger.GetFuncLogger(t.log, "handleCompactUITaskEvent")
+	if event.ShouldStopTask() {
+		t.doStopTask()
+		return
+	}
+	t.selectedTaskMtx.RLock()
+	if t.selectedTask != nil && t.selectedTask.Equals(event.Task) && t.compactUI.IsRunning() {
+		log.Debug().
+			Msg("selected task is the same as the event's task, and it is running; doing nothing")
+		t.selectedTaskMtx.RUnlock()
+		return
+	}
+	t.selectedTaskMtx.RUnlock()
+	t.setSelectedTask(event.Task)
+	t.doStartSelectedTask()
 }
 
 func (t *timetrackerWindowData) handleMonitorServiceEvent(item interface{}) {
