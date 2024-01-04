@@ -86,7 +86,7 @@ else
 	if [ -f cmd/timetracker-tray/resource.syso ]; then rm -f cmd/timetracker-tray/resource.syso; fi
 endif
 
-lint:
+lint: check-fieldalignment
 	@golangci-lint --version
 	golangci-lint run --timeout=10m --verbose
 

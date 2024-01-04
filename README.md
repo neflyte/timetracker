@@ -17,7 +17,7 @@ A personal time tracker for simple tasks
 ### Features
 
 - Cross-platform; supporting Linux, macOS, and Windows
-  - Tested on Ubuntu 22.04, macOS Monterey, Windows 10 and 11
+  - Tested on Ubuntu 22.04, macOS Monterey + Sonoma, Windows 10 and 11
 - GUI app to start, stop, and manage tasks
 - System tray app
   - Convenient access to start, stop, and create tasks
@@ -99,6 +99,7 @@ cp dist/timetracker* $HOME/bin
 - Copy the apps from the `dist` subdirectory to a new directory, for example `C:\Program Files\Timetracker`, and add it to the system `PATH` environment variable:
 
 ```powershell
+New-Item 'C:\Program Files\Timetracker' -Type Directory -Force
 Copy-Item dist\timetracker*.exe 'C:\Program Files\Timetracker'
 ```
 
