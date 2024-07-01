@@ -23,11 +23,15 @@ import (
 )
 
 const (
-	dateEntryMinWidth  = 135
+	dateEntryMinWidth = 135
+
 	columnTaskID       = 0
 	columnTaskSynopsis = 1
 	columnStartDate    = 2
 	columnDuration     = 3
+
+	fieldStartDate = 0
+	fieldEndDate   = 1
 )
 
 var (
@@ -47,34 +51,36 @@ type reportWindowData struct {
 	startDateBinding binding.String
 	endDateBinding   binding.String
 	fyne.Window
-	container          *fyne.Container
-	endDateLabel       *widget.Label
-	startDateEntry     *widgets.MinWidthEntry
-	startDateCalButton *widget.Button
-	headerContainer    *fyne.Container
-	startDateLabel     *widget.Label
-	runReportButton    *widget.Button
-	exportButton       *widget.Button
-	resultTable        *widget.Table
-	endDateEntry       *widgets.MinWidthEntry
-	endDateCalButton   *widget.Button
-	calendar           *xwidget.Calendar
-	calendarPopup      *widget.PopUp
-	taskReport         models.TaskReport
-	tableColumns       int
-	tableRows          int
+	container               *fyne.Container
+	endDateLabel            *widget.Label
+	startDateEntry          *widgets.MinWidthEntry
+	startDateCalButton      *widget.Button
+	headerContainer         *fyne.Container
+	startDateLabel          *widget.Label
+	runReportButton         *widget.Button
+	exportButton            *widget.Button
+	resultTable             *widget.Table
+	endDateEntry            *widgets.MinWidthEntry
+	endDateCalButton        *widget.Button
+	calendar                *xwidget.Calendar
+	calendarPopup           *widget.PopUp
+	taskReport              models.TaskReport
+	tableColumns            int
+	tableRows               int
+	calendarTargetDateField int
 }
 
 func newReportWindow(app fyne.App) reportWindow {
 	log := logger.GetLogger("newReportWindow")
 	newWindow := &reportWindowData{
-		Window:           app.NewWindow("Task Report"), // i18n
-		log:              logger.GetStructLogger("reportWindowData"),
-		startDateBinding: binding.NewString(),
-		endDateBinding:   binding.NewString(),
-		tableRows:        0,
-		tableColumns:     0,
-		taskReport:       make([]models.TaskReportData, 0),
+		Window:                  app.NewWindow("Task Report"), // i18n
+		log:                     logger.GetStructLogger("reportWindowData"),
+		startDateBinding:        binding.NewString(),
+		endDateBinding:          binding.NewString(),
+		tableRows:               0,
+		tableColumns:            0,
+		taskReport:              make([]models.TaskReportData, 0),
+		calendarTargetDateField: fieldStartDate,
 	}
 	err := newWindow.Init()
 	if err != nil {
@@ -86,13 +92,15 @@ func newReportWindow(app fyne.App) reportWindow {
 
 // Init initializes the window
 func (w *reportWindowData) Init() error {
-	// Header container
-	w.calendar = xwidget.NewCalendar(time.Now(), func(t time.Time) {})
+	// Calendar widget
+	w.calendar = xwidget.NewCalendar(time.Now(), w.setDateEntryFromCalendar)
 	w.calendarPopup = widget.NewPopUp(w.calendar, w.Window.Canvas())
+	// Header container
 	w.startDateEntry = widgets.NewMinWidthEntry(dateEntryMinWidth, "YYYY-MM-DD") // l10n
 	w.startDateEntry.Bind(w.startDateBinding)
 	w.startDateEntry.Validator = w.dateValidator
 	w.startDateCalButton = widget.NewButtonWithIcon("", theme.MoreHorizontalIcon(), func() {
+		w.calendarTargetDateField = fieldStartDate
 		w.doShowCalendar(w.startDateCalButton)
 	})
 	w.startDateCalButton.Importance = widget.LowImportance
@@ -101,6 +109,7 @@ func (w *reportWindowData) Init() error {
 	w.endDateEntry.Bind(w.endDateBinding)
 	w.endDateEntry.Validator = w.dateValidator
 	w.endDateCalButton = widget.NewButtonWithIcon("", theme.MoreHorizontalIcon(), func() {
+		w.calendarTargetDateField = fieldEndDate
 		w.doShowCalendar(w.endDateCalButton)
 	})
 	w.endDateCalButton.Importance = widget.LowImportance
@@ -263,6 +272,16 @@ func (w *reportWindowData) doExport() {
 
 func (w *reportWindowData) doShowCalendar(targetWidget fyne.CanvasObject) {
 	w.calendarPopup.ShowAtRelativePosition(fyne.NewSquareOffsetPos(theme.InnerPadding()), targetWidget)
+}
+
+func (w *reportWindowData) setDateEntryFromCalendar(t time.Time) {
+	switch w.calendarTargetDateField {
+	case fieldStartDate:
+		w.startDateEntry.SetText(t.Format(constants.TimestampDateLayout))
+	case fieldEndDate:
+		w.endDateEntry.SetText(t.Format(constants.TimestampDateLayout))
+	}
+	w.calendarPopup.Hide()
 }
 
 func (w *reportWindowData) exportReportAsCSV(writeCloser fyne.URIWriteCloser, dialogErr error) {
