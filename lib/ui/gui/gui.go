@@ -62,6 +62,11 @@ func ShowTimetrackerWindowWithManageWindow() {
 	mainWindow.ShowWithManageWindow()
 }
 
+// ShowTimetrackerWindowWithReportWindow shows the main timetracker window and then shows the report window
+func ShowTimetrackerWindowWithReportWindow() {
+	mainWindow.ShowWithReportWindow()
+}
+
 // ShowTimetrackerWindowAndStopRunningTask shows the main timetracker window and then confirms if the running task should be stopped
 func ShowTimetrackerWindowAndStopRunningTask() {
 	mainWindow.ShowAndStopRunningTask()

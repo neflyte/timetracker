@@ -12,6 +12,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	xwidget "fyne.io/x/fyne/widget"
 	"github.com/neflyte/timetracker/lib/constants"
 	tterrors "github.com/neflyte/timetracker/lib/errors"
 	"github.com/neflyte/timetracker/lib/logger"
@@ -22,7 +23,7 @@ import (
 )
 
 const (
-	dateEntryMinWidth  = 120.0
+	dateEntryMinWidth  = 135
 	columnTaskID       = 0
 	columnTaskSynopsis = 1
 	columnStartDate    = 2
@@ -31,8 +32,8 @@ const (
 
 var (
 	tableColumnWidths = []float32{75, 250, 100, 100}
-	tableHeader       = []string{"Task ID", "Synopsis", "Started On", "Duration"}
-	csvTableHeader    = []string{"task_id", "synopsis", "started_on", "duration"}
+	tableHeader       = []string{"Task ID", "Synopsis", "Started On", "Duration"} // i18n
+	csvTableHeader    = []string{"task_id", "synopsis", "started_on", "duration"} // i18n
 )
 
 type reportWindow interface {
@@ -46,18 +47,22 @@ type reportWindowData struct {
 	startDateBinding binding.String
 	endDateBinding   binding.String
 	fyne.Window
-	container       *fyne.Container
-	endDateLabel    *widget.Label
-	startDateEntry  *widgets.MinWidthEntry
-	headerContainer *fyne.Container
-	startDateLabel  *widget.Label
-	runReportButton *widget.Button
-	exportButton    *widget.Button
-	resultTable     *widget.Table
-	endDateEntry    *widgets.MinWidthEntry
-	taskReport      models.TaskReport
-	tableColumns    int
-	tableRows       int
+	container          *fyne.Container
+	endDateLabel       *widget.Label
+	startDateEntry     *widgets.MinWidthEntry
+	startDateCalButton *widget.Button
+	headerContainer    *fyne.Container
+	startDateLabel     *widget.Label
+	runReportButton    *widget.Button
+	exportButton       *widget.Button
+	resultTable        *widget.Table
+	endDateEntry       *widgets.MinWidthEntry
+	endDateCalButton   *widget.Button
+	calendar           *xwidget.Calendar
+	calendarPopup      *widget.PopUp
+	taskReport         models.TaskReport
+	tableColumns       int
+	tableRows          int
 }
 
 func newReportWindow(app fyne.App) reportWindow {
@@ -82,12 +87,24 @@ func newReportWindow(app fyne.App) reportWindow {
 // Init initializes the window
 func (w *reportWindowData) Init() error {
 	// Header container
+	w.calendar = xwidget.NewCalendar(time.Now(), func(t time.Time) {})
+	w.calendarPopup = widget.NewPopUp(w.calendar, w.Window.Canvas())
 	w.startDateEntry = widgets.NewMinWidthEntry(dateEntryMinWidth, "YYYY-MM-DD") // l10n
 	w.startDateEntry.Bind(w.startDateBinding)
 	w.startDateEntry.Validator = w.dateValidator
+	w.startDateCalButton = widget.NewButtonWithIcon("", theme.MoreHorizontalIcon(), func() {
+		w.doShowCalendar(w.startDateCalButton)
+	})
+	w.startDateCalButton.Importance = widget.LowImportance
+	w.startDateEntry.ActionItem = w.startDateCalButton
 	w.endDateEntry = widgets.NewMinWidthEntry(dateEntryMinWidth, "YYYY-MM-DD") // l10n
 	w.endDateEntry.Bind(w.endDateBinding)
 	w.endDateEntry.Validator = w.dateValidator
+	w.endDateCalButton = widget.NewButtonWithIcon("", theme.MoreHorizontalIcon(), func() {
+		w.doShowCalendar(w.endDateCalButton)
+	})
+	w.endDateCalButton.Importance = widget.LowImportance
+	w.endDateEntry.ActionItem = w.endDateCalButton
 	w.startDateLabel = widget.NewLabel("Start date:")                                         // i18n
 	w.endDateLabel = widget.NewLabel("End date:")                                             // i18n
 	w.runReportButton = widget.NewButtonWithIcon("RUN", theme.MediaPlayIcon(), w.doRunReport) // i18n
@@ -242,6 +259,10 @@ func (w *reportWindowData) doExport() {
 	}
 	// Show file save dialog
 	dialog.ShowFileSave(w.exportReportAsCSV, w)
+}
+
+func (w *reportWindowData) doShowCalendar(targetWidget fyne.CanvasObject) {
+	w.calendarPopup.ShowAtRelativePosition(fyne.NewSquareOffsetPos(theme.InnerPadding()), targetWidget)
 }
 
 func (w *reportWindowData) exportReportAsCSV(writeCloser fyne.URIWriteCloser, dialogErr error) {

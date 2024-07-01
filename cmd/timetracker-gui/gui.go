@@ -133,6 +133,8 @@ func doGUI() {
 		gui.ShowTimetrackerWindowWithAbout()
 	case guiCmdOptionShowCreateAndStartDialog:
 		gui.ShowTimetrackerWindowAndShowCreateAndStartDialog()
+	case guiCmdOptionShowReportWindow:
+		gui.ShowTimetrackerWindowWithReportWindow()
 	default:
 		gui.ShowTimetrackerWindow()
 	}

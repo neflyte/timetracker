@@ -2,6 +2,7 @@ package widgets
 
 import (
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -29,5 +30,6 @@ func (d *MinWidthEntry) MinSize() fyne.Size {
 	if minWidth < d.minWidth {
 		minWidth = d.minWidth
 	}
+	minWidth += 2 * theme.InnerPadding()
 	return fyne.NewSize(minWidth, entrySize.Height)
 }

@@ -33,6 +33,7 @@ type TimetrackerWindow interface {
 	ShowAbout()
 	ShowWithError(err error)
 	ShowWithManageWindow()
+	ShowWithReportWindow()
 	ShowAndStopRunningTask()
 	ShowAndDisplayCreateAndStartDialog()
 }
@@ -673,6 +674,12 @@ func (t *timetrackerWindowData) ShowAndStopRunningTask() {
 func (t *timetrackerWindowData) ShowWithManageWindow() {
 	t.Show()
 	t.doManageTasksV2()
+}
+
+// ShowWithReportWindow shows the main window followed by the Report window
+func (t *timetrackerWindowData) ShowWithReportWindow() {
+	t.Show()
+	t.doReport()
 }
 
 // ShowWithError shows the main window and then shows an error dialog

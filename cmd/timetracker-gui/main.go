@@ -23,6 +23,7 @@ var (
 	guiCmdOptionShowCreateAndStartDialog bool
 	guiCmdOptionShowManageWindow         bool
 	guiCmdOptionShowAboutWindow          bool
+	guiCmdOptionShowReportWindow         bool
 )
 
 func init() {
@@ -34,6 +35,7 @@ func init() {
 	flag.BoolVar(&guiCmdOptionStopRunningTask, "stop-running-task", false, "Stops the running task, if any")
 	flag.BoolVar(&guiCmdOptionShowCreateAndStartDialog, "create-and-start", false, "Shows the Create and Start New Task dialog")
 	flag.BoolVar(&guiCmdOptionShowManageWindow, "manage", false, "Shows the Manage Window")
+	flag.BoolVar(&guiCmdOptionShowReportWindow, "report", false, "Shows the Report Window")
 	flag.BoolVar(&guiCmdOptionShowAboutWindow, "about", false, "Shows the About Window")
 }
 
@@ -51,6 +53,7 @@ func main() {
 	startup.InitDatabase()
 	defer startup.CleanupDatabase()
 	log := logger.GetLogger("main")
+	// TODO: validate GUI parameters; throw error if mutually exclusive parameters are specified
 	err := preDoGUI()
 	if err != nil {
 		log.Err(err).
