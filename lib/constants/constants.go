@@ -5,6 +5,8 @@ const (
 	TimestampLayout = `2006-01-02 15:04:05 PM`
 	// TimestampDateLayout is the format string for use with time.Format() that outputs a date
 	TimestampDateLayout = `2006-01-02`
+	// TimestampDateLayoutText is a textual representation of the TimestampDateLayout format string
+	TimestampDateLayoutText = "YYYY-MM-DD"
 
 	// UnicodeClock is the character that represents a running task
 	UnicodeClock = "⌛"

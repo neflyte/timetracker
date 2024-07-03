@@ -62,7 +62,6 @@ type reportWindowData struct {
 	resultTable             *widget.Table
 	endDateEntry            *widgets.MinWidthEntry
 	endDateCalButton        *widget.Button
-	calendar                *xwidget.Calendar
 	calendarPopup           *widget.PopUp
 	taskReport              models.TaskReport
 	tableColumns            int
@@ -93,24 +92,26 @@ func newReportWindow(app fyne.App) reportWindow {
 // Init initializes the window
 func (w *reportWindowData) Init() error {
 	// Calendar widget
-	w.calendar = xwidget.NewCalendar(time.Now(), w.setDateEntryFromCalendar)
-	w.calendarPopup = widget.NewPopUp(w.calendar, w.Window.Canvas())
+	w.calendarPopup = widget.NewPopUp(
+		xwidget.NewCalendar(time.Now(), w.setDateEntryFromCalendar),
+		w.Window.Canvas(),
+	)
 	// Header container
-	w.startDateEntry = widgets.NewMinWidthEntry(dateEntryMinWidth, "YYYY-MM-DD") // l10n
+	w.startDateEntry = widgets.NewMinWidthEntry(dateEntryMinWidth, constants.TimestampDateLayoutText) // l10n
 	w.startDateEntry.Bind(w.startDateBinding)
 	w.startDateEntry.Validator = w.dateValidator
 	w.startDateCalButton = widget.NewButtonWithIcon("", theme.MoreHorizontalIcon(), func() {
 		w.calendarTargetDateField = fieldStartDate
-		w.doShowCalendar(w.startDateCalButton)
+		w.doShowCalendar(w.startDateEntry)
 	})
 	w.startDateCalButton.Importance = widget.LowImportance
 	w.startDateEntry.ActionItem = w.startDateCalButton
-	w.endDateEntry = widgets.NewMinWidthEntry(dateEntryMinWidth, "YYYY-MM-DD") // l10n
+	w.endDateEntry = widgets.NewMinWidthEntry(dateEntryMinWidth, constants.TimestampDateLayoutText) // l10n
 	w.endDateEntry.Bind(w.endDateBinding)
 	w.endDateEntry.Validator = w.dateValidator
 	w.endDateCalButton = widget.NewButtonWithIcon("", theme.MoreHorizontalIcon(), func() {
 		w.calendarTargetDateField = fieldEndDate
-		w.doShowCalendar(w.endDateCalButton)
+		w.doShowCalendar(w.endDateEntry)
 	})
 	w.endDateCalButton.Importance = widget.LowImportance
 	w.endDateEntry.ActionItem = w.endDateCalButton
@@ -118,7 +119,8 @@ func (w *reportWindowData) Init() error {
 	w.endDateLabel = widget.NewLabel("End date:")                                             // i18n
 	w.runReportButton = widget.NewButtonWithIcon("RUN", theme.MediaPlayIcon(), w.doRunReport) // i18n
 	w.exportButton = widget.NewButtonWithIcon("EXPORT", theme.DownloadIcon(), w.doExport)     // i18n
-	w.exportButton.Disable()                                                                  // Initialize the export button in a disabled state
+	// Initialize the export button in a disabled state
+	w.exportButton.Disable()
 	w.headerContainer = container.NewBorder(
 		nil, nil,
 		container.NewHBox(
@@ -271,7 +273,36 @@ func (w *reportWindowData) doExport() {
 }
 
 func (w *reportWindowData) doShowCalendar(targetWidget fyne.CanvasObject) {
+	log := logger.GetFuncLogger(w.log, "doShowCalendar")
+	w.calendarPopup.Hide()
+	calendarTime := time.Now()
+	switch w.calendarTargetDateField {
+	case fieldStartDate:
+		if w.startDateEntry.Text != "" {
+			parsedTime, err := time.Parse(constants.TimestampDateLayout, w.startDateEntry.Text)
+			if err != nil {
+				log.Err(err).
+					Str("startDate", w.startDateEntry.Text).
+					Msg("unable to parse start date")
+			} else {
+				calendarTime = parsedTime
+			}
+		}
+	case fieldEndDate:
+		if w.endDateEntry.Text != "" {
+			parsedTime, err := time.Parse(constants.TimestampDateLayout, w.endDateEntry.Text)
+			if err != nil {
+				log.Err(err).
+					Str("endDate", w.endDateEntry.Text).
+					Msg("unable to parse end date")
+			} else {
+				calendarTime = parsedTime
+			}
+		}
+	}
+	w.calendarPopup.Content = xwidget.NewCalendar(calendarTime, w.setDateEntryFromCalendar)
 	w.calendarPopup.ShowAtRelativePosition(fyne.NewSquareOffsetPos(theme.InnerPadding()), targetWidget)
+	w.calendarPopup.Refresh()
 }
 
 func (w *reportWindowData) setDateEntryFromCalendar(t time.Time) {
