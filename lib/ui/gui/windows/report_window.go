@@ -62,7 +62,7 @@ type reportWindowData struct {
 	resultTable             *widget.Table
 	endDateEntry            *widgets.MinWidthEntry
 	endDateCalButton        *widget.Button
-	calendarPopup           *widget.PopUp
+	calPopup                *widget.PopUp
 	taskReport              models.TaskReport
 	tableColumns            int
 	tableRows               int
@@ -92,10 +92,10 @@ func newReportWindow(app fyne.App) reportWindow {
 // Init initializes the window
 func (w *reportWindowData) Init() error {
 	// Calendar widget
-	w.calendarPopup = widget.NewPopUp(
-		xwidget.NewCalendar(time.Now(), w.setDateEntryFromCalendar),
-		w.Window.Canvas(),
-	)
+	//w.calendarPopup = widget.NewPopUp(
+	//	xwidget.NewCalendar(time.Now(), w.setDateEntryFromCalendar),
+	//	w.Window.Canvas(),
+	//)
 	// Header container
 	w.startDateEntry = widgets.NewMinWidthEntry(dateEntryMinWidth, constants.TimestampDateLayoutText) // l10n
 	w.startDateEntry.Bind(w.startDateBinding)
@@ -274,7 +274,10 @@ func (w *reportWindowData) doExport() {
 
 func (w *reportWindowData) doShowCalendar(targetWidget fyne.CanvasObject) {
 	log := logger.GetFuncLogger(w.log, "doShowCalendar")
-	w.calendarPopup.Hide()
+	if w.calPopup != nil {
+		w.calPopup.Hide()
+		w.calPopup = nil
+	}
 	calendarTime := time.Now()
 	switch w.calendarTargetDateField {
 	case fieldStartDate:
@@ -300,9 +303,11 @@ func (w *reportWindowData) doShowCalendar(targetWidget fyne.CanvasObject) {
 			}
 		}
 	}
-	w.calendarPopup.Content = xwidget.NewCalendar(calendarTime, w.setDateEntryFromCalendar)
-	w.calendarPopup.ShowAtRelativePosition(fyne.NewSquareOffsetPos(theme.InnerPadding()), targetWidget)
-	w.calendarPopup.Refresh()
+	w.calPopup = widget.NewPopUp(
+		xwidget.NewCalendar(calendarTime, w.setDateEntryFromCalendar),
+		w.Window.Canvas(),
+	)
+	w.calPopup.ShowAtRelativePosition(fyne.NewSquareOffsetPos(theme.InnerPadding()), targetWidget)
 }
 
 func (w *reportWindowData) setDateEntryFromCalendar(t time.Time) {
@@ -312,7 +317,10 @@ func (w *reportWindowData) setDateEntryFromCalendar(t time.Time) {
 	case fieldEndDate:
 		w.endDateEntry.SetText(t.Format(constants.TimestampDateLayout))
 	}
-	w.calendarPopup.Hide()
+	if w.calPopup != nil {
+		w.calPopup.Hide()
+		w.calPopup = nil
+	}
 }
 
 func (w *reportWindowData) exportReportAsCSV(writeCloser fyne.URIWriteCloser, dialogErr error) {
