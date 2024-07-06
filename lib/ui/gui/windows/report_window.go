@@ -91,11 +91,6 @@ func newReportWindow(app fyne.App) reportWindow {
 
 // Init initializes the window
 func (w *reportWindowData) Init() error {
-	// Calendar widget
-	//w.calendarPopup = widget.NewPopUp(
-	//	xwidget.NewCalendar(time.Now(), w.setDateEntryFromCalendar),
-	//	w.Window.Canvas(),
-	//)
 	// Header container
 	w.startDateEntry = widgets.NewMinWidthEntry(dateEntryMinWidth, constants.TimestampDateLayoutText) // l10n
 	w.startDateEntry.Bind(w.startDateBinding)
@@ -115,12 +110,18 @@ func (w *reportWindowData) Init() error {
 	})
 	w.endDateCalButton.Importance = widget.LowImportance
 	w.endDateEntry.ActionItem = w.endDateCalButton
-	w.startDateLabel = widget.NewLabel("Start date:")                                         // i18n
-	w.endDateLabel = widget.NewLabel("End date:")                                             // i18n
+	// Date entry bindings
+	w.startDateBinding.AddListener(binding.NewDataListener(w.datesDidChange))
+	w.endDateBinding.AddListener(binding.NewDataListener(w.datesDidChange))
+	// Labels
+	w.startDateLabel = widget.NewLabel("Start date:") // i18n
+	w.endDateLabel = widget.NewLabel("End date:")     // i18n
+	// Buttons
 	w.runReportButton = widget.NewButtonWithIcon("RUN", theme.MediaPlayIcon(), w.doRunReport) // i18n
-	w.exportButton = widget.NewButtonWithIcon("EXPORT", theme.DownloadIcon(), w.doExport)     // i18n
-	// Initialize the export button in a disabled state
+	w.runReportButton.Disable()
+	w.exportButton = widget.NewButtonWithIcon("EXPORT", theme.DownloadIcon(), w.doExport) // i18n
 	w.exportButton.Disable()
+	// Header table
 	w.headerContainer = container.NewBorder(
 		nil, nil,
 		container.NewHBox(
@@ -211,13 +212,32 @@ func (w *reportWindowData) dateValidator(entry string) error {
 	return err
 }
 
-func (w *reportWindowData) doRunReport() {
-	log := logger.GetFuncLogger(w.log, "doRunReport")
+func (w *reportWindowData) datesDidChange() {
+	log := logger.GetFuncLogger(w.log, "datesDidChange")
+	dStart, dEnd, err := w.dateEntryValues()
+	if err != nil {
+		log.Err(err).
+			Msg("unable to parse date entry values")
+		w.runReportButton.Disable()
+		return
+	}
 	// Validate date range
-	dStart, dEnd, err := w.validateDateRange()
+	err = w.validateDateRange(dStart, dEnd)
 	if err != nil {
 		log.Err(err).
 			Msg("unable to validate date range")
+		w.runReportButton.Disable()
+		return
+	}
+	w.runReportButton.Enable()
+}
+
+func (w *reportWindowData) doRunReport() {
+	log := logger.GetFuncLogger(w.log, "doRunReport")
+	dStart, dEnd, err := w.dateEntryValues()
+	if err != nil {
+		log.Err(err).
+			Msg("unable to parse date entry values")
 		// TODO: Show a more informative error
 		dialog.NewError(err, w).Show()
 		return
@@ -363,8 +383,28 @@ func (w *reportWindowData) exportReportAsCSV(writeCloser fyne.URIWriteCloser, di
 	}
 }
 
-func (w *reportWindowData) validateDateRange() (startDate time.Time, endDate time.Time, err error) {
+func (w *reportWindowData) validateDateRange(startDate time.Time, endDate time.Time) error {
 	log := logger.GetFuncLogger(w.log, "validateDateRange")
+	// Check if end date happens before start date
+	if endDate.Before(startDate) {
+		log.Error().
+			Str("startDate", startDate.String()).
+			Str("endDate", endDate.String()).
+			Msg("end date cannot happen before start date")
+		return tterrors.InvalidTaskReportEndDate{
+			EndDate: endDate.String(),
+			Wrapped: fmt.Errorf(
+				"end date (%s) cannot happen before start date (%s)",
+				endDate.Format(constants.TimestampDateLayout),
+				startDate.Format(constants.TimestampDateLayout),
+			),
+		}
+	}
+	return nil
+}
+
+func (w *reportWindowData) dateEntryValues() (startDate time.Time, endDate time.Time, err error) {
+	log := logger.GetFuncLogger(w.log, "dateEntryValues")
 	// Parse the start date
 	startDateString, err := w.startDateBinding.Get()
 	if err != nil {
@@ -400,22 +440,6 @@ func (w *reportWindowData) validateDateRange() (startDate time.Time, endDate tim
 		err = tterrors.InvalidTaskReportEndDate{
 			EndDate: endDateString,
 			Wrapped: err,
-		}
-		return
-	}
-	// Check if end date happens before start date
-	if endDate.Before(startDate) {
-		log.Error().
-			Str("startDate", startDate.String()).
-			Str("endDate", endDate.String()).
-			Msg("end date cannot happen before start date")
-		err = tterrors.InvalidTaskReportEndDate{
-			EndDate: endDateString,
-			Wrapped: fmt.Errorf(
-				"end date (%s) cannot happen before start date (%s)",
-				endDate.Format(constants.TimestampDateLayout),
-				startDate.Format(constants.TimestampDateLayout),
-			),
 		}
 		return
 	}
