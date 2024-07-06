@@ -91,7 +91,7 @@ func newReportWindow(app fyne.App) reportWindow {
 
 // Init initializes the window
 func (w *reportWindowData) Init() error {
-	// Header container
+	// Date entry widgets
 	w.startDateEntry = widgets.NewMinWidthEntry(dateEntryMinWidth, constants.TimestampDateLayoutText) // l10n
 	w.startDateEntry.Bind(w.startDateBinding)
 	w.startDateEntry.Validator = w.dateValidator
@@ -246,7 +246,7 @@ func (w *reportWindowData) doRunReport() {
 	w.exportButton.Disable()
 	w.runReportButton.Disable()
 	defer func() {
-		w.runReportButton.Enable()
+		w.datesDidChange() // re-evaluate the Run button state
 		if len(w.taskReport) > 0 {
 			w.exportButton.Enable()
 		}
@@ -292,36 +292,28 @@ func (w *reportWindowData) doExport() {
 	dialog.ShowFileSave(w.exportReportAsCSV, w)
 }
 
-func (w *reportWindowData) doShowCalendar(targetWidget fyne.CanvasObject) {
-	log := logger.GetFuncLogger(w.log, "doShowCalendar")
+func (w *reportWindowData) teardownCalendar() {
 	if w.calPopup != nil {
 		w.calPopup.Hide()
 		w.calPopup = nil
 	}
+}
+
+func (w *reportWindowData) doShowCalendar(targetWidget fyne.CanvasObject) {
+	log := logger.GetFuncLogger(w.log, "doShowCalendar")
+	w.teardownCalendar()
 	calendarTime := time.Now()
-	switch w.calendarTargetDateField {
-	case fieldStartDate:
-		if w.startDateEntry.Text != "" {
-			parsedTime, err := time.Parse(constants.TimestampDateLayout, w.startDateEntry.Text)
-			if err != nil {
-				log.Err(err).
-					Str("startDate", w.startDateEntry.Text).
-					Msg("unable to parse start date")
-			} else {
-				calendarTime = parsedTime
-			}
+	startDate, endDate, err := w.dateEntryValues()
+	if err == nil {
+		switch w.calendarTargetDateField {
+		case fieldStartDate:
+			calendarTime = startDate
+		case fieldEndDate:
+			calendarTime = endDate
 		}
-	case fieldEndDate:
-		if w.endDateEntry.Text != "" {
-			parsedTime, err := time.Parse(constants.TimestampDateLayout, w.endDateEntry.Text)
-			if err != nil {
-				log.Err(err).
-					Str("endDate", w.endDateEntry.Text).
-					Msg("unable to parse end date")
-			} else {
-				calendarTime = parsedTime
-			}
-		}
+	} else {
+		log.Err(err).
+			Msg("unable to parse date entry values")
 	}
 	w.calPopup = widget.NewPopUp(
 		xwidget.NewCalendar(calendarTime, w.setDateEntryFromCalendar),
@@ -337,10 +329,7 @@ func (w *reportWindowData) setDateEntryFromCalendar(t time.Time) {
 	case fieldEndDate:
 		w.endDateEntry.SetText(t.Format(constants.TimestampDateLayout))
 	}
-	if w.calPopup != nil {
-		w.calPopup.Hide()
-		w.calPopup = nil
-	}
+	w.teardownCalendar()
 }
 
 func (w *reportWindowData) exportReportAsCSV(writeCloser fyne.URIWriteCloser, dialogErr error) {
