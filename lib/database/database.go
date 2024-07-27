@@ -18,6 +18,8 @@ var (
 	// gormConfig is the GORM config struct
 	gormConfig = &gorm.Config{
 		Logger: dbLogger,
+		// SQLite doesn't have ALTER TABLE, so it needs to recreate tables
+		DisableForeignKeyConstraintWhenMigrating: true,
 	}
 	databaseLog = logger.GetPackageLogger("database")
 )
