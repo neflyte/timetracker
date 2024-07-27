@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Updated all dependencies
+- Enable database foreign keys after schema migration to allow upgrades from some older databases
 
 ### Removed
 
