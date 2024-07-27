@@ -58,7 +58,6 @@ func InitDatabase() {
 	log.Debug().
 		Str("configFile", configFile).
 		Msg("resolved config file")
-	database.SetLoggerLevel(database.ZlLevelMap[logger.LevelMap[logLevel]])
 	db, err := database.Open(configFile)
 	if err != nil {
 		log.Fatal().
@@ -77,6 +76,8 @@ func InitDatabase() {
 		return
 	}
 	log.Debug().Msg("schema migrated (if necessary)")
+	database.EnableForeignKeys(db, true)
+	log.Debug().Msg("enabled foreign keys")
 }
 
 // CleanupDatabase tears down the database system

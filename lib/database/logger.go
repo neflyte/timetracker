@@ -18,13 +18,6 @@ var (
 		gormLog.Warn:   zerolog.WarnLevel,
 		gormLog.Error:  zerolog.ErrorLevel,
 	}
-	// ZlLevelMap is a map of zerolog log level to GORM log level
-	ZlLevelMap = map[zerolog.Level]gormLog.LogLevel{
-		zerolog.NoLevel:    gormLog.Silent,
-		zerolog.InfoLevel:  gormLog.Info,
-		zerolog.WarnLevel:  gormLog.Warn,
-		zerolog.ErrorLevel: gormLog.Error,
-	}
 )
 
 type gormLogger struct {
@@ -32,9 +25,9 @@ type gormLogger struct {
 }
 
 // newGormLogger creates a new instance of the GORM logger
-func newGormLogger(logLevel zerolog.Level) gormLog.Interface {
+func newGormLogger() gormLog.Interface {
 	return &gormLogger{
-		log: logger.GetPackageLogger("gorm").Level(logLevel),
+		log: logger.GetPackageLogger("gorm"),
 	}
 }
 

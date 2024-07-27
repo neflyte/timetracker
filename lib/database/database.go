@@ -7,18 +7,16 @@ import (
 	"github.com/neflyte/timetracker/lib/logger"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	gormLog "gorm.io/gorm/logger"
 )
 
 var (
 	// dbInstance is the singleton database handle
 	dbInstance *gorm.DB
 	// dbLogger is the database logger
-	dbLogger = newGormLogger(logger.LevelMap[logger.InfoLevel])
+	dbLogger = newGormLogger()
 	// gormConfig is the GORM config struct
 	gormConfig = &gorm.Config{
-		Logger: dbLogger,
-		// SQLite doesn't have ALTER TABLE, so it needs to recreate tables
+		Logger:                                   dbLogger,
 		DisableForeignKeyConstraintWhenMigrating: true,
 	}
 	databaseLog = logger.GetPackageLogger("database")
@@ -27,7 +25,7 @@ var (
 // Open opens a new database connection to the specified SQLite database file
 func Open(fileName string) (*gorm.DB, error) {
 	log := logger.GetFuncLogger(databaseLog, "Open")
-	dsn := fmt.Sprintf("file:%s?_foreign_keys=1&_journal_mode=WAL&_mode=rwc", fileName)
+	dsn := fmt.Sprintf("file:%s?_journal_mode=WAL&_mode=rwc", fileName)
 	log.Printf("opening sqlite db at %s\n", dsn)
 	return gorm.Open(sqlite.Open(dsn), gormConfig)
 }
@@ -70,13 +68,48 @@ func CloseRows(rows *sql.Rows) {
 	}
 }
 
-// Logger returns the database logger
-func Logger() gormLog.Interface {
-	return dbLogger
+// checkForeignKeys returns the enabled/disabled status of foreign key support
+func checkForeignKeys(db *gorm.DB) (bool, error) {
+	log := logger.GetFuncLogger(databaseLog, "CheckForeignKeys")
+	checkResult := db.Raw("PRAGMA foreign_keys")
+	if checkResult.Error != nil {
+		log.Err(checkResult.Error).
+			Msgf("error checking foreign keys status")
+		return false, checkResult.Error
+	}
+	foreignKeysStatus := 0
+	err := checkResult.Scan(&foreignKeysStatus).Error
+	if err != nil {
+		log.Err(err).
+			Msg("error scanning foreign keys status")
+		return false, err
+	}
+	if foreignKeysStatus == 1 {
+		return true, nil
+	}
+	return false, nil
 }
 
-// SetLoggerLevel sets the database logger level
-func SetLoggerLevel(level gormLog.LogLevel) {
-	dbLogger = newGormLogger(levelMap[level])
-	gormConfig.Logger = dbLogger
+// EnableForeignKeys toggles foreign key support
+func EnableForeignKeys(db *gorm.DB, enable bool) {
+	log := logger.GetFuncLogger(databaseLog, "EnableForeignKeys")
+	enableClause := "OFF"
+	if enable {
+		enableClause = "ON"
+	}
+	result := db.Exec(fmt.Sprintf("PRAGMA foreign_keys = %s", enableClause))
+	if result.Error != nil {
+		log.Err(result.Error).
+			Msgf("error setting foreign keys to %s", enableClause)
+		return
+	}
+	checkStatus, err := checkForeignKeys(db)
+	if err != nil {
+		log.Err(err).
+			Msgf("error checking foreign keys status")
+		return
+	}
+	log.Debug().
+		Bool("checkStatus", checkStatus).
+		Msg("status after update")
 }
