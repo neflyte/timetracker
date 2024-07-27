@@ -11,11 +11,19 @@ import (
 )
 
 var (
+	// levelMap is a mapping of GORM log level to zerolog log level
 	levelMap = map[gormLog.LogLevel]zerolog.Level{
 		gormLog.Silent: zerolog.NoLevel,
 		gormLog.Info:   zerolog.InfoLevel,
 		gormLog.Warn:   zerolog.WarnLevel,
 		gormLog.Error:  zerolog.ErrorLevel,
+	}
+	// ZlLevelMap is a map of zerolog log level to GORM log level
+	ZlLevelMap = map[zerolog.Level]gormLog.LogLevel{
+		zerolog.NoLevel:    gormLog.Silent,
+		zerolog.InfoLevel:  gormLog.Info,
+		zerolog.WarnLevel:  gormLog.Warn,
+		zerolog.ErrorLevel: gormLog.Error,
 	}
 )
 
@@ -24,9 +32,9 @@ type gormLogger struct {
 }
 
 // newGormLogger creates a new instance of the GORM logger
-func newGormLogger() gormLog.Interface {
+func newGormLogger(logLevel zerolog.Level) gormLog.Interface {
 	return &gormLogger{
-		log: logger.GetPackageLogger("gorm"),
+		log: logger.GetPackageLogger("gorm").Level(logLevel),
 	}
 }
 
@@ -72,4 +80,9 @@ func (gl *gormLogger) Trace(_ context.Context, begin time.Time, fc func() (strin
 		traceLog = traceLog.With().Str("rows", rowsStr).Logger()
 	}
 	traceLog.Trace().Msg(sql)
+}
+
+// Printf logs a formatted message at INFO level
+func (gl *gormLogger) Printf(format string, args ...interface{}) {
+	gl.log.Info().Msgf(format, args...)
 }

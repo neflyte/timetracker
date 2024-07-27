@@ -85,7 +85,7 @@ func (c *createAndStartTaskDialogData) Init() error {
 	c.descriptionEntry.MultiLine = true
 	c.descriptionEntry.Wrapping = fyne.TextWrapWord
 	c.descriptionEntry.Validator = nil
-	c.descriptionEntry.OnSubmitted = func(submitted string) {
+	c.descriptionEntry.OnSubmitted = func(_ string) {
 		c.Dialog.Hide()
 		c.doCallback(true)
 	}

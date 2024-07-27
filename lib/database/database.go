@@ -7,14 +7,17 @@ import (
 	"github.com/neflyte/timetracker/lib/logger"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	gormLog "gorm.io/gorm/logger"
 )
 
 var (
 	// dbInstance is the singleton database handle
 	dbInstance *gorm.DB
-
+	// dbLogger is the database logger
+	dbLogger = newGormLogger(logger.LevelMap[logger.InfoLevel])
+	// gormConfig is the GORM config struct
 	gormConfig = &gorm.Config{
-		Logger: newGormLogger(),
+		Logger: dbLogger,
 	}
 	databaseLog = logger.GetPackageLogger("database")
 )
@@ -63,4 +66,15 @@ func CloseRows(rows *sql.Rows) {
 			log.Err(err).Msg("error closing sql rows")
 		}
 	}
+}
+
+// Logger returns the database logger
+func Logger() gormLog.Interface {
+	return dbLogger
+}
+
+// SetLoggerLevel sets the database logger level
+func SetLoggerLevel(level gormLog.LogLevel) {
+	dbLogger = newGormLogger(levelMap[level])
+	gormConfig.Logger = dbLogger
 }

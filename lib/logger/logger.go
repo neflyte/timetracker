@@ -11,6 +11,19 @@ import (
 )
 
 const (
+	// FatalLevel represents the FATAL log level
+	FatalLevel = "fatal"
+	// ErrorLevel represents the ERROR log level
+	ErrorLevel = "error"
+	// WarnLevel represents the WARN log level
+	WarnLevel = "warn"
+	// InfoLevel represents the INFO log level
+	InfoLevel = "info"
+	// DebugLevel represents the DEBUG log level
+	DebugLevel = "debug"
+	// TraceLevel represents the TRACE log level
+	TraceLevel = "trace"
+
 	logFileName           = "timetracker.log"
 	logDirectoryMode      = 0755
 	logFileMode           = 0644
@@ -18,6 +31,16 @@ const (
 )
 
 var (
+	// LevelMap is a map of log level string to zerolog log level
+	LevelMap = map[string]zerolog.Level{
+		FatalLevel: zerolog.FatalLevel,
+		ErrorLevel: zerolog.ErrorLevel,
+		WarnLevel:  zerolog.WarnLevel,
+		InfoLevel:  zerolog.InfoLevel,
+		DebugLevel: zerolog.DebugLevel,
+		TraceLevel: zerolog.TraceLevel,
+	}
+
 	// rootLogger is the application root logger instance
 	rootLogger zerolog.Logger
 
@@ -25,15 +48,6 @@ var (
 	logFilePath       string
 	logPath           string
 	loggerInitialized = false
-
-	levelMap = map[string]zerolog.Level{
-		"fatal": zerolog.FatalLevel,
-		"error": zerolog.ErrorLevel,
-		"warn":  zerolog.WarnLevel,
-		"info":  zerolog.InfoLevel,
-		"debug": zerolog.DebugLevel,
-		"trace": zerolog.TraceLevel,
-	}
 )
 
 func init() {
@@ -78,12 +92,12 @@ func InitLogger(logLevel string, console bool) {
 		)
 	}
 	multi := zerolog.MultiLevelWriter(logWriters...)
-	rootLogger = zerolog.New(multi).With().Timestamp().Logger()
 	// Set global logger message level
-	lvl, ok := levelMap[logLevel]
+	lvl, ok := LevelMap[logLevel]
 	if !ok {
 		lvl = zerolog.InfoLevel
 	}
+	rootLogger = zerolog.New(multi).With().Timestamp().Logger().Level(lvl)
 	zerolog.SetGlobalLevel(lvl)
 	loggerInitialized = true
 }

@@ -58,6 +58,7 @@ func InitDatabase() {
 	log.Debug().
 		Str("configFile", configFile).
 		Msg("resolved config file")
+	database.SetLoggerLevel(database.ZlLevelMap[logger.LevelMap[logLevel]])
 	db, err := database.Open(configFile)
 	if err != nil {
 		log.Fatal().

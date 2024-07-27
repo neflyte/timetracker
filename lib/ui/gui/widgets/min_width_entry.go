@@ -6,6 +6,10 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+const (
+	minWithEntryPaddingMultiplier = 2
+)
+
 // MinWidthEntry is an entry widget which has a minimum width
 type MinWidthEntry struct {
 	widget.Entry
@@ -30,6 +34,6 @@ func (d *MinWidthEntry) MinSize() fyne.Size {
 	if minWidth < d.minWidth {
 		minWidth = d.minWidth
 	}
-	minWidth += 2 * theme.InnerPadding()
+	minWidth += minWithEntryPaddingMultiplier * theme.InnerPadding()
 	return fyne.NewSize(minWidth, entrySize.Height)
 }
