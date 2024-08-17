@@ -3,6 +3,8 @@ package toast
 import "github.com/neflyte/timetracker/lib/logger"
 
 const (
+	DefaultWindowsPowershellPath = "System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+
 	tempFileMode = 0600
 )
 
