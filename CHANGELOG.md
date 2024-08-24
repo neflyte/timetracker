@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.5] - TBD
 ### Added
 - Add calendar (date picker) widget to date fields in the Report window
+- Tray menu item to launch the Report window of the GUI
 
 ### Changed
 - Updated all dependencies

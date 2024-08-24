@@ -13,7 +13,6 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/jinzhu/now v1.1.5
 	github.com/jszwec/csvutil v1.10.0
-	github.com/mitchellh/go-ps v1.0.0
 	github.com/reactivex/rxgo/v2 v2.5.0
 	github.com/rs/zerolog v1.33.0
 	github.com/spf13/cobra v1.8.1
