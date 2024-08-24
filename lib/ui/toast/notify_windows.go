@@ -8,6 +8,7 @@ import (
 	"path"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/neflyte/timetracker/lib/logger"
 	"github.com/neflyte/timetracker/lib/ui/icons"
@@ -35,12 +36,26 @@ func NewToast() Toast {
 
 func (t *impl) Notify(title string, description string) error {
 	log := logger.GetFuncLogger(t.logger, "Notify")
-	err := t.ensureScript()
+	err := t.ensureTempDirectory()
 	if err != nil {
-		t.logger.Err(err).
-			Msg("unable to write temp files")
+		log.Err(err).
+			Msg("unable to create temp directory")
 	}
-	defer t.Cleanup()
+	err = t.ensureScript()
+	if err != nil {
+		log.Err(err).
+			Msg("unable to write script file")
+	}
+	err = t.ensureIcon()
+	if err != nil {
+		log.Err(err).
+			Msg("unable to write icon file")
+	}
+	defer func() {
+		// Sleep for 1 second before cleaning up to give the OS a chance to use the resources
+		<-time.After(time.Second)
+		t.Cleanup()
+	}()
 	// construct powershell path using environment variable data
 	systemRoot := os.Getenv("SystemRoot")
 	if systemRoot == "" {
@@ -84,8 +99,8 @@ func (t *impl) Notify(title string, description string) error {
 	return nil
 }
 
-func (t *impl) ensureScript() error {
-	log := logger.GetFuncLogger(t.logger, "ensureScript")
+func (t *impl) ensureTempDirectory() error {
+	log := logger.GetFuncLogger(t.logger, "ensureTempDirectory")
 	if t.tempDir == "" {
 		tempDir, err := os.MkdirTemp("", "timetracker-toast")
 		if err != nil {
@@ -93,11 +108,34 @@ func (t *impl) ensureScript() error {
 				Msg("unable to create temp directory")
 			return err
 		}
+		t.tempDir = tempDir
 		log.Debug().
 			Str("tempDir", tempDir).
 			Msg("created temp directory")
-		t.tempDir = tempDir
 	}
+	return nil
+}
+
+func (t *impl) ensureIcon() error {
+	log := logger.GetFuncLogger(t.logger, "ensureIcon")
+	if t.iconPath == "" {
+		t.iconPath = path.Join(t.tempDir, fmt.Sprintf("icon-v2-%d.ico", t.nonce))
+		t.nonce++
+	}
+	err := os.WriteFile(t.iconPath, icons.IconV2.StaticContent, tempFileMode)
+	if err != nil {
+		log.Err(err).
+			Msg("unable to write icon to temp directory")
+		return err
+	}
+	log.Debug().
+		Str("iconPath", t.iconPath).
+		Msg("wrote icon to temp directory")
+	return nil
+}
+
+func (t *impl) ensureScript() error {
+	log := logger.GetFuncLogger(t.logger, "ensureScript")
 	if t.scriptPath == "" {
 		t.scriptPath = path.Join(t.tempDir, fmt.Sprintf("toast-%d.ps1", t.nonce))
 		t.nonce++
@@ -111,19 +149,6 @@ func (t *impl) ensureScript() error {
 	log.Debug().
 		Str("scriptPath", t.scriptPath).
 		Msg("wrote script to temp directory")
-	if t.iconPath == "" {
-		t.iconPath = path.Join(t.tempDir, fmt.Sprintf("icon-v2-%d.ico", t.nonce))
-		t.nonce++
-	}
-	err = os.WriteFile(t.iconPath, icons.IconV2.StaticContent, tempFileMode)
-	if err != nil {
-		log.Err(err).
-			Msg("unable to write icon to temp directory")
-		return err
-	}
-	log.Debug().
-		Str("iconPath", t.iconPath).
-		Msg("wrote icon to temp directory")
 	return nil
 }
 

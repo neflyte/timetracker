@@ -13,11 +13,11 @@
     The protocol launch string
 #>
 param(
-    [Parameter(Mandatory)][string]$AppId,
-    [Parameter(Mandatory)][string]$Title,
-    [string]$Description,
-    [string]$Icon,
-    [string]$Launch
+    [Parameter(Mandatory,Position=0)][string]$AppId,
+    [Parameter(Mandatory,Position=1)][string]$Title,
+    [Parameter(Position=2)][string]$Description,
+    [Parameter(Position=3)][string]$Icon,
+    [Parameter(Position=4)][string]$Launch
 )
 if ($PSVersionTable.PSVersion.Major -gt 5) {
     throw 'This script is only supported in PowerShell 5.1'
