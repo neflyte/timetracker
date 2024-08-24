@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enable database foreign keys after schema migration to allow upgrades from some older databases
 
 ### Removed
+- PID files written when GUI or Tray starts; they were ineffective
 
 ## [0.3.4] - 2023-01-04
 ### Added

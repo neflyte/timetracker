@@ -6,13 +6,13 @@ import (
 
 	"github.com/neflyte/timetracker/cmd/timetracker-tray/cmd"
 	"github.com/neflyte/timetracker/lib/constants"
-	"github.com/neflyte/timetracker/lib/logger"
 	"github.com/neflyte/timetracker/lib/startup"
+	"github.com/neflyte/timetracker/lib/ui/tray"
 )
 
-const (
+/*const (
 	trayPidfile = "timetracker-tray.pid"
-)
+)*/
 
 var (
 	configFileName string
@@ -41,7 +41,7 @@ func main() {
 	startup.SetDatabaseFileName(configFileName)
 	startup.InitDatabase()
 	defer startup.CleanupDatabase()
-	log := logger.GetLogger("main")
+	/*log := logger.GetLogger("main")
 	err := preDoTray()
 	if err != nil {
 		log.Err(err).
@@ -54,6 +54,6 @@ func main() {
 			log.Err(err).
 				Msg("error tearing down tray entry")
 		}
-	}()
-	doTray()
+	}()*/
+	tray.Run(nil)
 }

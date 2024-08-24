@@ -6,13 +6,13 @@ import (
 
 	"github.com/neflyte/timetracker/cmd/timetracker-gui/cmd"
 	"github.com/neflyte/timetracker/lib/constants"
-	"github.com/neflyte/timetracker/lib/logger"
 	"github.com/neflyte/timetracker/lib/startup"
+	"github.com/neflyte/timetracker/lib/ui/gui"
 )
 
-const (
+/*const (
 	guiPidfile = "timetracker-gui.pid"
-)
+)*/
 
 var (
 	configFileName                       string
@@ -52,8 +52,8 @@ func main() {
 	startup.SetDatabaseFileName(configFileName)
 	startup.InitDatabase()
 	defer startup.CleanupDatabase()
-	log := logger.GetLogger("main")
 	// TODO: validate GUI parameters; throw error if mutually exclusive parameters are specified
+	/*log := logger.GetLogger("main")
 	err := preDoGUI()
 	if err != nil {
 		log.Err(err).
@@ -66,6 +66,26 @@ func main() {
 			log.Err(err).
 				Msg("error tearing down GUI")
 		}
-	}()
+	}()*/
 	doGUI()
+}
+
+func doGUI() {
+	app := gui.InitGUI(cmd.AppVersion)
+	switch {
+	case guiCmdOptionStopRunningTask:
+		gui.ShowTimetrackerWindowAndStopRunningTask()
+	case guiCmdOptionShowManageWindow:
+		gui.ShowTimetrackerWindowWithManageWindow()
+	case guiCmdOptionShowAboutWindow:
+		gui.ShowTimetrackerWindowWithAbout()
+	case guiCmdOptionShowCreateAndStartDialog:
+		gui.ShowTimetrackerWindowAndShowCreateAndStartDialog()
+	case guiCmdOptionShowReportWindow:
+		gui.ShowTimetrackerWindowWithReportWindow()
+	default:
+		gui.ShowTimetrackerWindow()
+	}
+	// Start the GUI
+	gui.StartGUI(app)
 }
