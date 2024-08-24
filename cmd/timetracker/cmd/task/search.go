@@ -43,7 +43,7 @@ func searchTask(_ *cobra.Command, args []string) error {
 	}
 	for _, task := range tasks {
 		rec := []*simpletable.Cell{
-			{Text: strconv.Itoa(int(task.ID))},
+			{Text: strconv.FormatUint(uint64(task.ID), 10)},
 			{Text: task.Synopsis},
 			{Text: task.Description},
 			{Text: task.CreatedAt.Format(constants.TimestampLayout)},

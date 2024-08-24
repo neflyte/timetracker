@@ -122,7 +122,7 @@ func printReportTable(reportData models.TaskReport) {
 	}
 	for _, reportDataEntry := range reportData {
 		table.Body.Cells = append(table.Body.Cells, []*simpletable.Cell{
-			{Text: strconv.Itoa(int(reportDataEntry.TaskID))},
+			{Text: strconv.FormatUint(uint64(reportDataEntry.TaskID), 10)},
 			{Text: reportDataEntry.TaskSynopsis},
 			{Text: reportDataEntry.StartDate.Time.Format(constants.TimestampDateLayout)},
 			{Text: reportDataEntry.Duration().String()},

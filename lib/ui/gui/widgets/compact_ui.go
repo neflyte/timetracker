@@ -72,22 +72,22 @@ var _ fyne.Widget = (*CompactUI)(nil)
 
 // CompactUI is a compact user interface for the main Timetracker window
 type CompactUI struct {
-	log                  zerolog.Logger
+	log zerolog.Logger
+	widget.BaseWidget
 	taskNameBinding      binding.String
 	elapsedTimeBinding   binding.String
 	selectedTask         models.Task
-	createAndStartButton *widget.Button
-	startStopButton      *widget.Button
+	elapsedTimeLabel     *widget.Label
 	container            *fyne.Container
 	taskNameLabel        *widget.Label
-	elapsedTimeLabel     *widget.Label
+	startStopButton      *widget.Button
 	commandChan          chan rxgo.Item
 	taskSelect           *widget.Select
+	createAndStartButton *widget.Button
 	taskList             []string
 	taskModels           models.TaskList
-	widget.BaseWidget
-	selectedTaskIndex int
-	taskIsRunning     bool
+	selectedTaskIndex    int
+	taskIsRunning        bool
 }
 
 // NewCompactUI creates a new instance of the compact user interface

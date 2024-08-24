@@ -48,8 +48,8 @@ func NewTaskWithData(taskData models.Task) *Task {
 }
 
 func (t *Task) initUI() {
-	t.synopsis = canvas.NewText("", theme.ForegroundColor())
-	t.description = canvas.NewText("", theme.ForegroundColor())
+	t.synopsis = canvas.NewText("", theme.Color(theme.ColorNameForeground))
+	t.description = canvas.NewText("", theme.Color(theme.ColorNameForeground))
 	t.description.TextSize = 10
 	t.container = container.NewVBox(t.synopsis, t.description)
 }

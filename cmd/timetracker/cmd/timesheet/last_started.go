@@ -77,7 +77,7 @@ func printLastStartedTable(tasks []models.TaskData) {
 	}
 	for _, task := range tasks {
 		rec := []*simpletable.Cell{
-			{Text: strconv.Itoa(int(task.ID))},
+			{Text: strconv.FormatUint(uint64(task.ID), 10)},
 			{Text: task.Synopsis},
 			{Text: task.Description},
 		}

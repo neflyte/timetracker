@@ -83,8 +83,8 @@ func dumpTimesheets(_ *cobra.Command, _ []string) (err error) {
 			durationdisplay = sheet.StopTime.Time.Sub(sheet.StartTime).Truncate(time.Second).String()
 		}
 		rec := []*simpletable.Cell{
-			{Text: strconv.Itoa(int(sheet.ID))},
-			{Text: strconv.Itoa(int(sheet.Task.ID))},
+			{Text: strconv.FormatUint(uint64(sheet.ID), 10)},
+			{Text: strconv.FormatUint(uint64(sheet.Task.ID), 10)},
 			{Text: sheet.Task.Synopsis},
 			{Text: starttimedisplay},
 			{Text: stoptimedisplay},

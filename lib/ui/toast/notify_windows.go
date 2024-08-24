@@ -26,14 +26,15 @@ type impl struct {
 	logger     zerolog.Logger
 }
 
+// NewToast creates a new instance of the Toast interface
 func NewToast() Toast {
-	t := &impl{
+	return &impl{
 		logger: packageLogger.With().Str("struct", "impl").Logger(),
 		nonce:  1,
 	}
-	return t
 }
 
+// Notify sends a notification
 func (t *impl) Notify(title string, description string) error {
 	log := logger.GetFuncLogger(t.logger, "Notify")
 	err := t.ensureTempDirectory()
@@ -152,6 +153,7 @@ func (t *impl) ensureScript() error {
 	return nil
 }
 
+// Cleanup cleans up temporary files and directories
 func (t *impl) Cleanup() {
 	log := logger.GetFuncLogger(t.logger, "Cleanup")
 	if t.iconPath != "" {

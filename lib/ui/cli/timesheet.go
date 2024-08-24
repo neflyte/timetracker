@@ -39,7 +39,7 @@ func StartRunningTimesheet(task models.Task) error {
 	if task == nil {
 		return tterrors.ErrInvalidTaskData{}
 	}
-	taskdisplay := strconv.Itoa(int(task.Data().ID))
+	taskdisplay := strconv.FormatUint(uint64(task.Data().ID), 10)
 	timesheetData := new(models.TimesheetData)
 	timesheetData.Task = *task.Data()
 	timesheetData.StartTime = time.Now()

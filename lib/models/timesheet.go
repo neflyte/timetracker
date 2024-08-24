@@ -263,7 +263,7 @@ func (tsd *TimesheetData) LastStartedTasks(limit uint) (startedTasks []TaskData,
 	if limit > 0 {
 		taskLimit = limit
 	}
-	query := fmt.Sprintf("%s LIMIT %d", lastStartedTasksSQL, int(taskLimit))
+	query := fmt.Sprintf("%s LIMIT %d", lastStartedTasksSQL, taskLimit)
 	err = database.Get().
 		Raw(query).
 		Scan(&startedTasks).
