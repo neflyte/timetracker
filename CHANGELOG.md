@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Add calendar (date picker) widget to date fields in the Report window
 - Tray menu item to launch the Report window of the GUI
+- Ability to auto-launch Tray at login on macOS
 
 ### Changed
 - Updated all dependencies

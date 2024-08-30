@@ -1,5 +1,11 @@
 package utils
 
+import "github.com/neflyte/timetracker/lib/logger"
+
+var (
+	utilsLogger = logger.GetPackageLogger("utils")
+)
+
 // TrimWithEllipsis trims a string if it is longer than trimLength and appends an ellipsis if the string was trimmed
 func TrimWithEllipsis(toTrim string, trimLength int) string {
 	if len(toTrim) <= trimLength {

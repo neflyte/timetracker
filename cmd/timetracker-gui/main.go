@@ -10,10 +10,6 @@ import (
 	"github.com/neflyte/timetracker/lib/ui/gui"
 )
 
-/*const (
-	guiPidfile = "timetracker-gui.pid"
-)*/
-
 var (
 	configFileName                       string
 	logLevel                             string
@@ -53,20 +49,6 @@ func main() {
 	startup.InitDatabase()
 	defer startup.CleanupDatabase()
 	// TODO: validate GUI parameters; throw error if mutually exclusive parameters are specified
-	/*log := logger.GetLogger("main")
-	err := preDoGUI()
-	if err != nil {
-		log.Err(err).
-			Msg("error setting up GUI")
-		return
-	}
-	defer func() {
-		err = postDoGUI()
-		if err != nil {
-			log.Err(err).
-				Msg("error tearing down GUI")
-		}
-	}()*/
 	doGUI()
 }
 
