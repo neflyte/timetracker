@@ -38,4 +38,7 @@ const (
 
 	// PrefKeyCloseWindowStopTask is the preferences key for the flag which causes the main window to close after creating a new task
 	PrefKeyCloseWindowStopTask = "close-window:stop-task"
+
+	// DefaultWindowsPowershellPath is the default path to Windows PowerShell on Windows systems
+	DefaultWindowsPowershellPath = "System32\\WindowsPowerShell\\v1.0\\powershell.exe"
 )
