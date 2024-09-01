@@ -6,6 +6,7 @@ require (
 	fyne.io/fyne/v2 v2.5.1
 	fyne.io/systray v1.11.0
 	fyne.io/x/fyne v0.0.0-20240803204126-8b5b5bfe65ef
+	github.com/adrg/xdg v0.5.0
 	github.com/alexeyco/simpletable v1.0.0
 	github.com/bluele/factory-go v0.0.1
 	github.com/fatih/color v1.17.0

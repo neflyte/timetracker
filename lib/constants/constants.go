@@ -1,6 +1,9 @@
 package constants
 
 const (
+	// AppId is the application ID
+	AppId = "cc.ethereal.timetracker"
+
 	// TimestampLayout is the format string for use with time.Format() that outputs date + time
 	TimestampLayout = `2006-01-02 15:04:05 PM`
 	// TimestampDateLayout is the format string for use with time.Format() that outputs a date

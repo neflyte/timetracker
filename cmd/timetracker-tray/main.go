@@ -4,23 +4,22 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"runtime"
 
 	"github.com/neflyte/timetracker/cmd/timetracker-tray/cmd"
 	"github.com/neflyte/timetracker/lib/constants"
 	"github.com/neflyte/timetracker/lib/logger"
 	"github.com/neflyte/timetracker/lib/startup"
 	"github.com/neflyte/timetracker/lib/ui/tray"
-	"github.com/neflyte/timetracker/lib/utils"
+	"github.com/neflyte/timetracker/lib/ui/tray/autostart"
 )
 
 var (
-	configFileName       string
-	logLevel             string
-	showVersion          bool
-	console              bool
-	darwinEnableLaunchd  bool
-	darwinDisableLaunchd bool
+	configFileName   string
+	logLevel         string
+	showVersion      bool
+	console          bool
+	enableAutostart  bool
+	disableAutostart bool
 )
 
 func init() {
@@ -28,11 +27,8 @@ func init() {
 	flag.StringVar(&logLevel, "logLevel", constants.DefaultLogLevel, "Specify the logging level")
 	flag.BoolVar(&showVersion, "version", false, "Display the program version")
 	flag.BoolVar(&console, "console", false, "Log to the console")
-	// macOS-only flags to manage launchd
-	if runtime.GOOS == "darwin" {
-		flag.BoolVar(&darwinEnableLaunchd, "enableLaunchd", false, "Start Timetracker Tray at login")
-		flag.BoolVar(&darwinDisableLaunchd, "disableLaunchd", false, "Do not start Timetracker Tray at login")
-	}
+	flag.BoolVar(&enableAutostart, "enableAutostart", false, "Start Timetracker Tray at login")
+	flag.BoolVar(&disableAutostart, "disableAutostart", false, "Do not start Timetracker Tray at login")
 }
 
 func main() {
@@ -47,9 +43,7 @@ func main() {
 	startup.InitLogger()
 	defer startup.CleanupLogger()
 
-	if runtime.GOOS == "darwin" {
-		doDarwinLaunchdCommands(darwinEnableLaunchd, darwinDisableLaunchd)
-	}
+	doHandleAutostart()
 
 	startup.SetDatabaseFileName(configFileName)
 	startup.InitDatabase()
@@ -57,28 +51,31 @@ func main() {
 	tray.Run(nil)
 }
 
-func doDarwinLaunchdCommands(enable bool, disable bool) {
-	log := logger.GetLogger("doDarwinLaunchdCommands")
-	if enable && disable {
-		log.Fatal().
-			Msg("Cannot specify both -enableLaunchd and -disableLaunchd at the same time")
+func doHandleAutostart() {
+	if !enableAutostart && !disableAutostart {
+		return
 	}
-	if enable {
-		err := utils.EnableLaunchd()
+	log := logger.GetLogger("doHandleAutostart")
+	if enableAutostart && disableAutostart {
+		log.Error().
+			Msg("Cannot specify both -enableAutostart and -disableAutostart at the same time")
+		os.Exit(1)
+	}
+	if enableAutostart && !autostart.IsEnabled() {
+		err := autostart.Enable()
 		if err != nil {
-			log.Fatal().
-				Err(err).
-				Msg("Cannot start Timetracker Tray at login")
+			log.Err(err).
+				Msg("Cannot enable autostart")
+			os.Exit(1)
 		}
-		os.Exit(0)
 	}
-	if disable {
-		err := utils.DisableLaunchd()
+	if disableAutostart && autostart.IsEnabled() {
+		err := autostart.Disable()
 		if err != nil {
-			log.Fatal().
-				Err(err).
-				Msg("Cannot disable Timetracker Tray at login")
+			log.Err(err).
+				Msg("Cannot disable autostart")
+			os.Exit(1)
 		}
-		os.Exit(0)
 	}
+	os.Exit(0)
 }
