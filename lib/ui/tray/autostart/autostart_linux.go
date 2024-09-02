@@ -80,6 +80,7 @@ func generateXdgDesktopSpec() (string, error) {
 		"Comment = Timetracker tray icon",
 		fmt.Sprintf("Icon = %s", iconPath),
 		fmt.Sprintf("Exec = %s", trayPath),
+		"StartupNotify = false",
 		"Terminal = false",
 		"Categories = Office;Utility;",
 	}
