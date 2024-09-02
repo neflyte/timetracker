@@ -40,7 +40,7 @@ func InitGUI(appVersion string) *fyne.App {
 		return nil
 	}
 	// Set up fyne
-	fyneApp = app.NewWithID(constants.AppId)
+	fyneApp = app.NewWithID(constants.AppID)
 	fyneApp.SetIcon(icons.IconV2)
 	// Create the main timetracker window
 	mainWindow = windows.NewTimetrackerWindow(fyneApp, appVersion)

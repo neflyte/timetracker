@@ -43,7 +43,10 @@ func main() {
 	startup.InitLogger()
 	defer startup.CleanupLogger()
 
-	doHandleAutostart()
+	if enableAutostart || disableAutostart {
+		doHandleAutostart()
+		return
+	}
 
 	startup.SetDatabaseFileName(configFileName)
 	startup.InitDatabase()
@@ -52,30 +55,41 @@ func main() {
 }
 
 func doHandleAutostart() {
-	if !enableAutostart && !disableAutostart {
-		return
-	}
-	log := logger.GetLogger("doHandleAutostart")
+	log := logger.GetLogger("doHandleAutostart").
+		With().
+		Bool("enableAutostart", enableAutostart).
+		Bool("disableAutostart", disableAutostart).
+		Logger()
+	log.Debug().Msg("handle autostart")
 	if enableAutostart && disableAutostart {
 		log.Error().
 			Msg("Cannot specify both -enableAutostart and -disableAutostart at the same time")
 		os.Exit(1)
 	}
-	if enableAutostart && !autostart.IsEnabled() {
+	isEnabled := autostart.IsEnabled()
+	log = log.With().Bool("isEnabled", isEnabled).Logger()
+	if enableAutostart && !isEnabled {
+		log.Debug().
+			Msg("enable autostart")
 		err := autostart.Enable()
 		if err != nil {
 			log.Err(err).
 				Msg("Cannot enable autostart")
 			os.Exit(1)
 		}
+		log.Debug().
+			Msg("autostart enabled")
 	}
-	if disableAutostart && autostart.IsEnabled() {
+	if disableAutostart && isEnabled {
+		log.Debug().
+			Msg("disable autostart")
 		err := autostart.Disable()
 		if err != nil {
 			log.Err(err).
 				Msg("Cannot disable autostart")
 			os.Exit(1)
 		}
+		log.Debug().
+			Msg("autostart disabled")
 	}
-	os.Exit(0)
 }
