@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/neflyte/timetracker/lib/constants"
 	"github.com/neflyte/timetracker/lib/logger"
 	"howett.net/plist"
 )
@@ -58,7 +59,7 @@ func Disable() error {
 	if err != nil {
 		return err
 	}
-	launchdService := fmt.Sprintf("gui/%s/%s", currentUser.Uid, constants.AppId)
+	launchdService := fmt.Sprintf("gui/%s/%s", currentUser.Uid, constants.AppID)
 	var stdout, stderr strings.Builder
 	launchctlArgs := []string{"bootout", launchdService}
 	launchctlCommand := exec.Command("launchctl", launchctlArgs...)
@@ -80,8 +81,24 @@ func Disable() error {
 
 // IsEnabled determines if tray autostart is enabled
 func IsEnabled() bool {
-	// TODO: implement this
-	return false
+	log := logger.GetFuncLogger(packageLogger, "IsEnabled")
+	var stdout, stderr strings.Builder
+	launchctlArgs := []string{"list", constants.AppID}
+	launchctlCommand := exec.Command("launchctl", launchctlArgs...)
+	launchctlCommand.Stdout = &stdout
+	launchctlCommand.Stderr = &stderr
+	err := launchctlCommand.Run()
+	log.Debug().
+		Str("stdout", stdout.String()).
+		Str("stderr", stderr.String()).
+		Msg("command output")
+	if err != nil {
+		log.Err(err).
+			Strs("launchctlArgs", launchctlArgs).
+			Msg("error running launchctl")
+		return false
+	}
+	return true
 }
 
 func generateLaunchdPlist(appPath string) (string, error) {
@@ -89,7 +106,7 @@ func generateLaunchdPlist(appPath string) (string, error) {
 		return "", errors.New("appPath is empty")
 	}
 	plistMap := map[string]any{
-		"Label": constants.AppId,
+		"Label": constants.AppID,
 		"ProgramArguments": []string{
 			fmt.Sprintf("%s/timetracker-tray", appPath),
 		},
@@ -118,7 +135,7 @@ func writePlist() (string, error) {
 	log.Debug().
 		Str("plistData", plistData).
 		Msg("plist data")
-	tempFile, err := os.CreateTemp("", fmt.Sprintf("%s.*.plist", constants.AppId))
+	tempFile, err := os.CreateTemp("", fmt.Sprintf("%s.*.plist", constants.AppID))
 	if err != nil {
 		return "", err
 	}
