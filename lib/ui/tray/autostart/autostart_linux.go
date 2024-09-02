@@ -14,10 +14,12 @@ import (
 
 const (
 	desktopFileMode = 0644
+	iconFileMode    = 0644
 )
 
 var (
 	desktopFile = ""
+	iconPath    = ""
 )
 
 // Enable enables tray autostart

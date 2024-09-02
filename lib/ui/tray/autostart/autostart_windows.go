@@ -14,6 +14,10 @@ import (
 	"github.com/neflyte/timetracker/lib/logger"
 )
 
+const (
+	tempFileMode = 0644
+)
+
 //go:embed autostart.ps1
 var autostartPs1 []byte
 
