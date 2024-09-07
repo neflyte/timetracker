@@ -3,6 +3,7 @@ package tray
 import (
 	"errors"
 	"fmt"
+	"github.com/neflyte/timetracker/lib/ui/tray/autostart"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -44,6 +45,7 @@ var (
 	mCreateAndStart            *systray.MenuItem
 	mTrayOptions               *systray.MenuItem
 	mTrayOptionConfirmStopTask *systray.MenuItem
+	mTrayOptionAutostart       *systray.MenuItem
 	mLastStarted               *systray.MenuItem
 	lastStartedItems           [recentlyStartedTasks]*systray.MenuItem
 	lastStartedItemSynopses    [recentlyStartedTasks]string
@@ -95,6 +97,11 @@ func onReady() {
 		"Confirm when stopping a task",                         // i18n
 		"Prompt for confirmation when stopping a running task", // i18n
 		viper.GetBool(keyStopTaskConfirm),
+	)
+	mTrayOptionAutostart = mTrayOptions.AddSubMenuItemCheckbox(
+		"Start tray app at login",                               // i18n
+		"Automatically start the Timetracker tray app at login", // i18n
+		autostart.IsEnabled(),
 	)
 	systray.AddSeparator()
 	mAbout = systray.AddMenuItem("About Timetracker", "About the Timetracker app") // i18n
@@ -264,6 +271,8 @@ func mainLoop(quitChan chan bool) { //nolint:cyclop
 			launchGUI(guiOptionShowReportWindow)
 		case <-mTrayOptionConfirmStopTask.ClickedCh:
 			toggleConfirmStopTask()
+		case <-mTrayOptionAutostart.ClickedCh:
+			toggleAutostart()
 		// BEGIN Last started tasks
 		case <-lastStartedItems[0].ClickedCh:
 			handleLastStartedClick(0)
@@ -332,7 +341,8 @@ func launchGUI(guiOptions ...string) {
 
 func handleStatusClick() {
 	log := logger.GetFuncLogger(trayLogger, "handleStatusClick")
-	switch monitor.TimesheetStatus() {
+	currentStatus := monitor.TimesheetStatus()
+	switch currentStatus {
 	case constants.TimesheetStatusRunning:
 		shouldConfirmStopTask := viper.GetBool(keyStopTaskConfirm)
 		if shouldConfirmStopTask {
@@ -354,6 +364,10 @@ func handleStatusClick() {
 		}
 	case constants.TimesheetStatusIdle:
 		launchGUI()
+	default:
+		log.Error().
+			Int("TimesheetStatus", currentStatus).
+			Msg("unexpected TimesheetStatus value")
 	}
 }
 
@@ -473,4 +487,25 @@ func toggleConfirmStopTask() {
 	} else {
 		mTrayOptionConfirmStopTask.Uncheck()
 	}
+}
+
+func toggleAutostart() {
+	log := logger.GetFuncLogger(trayLogger, "toggleAutostart")
+	if autostart.IsEnabled() {
+		err := autostart.Disable()
+		if err != nil {
+			log.Err(err).
+				Msg("error disabling autostart")
+			return
+		}
+		mTrayOptionAutostart.Uncheck()
+		return
+	}
+	err := autostart.Enable()
+	if err != nil {
+		log.Err(err).
+			Msg("error enabling autostart")
+		return
+	}
+	mTrayOptionAutostart.Check()
 }
