@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/neflyte/timetracker/lib/logger"
 	"github.com/neflyte/timetracker/lib/models"
+	"github.com/neflyte/timetracker/lib/ui/tray/autostart"
 	"github.com/reactivex/rxgo/v2"
 	"github.com/rs/zerolog"
 	"golang.org/x/exp/slices"
@@ -64,6 +65,18 @@ type CompactUISelectTaskEvent struct{}
 // CompactUICreateAndStartEvent represents an event which creates and starts a new task
 type CompactUICreateAndStartEvent struct{}
 
+type CompactUIAppOptionsStartTrayAtLoginEvent struct {
+	Value bool
+}
+
+type CompactUIAppOptionsChangedEvent struct {
+	StartTrayAtLogin *CompactUIAppOptionsStartTrayAtLoginEvent
+}
+
+type CompactUIOptionsEvent struct {
+	AppOptions *CompactUIAppOptionsChangedEvent
+}
+
 /*
  * Main data struct
  */
@@ -74,20 +87,23 @@ var _ fyne.Widget = (*CompactUI)(nil)
 type CompactUI struct {
 	log zerolog.Logger
 	widget.BaseWidget
-	taskNameBinding      binding.String
-	elapsedTimeBinding   binding.String
-	selectedTask         models.Task
-	elapsedTimeLabel     *widget.Label
-	container            *fyne.Container
-	taskNameLabel        *widget.Label
-	startStopButton      *widget.Button
-	commandChan          chan rxgo.Item
-	taskSelect           *widget.Select
-	createAndStartButton *widget.Button
-	taskList             []string
-	taskModels           models.TaskList
-	selectedTaskIndex    int
-	taskIsRunning        bool
+	taskNameBinding           binding.String
+	elapsedTimeBinding        binding.String
+	selectedTask              models.Task
+	elapsedTimeLabel          *widget.Label
+	container                 *fyne.Container
+	taskNameLabel             *widget.Label
+	startStopButton           *widget.Button
+	commandChan               chan rxgo.Item
+	taskSelect                *widget.Select
+	createAndStartButton      *widget.Button
+	optionsAccordion          *widget.Accordion
+	appOptions                *widget.AccordionItem
+	appOptionStartTrayAtLogin *widget.Check
+	taskList                  []string
+	taskModels                models.TaskList
+	selectedTaskIndex         int
+	taskIsRunning             bool
 }
 
 // NewCompactUI creates a new instance of the compact user interface
@@ -125,6 +141,27 @@ func (c *CompactUI) initUI() {
 	c.taskNameLabel = widget.NewLabelWithData(c.taskNameBinding)
 	c.taskNameLabel.TextStyle = compactUIIdleTextStyle
 	c.elapsedTimeLabel = widget.NewLabelWithData(c.elapsedTimeBinding)
+	c.appOptionStartTrayAtLogin = widget.NewCheck("Start tray app on login", func(val bool) {
+		c.commandChan <- rxgo.Of(CompactUIOptionsEvent{
+			AppOptions: &CompactUIAppOptionsChangedEvent{
+				&CompactUIAppOptionsStartTrayAtLoginEvent{
+					Value: val,
+				},
+			},
+		})
+	})
+	go func() {
+		c.appOptionStartTrayAtLogin.Checked = autostart.IsEnabled()
+	}()
+	c.appOptions = widget.NewAccordionItem(
+		"OPTIONS",
+		container.NewVBox(
+			c.appOptionStartTrayAtLogin,
+		),
+	)
+	c.appOptions.Open = false
+	c.optionsAccordion = widget.NewAccordion(c.appOptions)
+	c.optionsAccordion.MultiOpen = false
 	c.container = container.NewVBox(
 		c.taskSelect,
 		container.NewHBox(
@@ -133,12 +170,17 @@ func (c *CompactUI) initUI() {
 			c.elapsedTimeLabel,
 		),
 		c.createAndStartButton,
-		container.NewHBox(
-			widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), c.manageButtonWasTapped),       // i18n
-			widget.NewButtonWithIcon("REPORT", theme.DocumentCreateIcon(), c.reportButtonWasTapped), // i18n
-			widget.NewButtonWithIcon("QUIT", theme.LogoutIcon(), c.quitButtonWasTapped),             // i18n
+		container.NewBorder(
+			nil,
+			nil,
+			container.NewHBox(
+				widget.NewButtonWithIcon("MANAGE", theme.SettingsIcon(), c.manageButtonWasTapped),       // i18n
+				widget.NewButtonWithIcon("REPORT", theme.DocumentCreateIcon(), c.reportButtonWasTapped), // i18n
+				widget.NewButtonWithIcon("QUIT", theme.LogoutIcon(), c.quitButtonWasTapped),             // i18n
+			),
 			widget.NewButtonWithIcon("", theme.InfoIcon(), c.aboutButtonWasTapped),
 		),
+		c.optionsAccordion,
 	)
 }
 

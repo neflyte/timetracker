@@ -3,6 +3,7 @@ package windows
 import (
 	"errors"
 	"fmt"
+	"github.com/neflyte/timetracker/lib/ui/tray/autostart"
 	"sync"
 	"time"
 
@@ -429,6 +430,29 @@ func (t *timetrackerWindowData) handleCompactUIEvent(item interface{}) {
 		t.Close()
 	case widgets.CompactUITaskEvent:
 		t.handleCompactUITaskEvent(event)
+	case widgets.CompactUIOptionsEvent:
+		t.handleCompactUIOptionsEvent(event)
+	}
+}
+
+func (t *timetrackerWindowData) handleCompactUIOptionsEvent(event widgets.CompactUIOptionsEvent) {
+	log := logger.GetFuncLogger(t.log, "handleCompactUIOptionsEvent")
+	if event.AppOptions != nil {
+		if event.AppOptions.StartTrayAtLogin != nil {
+			if event.AppOptions.StartTrayAtLogin.Value {
+				err := autostart.Enable()
+				if err != nil {
+					log.Err(err).
+						Msg("unable to enable tray start at login")
+				}
+			} else {
+				err := autostart.Disable()
+				if err != nil {
+					log.Err(err).
+						Msg("unable to disable tray start at login")
+				}
+			}
+		}
 	}
 }
 
