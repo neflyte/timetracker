@@ -25,28 +25,31 @@ func Enable() error {
 		err = os.Remove(plistFile)
 		if err != nil {
 			log.Err(err).
-				Msg("Error removing launchd plist")
+				Msg("Error removing launchd plist file")
 		}
 	}()
 	currentUser, err := user.Current()
 	if err != nil {
+		log.Err(err).
+			Msg("Error getting current user ID")
 		return err
 	}
 	launchdDomain := fmt.Sprintf("gui/%s/", currentUser.Uid)
-	var stdout, stderr strings.Builder
-	launchctlArgs := []string{"bootstrap", launchdDomain, plistFile}
-	launchctlCommand := exec.Command("launchctl", launchctlArgs...)
-	launchctlCommand.Stdout = &stdout
-	launchctlCommand.Stderr = &stderr
-	err = launchctlCommand.Run()
-	log.Debug().
-		Str("stdout", stdout.String()).
-		Str("stderr", stderr.String()).
-		Msg("command output")
+	stdout, stderr, err := runLaunchctl("bootstrap", []string{launchdDomain, plistFile})
 	if err != nil {
 		log.Err(err).
-			Strs("launchctlArgs", launchctlArgs).
-			Msg("error running launchctl")
+			Str("stdout", stdout).
+			Str("stderr", stderr).
+			Msg("error bootstrapping plist")
+		return err
+	}
+	launchdService := fmt.Sprintf("%s/%s", launchdDomain, constants.AppID)
+	stdout, stderr, err = runLaunchctl("enable", []string{launchdService})
+	if err != nil {
+		log.Err(err).
+			Str("stdout", stdout).
+			Str("stderr", stderr).
+			Msg("error enabling service")
 		return err
 	}
 	return nil
@@ -60,20 +63,20 @@ func Disable() error {
 		return err
 	}
 	launchdService := fmt.Sprintf("gui/%s/%s", currentUser.Uid, constants.AppID)
-	var stdout, stderr strings.Builder
-	launchctlArgs := []string{"bootout", launchdService}
-	launchctlCommand := exec.Command("launchctl", launchctlArgs...)
-	launchctlCommand.Stdout = &stdout
-	launchctlCommand.Stderr = &stderr
-	err = launchctlCommand.Run()
-	log.Debug().
-		Str("stdout", stdout.String()).
-		Str("stderr", stderr.String()).
-		Msg("command output")
+	stdout, stderr, err := runLaunchctl("disable", []string{launchdService})
 	if err != nil {
 		log.Err(err).
-			Strs("launchctlArgs", launchctlArgs).
-			Msg("error running launchctl")
+			Str("stdout", stdout).
+			Str("stderr", stderr).
+			Msg("error disabling service")
+		return err
+	}
+	stdout, stderr, err = runLaunchctl("remove", []string{constants.AppID})
+	if err != nil {
+		log.Err(err).
+			Str("stdout", stdout).
+			Str("stderr", stderr).
+			Msg("error removing service")
 		return err
 	}
 	return nil
@@ -82,20 +85,12 @@ func Disable() error {
 // IsEnabled determines if tray autostart is enabled
 func IsEnabled() bool {
 	log := logger.GetFuncLogger(packageLogger, "IsEnabled")
-	var stdout, stderr strings.Builder
-	launchctlArgs := []string{"list", constants.AppID}
-	launchctlCommand := exec.Command("launchctl", launchctlArgs...)
-	launchctlCommand.Stdout = &stdout
-	launchctlCommand.Stderr = &stderr
-	err := launchctlCommand.Run()
-	log.Debug().
-		Str("stdout", stdout.String()).
-		Str("stderr", stderr.String()).
-		Msg("command output")
+	stdout, stderr, err := runLaunchctl("list", []string{constants.AppID})
 	if err != nil {
 		log.Err(err).
-			Strs("launchctlArgs", launchctlArgs).
-			Msg("error running launchctl")
+			Str("stdout", stdout).
+			Str("stderr", stderr).
+			Msg("error checking for service")
 		return false
 	}
 	return true
@@ -154,4 +149,31 @@ func writePlist() (string, error) {
 		return "", err
 	}
 	return tempFile.Name(), nil
+}
+
+func runLaunchctl(command string, args []string) (string, string, error) {
+	log := logger.GetFuncLogger(packageLogger, "runLaunchctl")
+	var stdout, stderr strings.Builder
+	launchctlArgs := []string{command}
+	launchctlArgs = append(launchctlArgs, args...)
+	launchctlCommand := exec.Command("launchctl", launchctlArgs...)
+	launchctlCommand.Stdout = &stdout
+	launchctlCommand.Stderr = &stderr
+	log.Debug().
+		Str("command", command).
+		Strs("args", launchctlArgs).
+		Msg("run launchctl")
+	err := launchctlCommand.Run()
+	log.Debug().
+		Str("stdout", stdout.String()).
+		Str("stderr", stderr.String()).
+		Msg("launchctl command output")
+	if err != nil {
+		log.Err(err).
+			Str("command", command).
+			Strs("args", launchctlArgs).
+			Msg("error running launchctl")
+		return stdout.String(), stderr.String(), err
+	}
+	return stdout.String(), stderr.String(), nil
 }
