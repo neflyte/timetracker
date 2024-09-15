@@ -299,13 +299,14 @@ func (td *TaskData) Resolve(arg string) (taskid uint, tasksynopsis string) {
 		return 0, ""
 	}
 	log.Trace().Msgf("arg=%s", arg)
-	id, err := strconv.Atoi(arg)
+	id, err := strconv.ParseUint(arg, 10, 64)
 	if err != nil {
 		log.Trace().Msgf("error converting arg to number: %s; returning arg", err)
 		return 0, arg
 	}
-	log.Trace().Msgf("returning %d", uint(id))
-	return uint(id), ""
+	idUint := uint(id)
+	log.Trace().Msgf("returning %d", idUint)
+	return idUint, ""
 }
 
 // Equals tests if this Task is equal to the specified Task
